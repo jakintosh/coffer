@@ -43,19 +43,28 @@ func main() {
 }
 
 func createCheckoutSession(w http.ResponseWriter, r *http.Request) {
-	println("hit /createCheckoutSession")
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8007")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	// Set your secret key. Remember to switch to your live secret key in production.
 	// See your keys here: https://dashboard.stripe.com/apikeys
-	stripe.Key = "sk_test_..."
+	var present bool
+	stripe.Key, present = os.LookupEnv("STRIPE_KEY")
+	if !present {
+		println("no STRIPE_KEY")
+		return
+	}
+	price_id, present := os.LookupEnv("PRICE_ID")
+	if !present {
+		println("no PRICE_ID")
+		return
+	}
 
 	params := &stripe.CheckoutSessionParams{
 		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
-				Price:    stripe.String("price_..."),
+				Price:    stripe.String(price_id),
 				Quantity: stripe.Int64(1),
 			},
 		},
@@ -87,7 +96,11 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 
 	// verify signature and construct event
 	signature := req.Header.Get("Stripe-Signature")
-	endpointSecret := "whsec_..."
+	endpointSecret, present := os.LookupEnv("ENDPOINT_SECRET")
+	if !present {
+		println("no ENDPOINT_SECRET")
+		return
+	}
 	event, err := webhook.ConstructEvent(payload, signature, endpointSecret)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error verifying webhook signature: %v\n", err)
