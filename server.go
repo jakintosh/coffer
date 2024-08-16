@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stripe/stripe-go/v79"
 	"github.com/stripe/stripe-go/v79/checkout/session"
 	"github.com/stripe/stripe-go/v79/webhook"
@@ -15,7 +17,20 @@ import (
 	"os"
 )
 
+var db *sql.DB
+
 func main() {
+
+	var err error
+	db, err = sql.Open("sqlite3", "salary.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	init := `
+		create table if not exists payments (id text not null primary key, date int, amount int, currency text);
+		create table if not exists subscriptions (id text not null primary key, status text, amount int, currency text);
+	`
+	db.Exec(init)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
@@ -108,15 +123,46 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 		handleSubscription(subscription)
 
 	default:
-		fmt.Fprintf(os.Stderr, "Unhandled event type: %s\n", event.Type)
+		// fmt.Fprintf(os.Stderr, "Unhandled event type: %s\n", event.Type)
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func handlePaymentIntent(payment stripe.PaymentIntent) {
-	fmt.Fprintf(os.Stdout, "successful payment intent: %d", payment.AmountReceived)
+	if payment.Status != "succeeded" {
+		return
+	}
+	statement := fmt.Sprintf("insert into payments values('%s', %d, %d, '%s');", payment.ID, payment.Created, payment.Amount, payment.Currency)
+	_, err := db.Exec(statement)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	} else {
+		fmt.Fprintf(os.Stdout, "successful payment intent: %d\n", payment.Amount)
+	}
 }
 func handleSubscription(subscription stripe.Subscription) {
-	fmt.Fprintf(os.Stdout, "RECEIVED SUBSCRIPTION\n%d", subscription.BillingCycleAnchor)
+	id := subscription.Customer.ID
+	if len(subscription.Items.Data) == 0 {
+		fmt.Fprintf(os.Stdout, "subscription has no plans: %s", id)
+		return
+	}
+	plan := subscription.Items.Data[0].Plan
+	status := subscription.Status
+	if status != "active" {
+		status = "inactive"
+	}
+	statement := fmt.Sprintf(`
+		insert into subscriptions values('%s', '%s', %d, '%s')
+			on conflict(id) do update set
+				status=excluded.status,
+				amount=excluded.amount,
+				currency=excluded.currency;
+	`, id, status, plan.Amount, plan.Currency)
+	_, err := db.Exec(statement)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	} else {
+		fmt.Fprintf(os.Stdout, "successful subscription: %s\n", id)
+	}
 }
