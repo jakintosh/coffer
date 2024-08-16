@@ -3,51 +3,83 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"sort"
+
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stripe/stripe-go/v79"
 	"github.com/stripe/stripe-go/v79/checkout/session"
 	"github.com/stripe/stripe-go/v79/webhook"
+
 	// "github.com/stripe/stripe-go/v79/price"
 	// portalsession "github.com/stripe/stripe-go/v79/billingportal/session"
 	"encoding/json"
-	"html"
+	// "html"
 	"io"
 	"log"
 	"net/http"
+
+	// "net/url"
 	"os"
 )
 
 var db *sql.DB
+var clientUrl string
 
-func main() {
+func readClientUrl() string {
+	var present bool
+	clientUrl, present = os.LookupEnv("CLIENT_URL")
+	if !present {
+		log.Fatalln("missing required env var 'CLIENT_URL'")
+	}
+	return clientUrl
+}
 
-	var err error
-	db, err = sql.Open("sqlite3", "salary.db")
+func readPort() string {
+	port, present := os.LookupEnv("PORT")
+	if !present {
+		log.Fatalln("missing required env var 'CLIENT_URL'")
+	}
+	port = fmt.Sprintf(":%s", port)
+	return port
+}
+
+func initDB() *sql.DB {
+	db, err := sql.Open("sqlite3", "salary.db")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	init := `
 		create table if not exists payments (id text not null primary key, date int, amount int, currency text);
 		create table if not exists subscriptions (id text not null primary key, status text, amount int, currency text);
 	`
 	db.Exec(init)
+	return db
+}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
-	})
+func main() {
 
-	http.HandleFunc("/createCheckoutSession", createCheckoutSession)
-	http.HandleFunc("/webhooks", webhooks)
+	clientUrl = readClientUrl()
+	port := readPort()
+	db = initDB()
 
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	http.HandleFunc("/payments", payments)
+	http.HandleFunc("/subscriptions", subscriptions)
+
+	http.HandleFunc("/stripe/createCheckoutSession", createCheckoutSession)
+	http.HandleFunc("/stripe/webhooks", webhooks)
+
+	log.Fatal(http.ListenAndServe(port, nil))
+}
+
+func setCorsHeaders(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", clientUrl)
+	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
 }
 
 func createCheckoutSession(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8007")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	// Set your secret key. Remember to switch to your live secret key in production.
-	// See your keys here: https://dashboard.stripe.com/apikeys
+	setCorsHeaders(&w)
+
 	var present bool
 	stripe.Key, present = os.LookupEnv("STRIPE_KEY")
 	if !present {
@@ -74,10 +106,9 @@ func createCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	result, err := session.New(params)
 	if err != nil {
-		println("checkout session error")
+		fmt.Fprintf(os.Stderr, "checkout session err: %s\n", err)
 		json.NewEncoder(w).Encode(err)
 	} else {
-		println("successful checkout session")
 		json.NewEncoder(w).Encode(result)
 	}
 }
@@ -142,12 +173,66 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type Payment struct {
+	Id       string `json:"id"`
+	Date     int    `json:"date"`
+	Amount   int    `json:"amount"`
+	Currency string `json:"currency"`
+}
+
+func payments(w http.ResponseWriter, req *http.Request) {
+
+	/*
+
+		What should this actually return? What do I want to do with it on the front end?
+
+		I want to show all payments that have ever happened, though probably by month?
+
+		I'm realizing there are costs to using an API vs statically rebuilding pages on changes.
+
+	*/
+	// query := req.URL.RawQuery
+	// q, err := url.ParseQuery(query)
+	// if err != nil {
+	// 	// idk
+	// }
+
+	rows, err := db.Query("select * from payments;")
+	if err != nil {
+		// idk
+	}
+	defer rows.Close()
+
+	var payments []Payment
+	for rows.Next() {
+		var payment Payment
+		if err := rows.Scan(&payment.Id, &payment.Date, &payment.Amount, &payment.Currency); err != nil {
+			fmt.Fprintf(os.Stdout, "scan err: %s", err)
+		} else {
+			payments = append(payments, payment)
+		}
+	}
+	if err = rows.Err(); err != nil {
+		// idk
+	}
+
+	sort.Slice(payments, func(i, j int) bool {
+		return payments[i].Date < payments[j].Date
+	})
+
+	json.NewEncoder(w).Encode(payments)
+}
+
+func subscriptions(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "/subscriptions")
+}
+
 func handlePaymentIntent(payment stripe.PaymentIntent) {
 	if payment.Status != "succeeded" {
 		return
 	}
-	statement := fmt.Sprintf("insert into payments values('%s', %d, %d, '%s');", payment.ID, payment.Created, payment.Amount, payment.Currency)
-	_, err := db.Exec(statement)
+	statement := "insert into payments values(?, ?, ?, ?);"
+	_, err := db.Exec(statement, payment.ID, payment.Created, payment.Amount, payment.Currency)
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	} else {
@@ -165,14 +250,14 @@ func handleSubscription(subscription stripe.Subscription) {
 	if status != "active" {
 		status = "inactive"
 	}
-	statement := fmt.Sprintf(`
-		insert into subscriptions values('%s', '%s', %d, '%s')
+	statement := `
+		insert into subscriptions values(?, ?, ?, ?)
 			on conflict(id) do update set
 				status=excluded.status,
 				amount=excluded.amount,
 				currency=excluded.currency;
-	`, id, status, plan.Amount, plan.Currency)
-	_, err := db.Exec(statement)
+	`
+	_, err := db.Exec(statement, id, status, plan.Amount, plan.Currency)
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	} else {
