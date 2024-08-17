@@ -3,13 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"sort"
-
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stripe/stripe-go/v79"
 	"github.com/stripe/stripe-go/v79/checkout/session"
 	"github.com/stripe/stripe-go/v79/webhook"
-
+	"sort"
 	// "github.com/stripe/stripe-go/v79/price"
 	// portalsession "github.com/stripe/stripe-go/v79/billingportal/session"
 	"encoding/json"
@@ -17,7 +15,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-
 	// "net/url"
 	"os"
 )
@@ -61,6 +58,8 @@ func main() {
 	clientUrl = readClientUrl()
 	port := readPort()
 	db = initDB()
+
+	println("starting on port ", port)
 
 	http.HandleFunc("/payments", payments)
 	http.HandleFunc("/subscriptions", subscriptions)
@@ -142,6 +141,7 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 	// unmarshal the event data into an appropriate struct depending on its type
 	switch event.Type {
 	case "payment_intent.succeeded":
+
 		var paymentIntent stripe.PaymentIntent
 		err := json.Unmarshal(event.Data.Raw, &paymentIntent)
 		if err != nil {
@@ -181,6 +181,7 @@ type Payment struct {
 }
 
 func payments(w http.ResponseWriter, req *http.Request) {
+	setCorsHeaders(&w)
 
 	/*
 
@@ -224,6 +225,7 @@ func payments(w http.ResponseWriter, req *http.Request) {
 }
 
 func subscriptions(w http.ResponseWriter, req *http.Request) {
+	setCorsHeaders(&w)
 	fmt.Fprintf(w, "/subscriptions")
 }
 
