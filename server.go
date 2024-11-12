@@ -2,20 +2,14 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/stripe/stripe-go/v79"
-	"github.com/stripe/stripe-go/v79/checkout/session"
-	"github.com/stripe/stripe-go/v79/webhook"
-	"sort"
-	// "github.com/stripe/stripe-go/v79/price"
-	// portalsession "github.com/stripe/stripe-go/v79/billingportal/session"
-	"encoding/json"
-	// "html"
+	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v81/webhook"
 	"io"
 	"log"
 	"net/http"
-	// "net/url"
 	"os"
 )
 
@@ -34,7 +28,7 @@ func readClientUrl() string {
 func readPort() string {
 	port, present := os.LookupEnv("PORT")
 	if !present {
-		log.Fatalln("missing required env var 'CLIENT_URL'")
+		log.Fatalln("missing required env var 'PORT'")
 	}
 	port = fmt.Sprintf(":%s", port)
 	return port
@@ -45,11 +39,37 @@ func initDB() *sql.DB {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	init := `
-		create table if not exists payments (id text not null primary key, date int, amount int, currency text);
-		create table if not exists subscriptions (id text not null primary key, status text, amount int, currency text);
-	`
-	db.Exec(init)
+	db.Exec(`
+		CREATE TABLE IF NOT EXISTS customer (
+			id TEXT NOT NULL PRIMARY KEY,
+			created INT,
+			updated INT,
+			email TEXT,
+			name TEXT
+		);
+		CREATE TABLE IF NOT EXISTS subscription (
+			id TEXT NOT NULL PRIMARY KEY,
+			created INT,
+			updated INT,
+			customer TEXT,
+			status TEXT,
+			amount INT,
+			currency TEXT
+		);
+		CREATE TABLE IF NOT EXISTS payment (
+			id TEXT NOT NULL PRIMARY KEY,
+			created INT,
+			customer TEXT,
+			amount INT,
+			currency TEXT
+		);
+		CREATE TABLE IF NOT EXISTS payout (
+			id TEXT NOT NULL PRIMARY KEY,
+			created INT,
+			amount INT,
+			currency TEXT
+		);
+	`)
 	return db
 }
 
@@ -61,11 +81,7 @@ func main() {
 
 	println("starting on port ", port)
 
-	http.HandleFunc("/payments", payments)
-	http.HandleFunc("/subscriptions", subscriptions)
-
-	http.HandleFunc("/stripe/createCheckoutSession", createCheckoutSession)
-	http.HandleFunc("/stripe/webhooks", webhooks)
+	http.HandleFunc("/webhook", webhooks)
 
 	log.Fatal(http.ListenAndServe(port, nil))
 }
@@ -73,43 +89,6 @@ func main() {
 func setCorsHeaders(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", clientUrl)
 	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
-}
-
-func createCheckoutSession(w http.ResponseWriter, r *http.Request) {
-
-	setCorsHeaders(&w)
-
-	var present bool
-	stripe.Key, present = os.LookupEnv("STRIPE_KEY")
-	if !present {
-		println("no STRIPE_KEY")
-		return
-	}
-	price_id, present := os.LookupEnv("PRICE_ID")
-	if !present {
-		println("no PRICE_ID")
-		return
-	}
-
-	params := &stripe.CheckoutSessionParams{
-		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
-		LineItems: []*stripe.CheckoutSessionLineItemParams{
-			{
-				Price:    stripe.String(price_id),
-				Quantity: stripe.Int64(1),
-			},
-		},
-		UIMode:    stripe.String(string(stripe.CheckoutSessionUIModeEmbedded)),
-		ReturnURL: stripe.String("https://example.com/checkout/return?session_id={CHECKOUT_SESSION_ID}"),
-	}
-
-	result, err := session.New(params)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "checkout session err: %s\n", err)
-		json.NewEncoder(w).Encode(err)
-	} else {
-		json.NewEncoder(w).Encode(result)
-	}
 }
 
 func webhooks(w http.ResponseWriter, req *http.Request) {
@@ -129,27 +108,30 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 	endpointSecret, present := os.LookupEnv("ENDPOINT_SECRET")
 	if !present {
 		println("no ENDPOINT_SECRET")
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 	event, err := webhook.ConstructEvent(payload, signature, endpointSecret)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error verifying webhook signature: %v\n", err)
-		w.WriteHeader(http.StatusBadRequest) // Return a 400 error on a bad signature
+		w.WriteHeader(http.StatusBadRequest) // Return a 400 on bad signature
 		return
 	}
 
 	// unmarshal the event data into an appropriate struct depending on its type
 	switch event.Type {
-	case "payment_intent.succeeded":
 
-		var paymentIntent stripe.PaymentIntent
-		err := json.Unmarshal(event.Data.Raw, &paymentIntent)
+	case "customer.created",
+		"customer.updated":
+
+		var customer stripe.Customer
+		err := json.Unmarshal(event.Data.Raw, &customer)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		handlePaymentIntent(paymentIntent)
+		handleCustomer(customer, event.Created)
 
 	case "customer.subscription.created",
 		"customer.subscription.paused",
@@ -164,105 +146,126 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		handleSubscription(subscription)
+		handleSubscription(subscription, event.Created)
+
+	case "payment_intent.succeeded":
+
+		var paymentIntent stripe.PaymentIntent
+		err := json.Unmarshal(event.Data.Raw, &paymentIntent)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		handlePaymentIntent(paymentIntent)
+
+	case "payout.paid":
+
+		var payout stripe.Payout
+		err := json.Unmarshal(event.Data.Raw, &payout)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		handlePayout(payout)
 
 	default:
-		// fmt.Fprintf(os.Stderr, "Unhandled event type: %s\n", event.Type)
+		break
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
-type Payment struct {
-	Id       string `json:"id"`
-	Date     int    `json:"date"`
-	Amount   int    `json:"amount"`
-	Currency string `json:"currency"`
-}
+func handleCustomer(customer stripe.Customer, eventTime int64) {
 
-func payments(w http.ResponseWriter, req *http.Request) {
-	setCorsHeaders(&w)
+	id := customer.ID
+	created := customer.Created
+	email := customer.Email
+	name := customer.Name
+	statement := `
+		INSERT INTO customer VALUES(?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO
+			UPDATE SET
+				updated=?,
+				email=excluded.email,
+				name=excluded.name;`
 
-	/*
-
-		What should this actually return? What do I want to do with it on the front end?
-
-		I want to show all payments that have ever happened, though probably by month?
-
-		I'm realizing there are costs to using an API vs statically rebuilding pages on changes.
-
-	*/
-	// query := req.URL.RawQuery
-	// q, err := url.ParseQuery(query)
-	// if err != nil {
-	// 	// idk
-	// }
-
-	rows, err := db.Query("select * from payments;")
+	_, err := db.Exec(statement, id, created, created, email, name, eventTime)
 	if err != nil {
-		// idk
+		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	} else {
+		fmt.Fprintf(os.Stdout, "successful customer update: %s\n", customer.ID)
 	}
-	defer rows.Close()
-
-	var payments []Payment
-	for rows.Next() {
-		var payment Payment
-		if err := rows.Scan(&payment.Id, &payment.Date, &payment.Amount, &payment.Currency); err != nil {
-			fmt.Fprintf(os.Stdout, "scan err: %s", err)
-		} else {
-			payments = append(payments, payment)
-		}
-	}
-	if err = rows.Err(); err != nil {
-		// idk
-	}
-
-	sort.Slice(payments, func(i, j int) bool {
-		return payments[i].Date < payments[j].Date
-	})
-
-	json.NewEncoder(w).Encode(payments)
 }
 
-func subscriptions(w http.ResponseWriter, req *http.Request) {
-	setCorsHeaders(&w)
-	fmt.Fprintf(w, "/subscriptions")
+func handleSubscription(subscription stripe.Subscription, eventTime int64) {
+	if len(subscription.Items.Data) == 0 {
+		fmt.Fprintf(os.Stdout, "subscription has no prices: %s", subscription.ID)
+		return
+	}
+
+	id := subscription.ID
+	created := subscription.Created
+	customer := subscription.Customer.ID
+	price := subscription.Items.Data[0].Price
+	amount := price.UnitAmount
+	currency := price.Currency
+	status := subscription.Status
+	if status != "active" {
+		status = "inactive"
+	}
+	statement := `
+		INSERT INTO subscription VALUES(?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=?,
+				status=excluded.status,
+				amount=excluded.amount,
+				currency=excluded.currency;`
+
+	_, err := db.Exec(statement, id, created, created, customer, status, amount, currency, eventTime)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	} else {
+		fmt.Fprintf(os.Stdout, "successful subscription: %s\n", id)
+	}
 }
 
 func handlePaymentIntent(payment stripe.PaymentIntent) {
 	if payment.Status != "succeeded" {
 		return
 	}
-	statement := "insert into payments values(?, ?, ?, ?);"
-	_, err := db.Exec(statement, payment.ID, payment.Created, payment.Amount, payment.Currency)
+
+	id := payment.ID
+	created := payment.Created
+	customer := payment.Customer.ID
+	amount := payment.Amount
+	currency := payment.Currency
+	statement := "INSERT INTO payment VALUES(?, ?, ?, ?, ?);"
+	_, err := db.Exec(statement, id, created, customer, amount, currency)
+
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	} else {
 		fmt.Fprintf(os.Stdout, "successful payment intent: %d\n", payment.Amount)
 	}
 }
-func handleSubscription(subscription stripe.Subscription) {
-	id := subscription.Customer.ID
-	if len(subscription.Items.Data) == 0 {
-		fmt.Fprintf(os.Stdout, "subscription has no plans: %s", id)
+
+func handlePayout(payout stripe.Payout) {
+	if payout.Status != "paid" {
 		return
 	}
-	plan := subscription.Items.Data[0].Plan
-	status := subscription.Status
-	if status != "active" {
-		status = "inactive"
-	}
-	statement := `
-		insert into subscriptions values(?, ?, ?, ?)
-			on conflict(id) do update set
-				status=excluded.status,
-				amount=excluded.amount,
-				currency=excluded.currency;
-	`
-	_, err := db.Exec(statement, id, status, plan.Amount, plan.Currency)
+
+	id := payout.ID
+	created := payout.Created
+	amount := payout.Amount
+	currency := payout.Currency
+	statement := "INSERT INTO payout VALUES(?, ?, ?, ?);"
+	_, err := db.Exec(statement, id, created, amount, currency)
+
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	} else {
-		fmt.Fprintf(os.Stdout, "successful subscription: %s\n", id)
+		fmt.Fprintf(os.Stdout, "successful payout: %d\n", payout.Amount)
 	}
 }
