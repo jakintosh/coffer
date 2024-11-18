@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/stripe/stripe-go/v81"
-	"github.com/stripe/stripe-go/v81/webhook"
 	"io"
 	"log"
 	"net/http"
 	"os"
+
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v81/webhook"
 )
 
 var db *sql.DB
@@ -228,6 +229,7 @@ func handleSubscription(subscription stripe.Subscription, eventTime int64) {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	} else {
 		fmt.Fprintf(os.Stdout, "successful subscription: %s\n", id)
+		genInsights()
 	}
 }
 
@@ -238,9 +240,16 @@ func handlePaymentIntent(payment stripe.PaymentIntent) {
 
 	id := payment.ID
 	created := payment.Created
-	customer := payment.Customer.ID
 	amount := payment.Amount
 	currency := payment.Currency
+
+	var customer string
+	if payment.Customer != nil {
+		customer = payment.Customer.ID
+	} else {
+		customer = "N/A"
+	}
+
 	statement := "INSERT INTO payment VALUES(?, ?, ?, ?, ?);"
 	_, err := db.Exec(statement, id, created, customer, amount, currency)
 
@@ -248,6 +257,7 @@ func handlePaymentIntent(payment stripe.PaymentIntent) {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	} else {
 		fmt.Fprintf(os.Stdout, "successful payment intent: %d\n", payment.Amount)
+		genInsights()
 	}
 }
 
@@ -267,5 +277,93 @@ func handlePayout(payout stripe.Payout) {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	} else {
 		fmt.Fprintf(os.Stdout, "successful payout: %d\n", payout.Amount)
+		genInsights()
 	}
+}
+
+type Subscriptions struct {
+	amount   int
+	currency string
+}
+
+func genInsights() {
+	fmt.Fprintf(os.Stdout, "=============\n")
+
+	numSubs, currencyTotals := scanSubscriptions()
+	fmt.Fprintf(os.Stdout, "num subs: %d\n", numSubs)
+	for currency, total := range currencyTotals {
+		var amount float32
+		switch currency {
+		case "usd":
+			amount = float32(total) / 100.0
+		default:
+			amount = float32(total)
+		}
+		fmt.Fprintf(os.Stdout, "%s: %f\n", currency, amount)
+	}
+
+	monthlyPayments := scanPayments()
+	for month, amount := range monthlyPayments {
+		fmt.Fprintf(os.Stdout, "%s: %d\n", month, amount)
+	}
+}
+
+func scanSubscriptions() (int, map[string]int) {
+
+	statement := `
+		SELECT amount, currency
+		FROM subscription
+		WHERE status="active"`
+
+	rows, err := db.Query(statement)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	}
+
+	numSubscriptions := 0
+	currencyTotals := make(map[string]int)
+	for rows.Next() {
+
+		var amount int
+		var currency string
+		err := rows.Scan(&amount, &currency)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		numSubscriptions++
+		if val, ok := currencyTotals[currency]; ok {
+			currencyTotals[currency] = val + amount
+		} else {
+			currencyTotals[currency] = amount
+		}
+	}
+	return numSubscriptions, currencyTotals
+}
+
+func scanPayments() map[string]int {
+	statement := `
+		SELECT SUM(amount) as amount,
+			strftime('%m-%Y', DATETIME(created, 'unixepoch')) AS 'month-year'
+		FROM payment
+		GROUP BY 'month-year';
+	`
+
+	rows, err := db.Query(statement)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	}
+
+	monthlyPayments := make(map[string]int)
+	for rows.Next() {
+		var amount int
+		var date string
+		err := rows.Scan(&amount, &date)
+		if err != nil {
+			log.Fatal(err)
+		}
+		monthlyPayments[date] = amount
+	}
+
+	return monthlyPayments
 }
