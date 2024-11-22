@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stripe/stripe-go/v81"
@@ -16,14 +18,17 @@ import (
 
 var db *sql.DB
 var clientUrl string
+var insightsFile string
+var postInsightScript string
+var postInsightScriptDir string
 
-func readClientUrl() string {
+func readEnvVar(name string) string {
 	var present bool
-	clientUrl, present = os.LookupEnv("CLIENT_URL")
+	str, present := os.LookupEnv(name)
 	if !present {
-		log.Fatalln("missing required env var 'CLIENT_URL'")
+		log.Fatalf("missing required env var '%s'\n", name)
 	}
-	return clientUrl
+	return str
 }
 
 func readPort() string {
@@ -76,7 +81,10 @@ func initDB() *sql.DB {
 
 func main() {
 
-	clientUrl = readClientUrl()
+	clientUrl = readEnvVar("CLIENT_URL")
+	insightsFile = readEnvVar("INSIGHT_PATH")
+	postInsightScript = readEnvVar("SCRIPT_PATH")
+	postInsightScriptDir = readEnvVar("SCRIPT_DIR_PATH")
 	port := readPort()
 	db = initDB()
 
@@ -287,58 +295,105 @@ type Subscriptions struct {
 }
 
 func genInsights() {
-	fmt.Fprintf(os.Stdout, "=============\n")
 
-	numSubs, currencyTotals := scanSubscriptions()
-	fmt.Fprintf(os.Stdout, "num subs: %d\n", numSubs)
-	for currency, total := range currencyTotals {
-		var amount float32
-		switch currency {
-		case "usd":
-			amount = float32(total) / 100.0
-		default:
-			amount = float32(total)
+	// generate the insights data
+	numPatrons, totalMonthly, tierCounts := scanSubscriptions()
+	count_5 := 0
+	count_10 := 0
+	count_20 := 0
+	count_50 := 0
+	count_100 := 0
+	for tier, count := range tierCounts {
+		switch tier {
+		case 5:
+			count_5 = count
+		case 10:
+			count_10 = count
+		case 20:
+			count_20 = count
+		case 50:
+			count_50 = count
+		case 100:
+			count_100 = count
 		}
-		fmt.Fprintf(os.Stdout, "%s: %f\n", currency, amount)
 	}
 
-	monthlyPayments := scanPayments()
-	for month, amount := range monthlyPayments {
-		fmt.Fprintf(os.Stdout, "%s: %d\n", month, amount)
+	// open the insights file to write it
+	f, err := os.Create(insightsFile)
+	if err != nil {
+		// handle err
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	fmt.Fprintf(w, "@string \"total-patrons\" \"%d\"\n", numPatrons)
+	fmt.Fprintf(w, "@string \"total-monthly\" \"%d\"\n", totalMonthly)
+	fmt.Fprintf(w, "@string \"percent-goal\" \"%.1f\"\n", float64(totalMonthly)*100/6875.0)
+	fmt.Fprintf(w, "@string \"num-5-patrons\" \"%d\"\n", count_5)
+	fmt.Fprintf(w, "@string \"num-10-patrons\" \"%d\"\n", count_10)
+	fmt.Fprintf(w, "@string \"num-20-patrons\" \"%d\"\n", count_20)
+	fmt.Fprintf(w, "@string \"num-50-patrons\" \"%d\"\n", count_50)
+	fmt.Fprintf(w, "@string \"num-100-patrons\" \"%d\"\n", count_100)
+	w.Flush()
+
+	// rebuild the site by running the staging script
+	cmd := exec.Command("/bin/sh", postInsightScript)
+	cmd.Dir = postInsightScriptDir
+	err = cmd.Run()
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "script errored: %s", err)
 	}
 }
 
-func scanSubscriptions() (int, map[string]int) {
+func scanSubscriptions() (int, int, map[int]int) {
+
+	// get summary info
 
 	statement := `
-		SELECT amount, currency
+		SELECT SUM(amount), COUNT(*)
 		FROM subscription
-		WHERE status="active"`
+		WHERE status='active'
+		AND currency='usd';`
 
 	rows, err := db.Query(statement)
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
 	}
 
-	numSubscriptions := 0
-	currencyTotals := make(map[string]int)
-	for rows.Next() {
+	var amount int
+	var count int
+	defer rows.Close()
+	if !rows.Next() {
+		log.Fatal("no rows in scanSubscriptions()")
+	}
+	err = rows.Scan(&amount, &count)
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	// get tier info
+
+	statement = `
+		SELECT amount, COUNT(*)
+		FROM subscription
+		GROUP BY amount;`
+	rows, err = db.Query(statement)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	}
+
+	tierCounts := make(map[int]int)
+	defer rows.Close()
+	for rows.Next() {
 		var amount int
-		var currency string
-		err := rows.Scan(&amount, &currency)
+		var count int
+		err := rows.Scan(&amount, &count)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		numSubscriptions++
-		if val, ok := currencyTotals[currency]; ok {
-			currencyTotals[currency] = val + amount
-		} else {
-			currencyTotals[currency] = amount
-		}
+		tierCounts[(amount / 100)] = count
 	}
-	return numSubscriptions, currencyTotals
+
+	return count, amount / 100, tierCounts
 }
 
 func scanPayments() map[string]int {
@@ -346,8 +401,8 @@ func scanPayments() map[string]int {
 		SELECT SUM(amount) as amount,
 			strftime('%m-%Y', DATETIME(created, 'unixepoch')) AS 'month-year'
 		FROM payment
-		GROUP BY 'month-year';
-	`
+		WHERE currency='usd'
+		GROUP BY 'month-year';`
 
 	rows, err := db.Query(statement)
 	if err != nil {
@@ -355,6 +410,7 @@ func scanPayments() map[string]int {
 	}
 
 	monthlyPayments := make(map[string]int)
+	defer rows.Close()
 	for rows.Next() {
 		var amount int
 		var date string
