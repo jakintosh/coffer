@@ -2,15 +2,22 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v81/customer"
+	"github.com/stripe/stripe-go/v81/paymentintent"
+	"github.com/stripe/stripe-go/v81/payout"
+	"github.com/stripe/stripe-go/v81/subscription"
 	"github.com/stripe/stripe-go/v81/webhook"
 )
+
+func writeParseError(w http.ResponseWriter, err error) {
+	log.Printf("Error parsing webhook JSON: %v\n", err)
+	w.WriteHeader(http.StatusBadRequest)
+}
 
 func webhooks(w http.ResponseWriter, req *http.Request) {
 
@@ -34,12 +41,13 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 	signature := req.Header.Get("Stripe-Signature")
 	event, err := webhook.ConstructEvent(payload, signature, ENDPOINT_SECRET)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error verifying webhook signature: %v\n", err)
-		w.WriteHeader(http.StatusBadRequest) // Return a 400 on bad signature
+		log.Printf("Error verifying webhook signature: %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// unmarshal the event data into an appropriate struct depending on its type
+	log.Printf("received event: %s %s\n", event.Type, event.ID)
+
 	switch event.Type {
 
 	case "customer.created",
@@ -48,11 +56,10 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 		var customer stripe.Customer
 		err := json.Unmarshal(event.Data.Raw, &customer)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
-			w.WriteHeader(http.StatusBadRequest)
+			writeParseError(w, err)
 			return
 		}
-		go handleCustomer(customer, event.Created)
+		fetchResourceC <- ResourceDesc{"customer", customer.ID}
 
 	case "customer.subscription.created",
 		"customer.subscription.paused",
@@ -63,149 +70,203 @@ func webhooks(w http.ResponseWriter, req *http.Request) {
 		var subscription stripe.Subscription
 		err := json.Unmarshal(event.Data.Raw, &subscription)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
-			w.WriteHeader(http.StatusBadRequest)
+			writeParseError(w, err)
 			return
 		}
-		go handleSubscription(subscription, event.Created)
+		fetchResourceC <- ResourceDesc{"subscription", subscription.ID}
 
 	case "payment_intent.succeeded":
 
 		var paymentIntent stripe.PaymentIntent
 		err := json.Unmarshal(event.Data.Raw, &paymentIntent)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
-			w.WriteHeader(http.StatusBadRequest)
+			writeParseError(w, err)
 			return
 		}
-		go handlePaymentIntent(paymentIntent)
+		fetchResourceC <- ResourceDesc{"payment", paymentIntent.ID}
 
-	case "payout.paid":
+	case "payout.paid",
+		"payout.failed":
 
 		var payout stripe.Payout
 		err := json.Unmarshal(event.Data.Raw, &payout)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
-			w.WriteHeader(http.StatusBadRequest)
+			writeParseError(w, err)
 			return
 		}
-		go handlePayout(payout)
+		fetchResourceC <- ResourceDesc{"payout", payout.ID}
 
 	default:
 		break
 	}
 
+	log.Printf("event OK: %s %s", event.Type, event.ID)
 	w.WriteHeader(http.StatusOK)
 }
 
-func handleCustomer(customer stripe.Customer, eventTime int64) {
+func fetchCustomer(id string) {
+	log.Printf("fetching customer %s", id)
+	params := &stripe.CustomerParams{}
+	customer, err := customer.Get(id, params)
+	if err != nil {
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			log.Printf("failed to fetch customer %s: stripe err: %v\n", id, stripeErr)
+		} else {
+			log.Printf("failed to fetch customer %s: %v\n", id, err)
+		}
+		// TODO: what do we do with failed requests?
+		return
+	}
+	log.Printf("received customer %s", id)
 
-	id := customer.ID
 	created := customer.Created
 	email := customer.Email
 	name := customer.Name
+
 	statement := `
-		INSERT INTO customer (id, created, updated, email, name)
-		VALUES(?, ?, ?, ?, ?)
+		INSERT INTO customer (id, created, email, name)
+		VALUES(?, ?, ?, ?)
 		ON CONFLICT(id) DO
 			UPDATE SET
-				updated=?,
+				updated=unixepoch(),
 				email=excluded.email,
 				name=excluded.name;`
-
-	_, err := db.Exec(statement, id, created, created, email, name, eventTime)
+	_, err = db.Exec(statement, id, created, email, name)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
-	} else {
-		fmt.Fprintf(os.Stdout, "successful customer update: %s\n", customer.ID)
-	}
-}
-
-func handleSubscription(subscription stripe.Subscription, eventTime int64) {
-	if len(subscription.Items.Data) == 0 {
-		fmt.Fprintf(os.Stdout, "subscription has no prices: %s", subscription.ID)
+		log.Printf("failed to insert into customer: %v\n", err)
 		return
 	}
 
-	id := subscription.ID
+	log.Printf("updated customer %s\n", customer.ID)
+}
+
+func fetchSubscription(id string) {
+	log.Printf("fetching subscription %s", id)
+	params := &stripe.SubscriptionParams{}
+	subscription, err := subscription.Get(id, params)
+	if err != nil {
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			log.Printf("failed to fetch subscription %s: stripe err: %v\n", id, stripeErr)
+		} else {
+			log.Printf("failed to fetch subscription %s: %v\n", id, err)
+		}
+		// TODO: what do we do with failed requests?
+		return
+	}
+	log.Printf("received subscription %s", id)
+
 	created := subscription.Created
 	customer := subscription.Customer.ID
-	price := subscription.Items.Data[0].Price
-	amount := price.UnitAmount
-	currency := price.Currency
 	status := subscription.Status
-	if status != "active" {
-		status = "inactive"
-	}
-	statement := `
-		INSERT INTO subscription (id, created, updated, customer, status, amount, currency)
-		VALUES(?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE
-			SET updated=?,
-				status=excluded.status,
-				amount=excluded.amount,
-				currency=excluded.currency;`
 
-	_, err := db.Exec(statement, id, created, created, customer, status, amount, currency, eventTime)
-	if err != nil {
-		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
+	if len(subscription.Items.Data) > 0 {
+		price := subscription.Items.Data[0].Price
+		amount := price.UnitAmount
+		currency := price.Currency
+
+		statement := `
+			INSERT INTO subscription (id, created, customer, status, amount, currency)
+			VALUES(?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE
+				SET updated=unixepoch(),
+					status=excluded.status,
+					amount=excluded.amount,
+					currency=excluded.currency;`
+		_, err = db.Exec(statement, id, created, customer, status, amount, currency)
+		if err != nil {
+			log.Printf("failed to insert into subscription: %v\n", err)
+			return
+		}
 	} else {
-		fmt.Fprintf(os.Stdout, "successful subscription: %s\n", id)
-		renderFundingPage()
+		statement := `
+			INSERT INTO subscription (id, created, customer, status)
+			VALUES(?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE
+				SET updated=unixepoch(),
+					status=excluded.status;`
+		_, err = db.Exec(statement, id, created, customer, status)
+		if err != nil {
+			log.Printf("failed to insert into subscription: %v\n", err)
+			return
+		}
 	}
+
+	log.Printf("updated subscription: %s\n", id)
+	rebuildPageC <- 0
 }
 
-func handlePaymentIntent(payment stripe.PaymentIntent) {
-	if payment.Status != "succeeded" {
+func fetchPaymentIntent(id string) {
+	log.Printf("fetching payment_intent %s", id)
+	params := &stripe.PaymentIntentParams{}
+	payment, err := paymentintent.Get(id, params)
+	if err != nil {
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			log.Printf("failed to fetch payment_intent %s: stripe err: %v\n", id, stripeErr)
+		} else {
+			log.Printf("failed to fetch payment_intent %s: %v\n", id, err)
+		}
+		// TODO: what do we do with failed requests?
 		return
 	}
+	log.Printf("received payment_intent %s", id)
 
-	id := payment.ID
 	created := payment.Created
+	status := payment.Status
 	amount := payment.Amount
 	currency := payment.Currency
-
-	var customer string
+	customer := "N/A"
 	if payment.Customer != nil {
 		customer = payment.Customer.ID
-	} else {
-		customer = "N/A"
 	}
 
 	statement := `
-		INSERT INTO payment (id, created, customer, amount, currency)
-		VALUES(?, ?, ?, ?, ?);`
-
-	_, err := db.Exec(statement, id, created, customer, amount, currency)
-
+		INSERT INTO payment (id, created, status, customer, amount, currency)
+		VALUES(?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=unixepoch(),
+				status=excluded.status;`
+	_, err = db.Exec(statement, id, created, status, customer, amount, currency)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
-	} else {
-		fmt.Fprintf(os.Stdout, "successful payment intent: %d\n", payment.Amount)
-		renderFundingPage()
-	}
-}
-
-func handlePayout(payout stripe.Payout) {
-	if payout.Status != "paid" {
-		// TODO: handle 'failed' coming through later
+		log.Printf("failed to insert into payment: %s\n", err)
 		return
 	}
 
-	id := payout.ID
+	log.Printf("updated payment intent: %s\n", id)
+	rebuildPageC <- 0
+}
+
+func fetchPayout(id string) {
+	log.Printf("fetching payout %s", id)
+	params := &stripe.PayoutParams{}
+	payout, err := payout.Get(id, params)
+	if err != nil {
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			log.Printf("failed to fetch payout %s: stripe err: %v\n", id, stripeErr)
+		} else {
+			log.Printf("failed to fetch payout %s: %v\n", id, err)
+		}
+		// TODO: what do we do with failed requests?
+		return
+	}
+	log.Printf("received payout %s", id)
+
 	created := payout.Created
+	status := payout.Status
 	amount := payout.Amount
 	currency := payout.Currency
+
 	statement := `
-		INSERT INTO payout (id, created, amount, currency)
-		VALUES(?, ?, ?, ?);`
-
-	_, err := db.Exec(statement, id, created, amount, currency)
-
+		INSERT INTO payout (id, created, status, amount, currency)
+		VALUES(?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=unixepoch(),
+				status=excluded.status;`
+	_, err = db.Exec(statement, id, created, status, amount, currency)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%q: %s\n", err, statement)
-	} else {
-		fmt.Fprintf(os.Stdout, "successful payout: %d\n", payout.Amount)
-		renderFundingPage()
+		log.Printf("failed to insert into payout: %s\n", err)
+		return
 	}
+
+	log.Printf("updated payout: %s\n", id)
+	rebuildPageC <- 0
 }

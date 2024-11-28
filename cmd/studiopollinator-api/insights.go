@@ -25,14 +25,14 @@ func renderFundingPage() {
 	// generate insights from database
 	insights, err := generateInsights()
 	if err != nil {
-		log.Println("failed to render funding page: couldn't generate insights")
+		log.Println("insights: failed to render funding page: couldn't generate insights")
 		return
 	}
 
 	// open writer for output page
 	f, err := os.Create(FUNDING_PAGE_FILE_PATH)
 	if err != nil {
-		log.Printf("failed to render funding page: %v\n", err)
+		log.Printf("insights: failed to render funding page: %v\n", err)
 		return
 	}
 	defer f.Close()
@@ -41,17 +41,17 @@ func renderFundingPage() {
 	// parse and render template
 	tmpl, err := template.ParseFiles(FUNDING_PAGE_TMPL_PATH)
 	if err != nil {
-		log.Printf("failed to render funding page: %v\n", err)
+		log.Printf("insights: failed to render funding page: %v\n", err)
 		return
 	}
 	err = tmpl.Execute(w, insights)
 	if err != nil {
-		log.Printf("failed to render funding page: %v\n", err)
+		log.Printf("insights: failed to render funding page: %v\n", err)
 		return
 	}
 	w.Flush()
 
-	log.Println("re-rendered funding page")
+	log.Println("insights: re-rendered funding page")
 }
 
 func generateInsights() (Insights, error) {
@@ -105,7 +105,7 @@ func scanSubscriptions() (int, int, map[int]int, error) {
 		AND currency='usd';`
 	rows, err := db.Query(summary_statement)
 	if err != nil {
-		log.Printf("failed to query summary_statement: %v\n", err)
+		log.Printf("insights: failed to query summary_statement: %v\n", err)
 		return -1, -1, nil, err
 	}
 
@@ -123,10 +123,12 @@ func scanSubscriptions() (int, int, map[int]int, error) {
 	tier_statement := `
 		SELECT amount, COUNT(*)
 		FROM subscription
+		WHERE status='active'
+		AND currency='usd'
 		GROUP BY amount;`
 	rows, err = db.Query(tier_statement)
 	if err != nil {
-		log.Printf("failed to query tier_statement: %s\n", err)
+		log.Printf("insights: failed to query tier_statement: %s\n", err)
 		return -1, -1, nil, err
 	}
 
@@ -136,7 +138,7 @@ func scanSubscriptions() (int, int, map[int]int, error) {
 		var count int
 		err := rows.Scan(&amount, &count)
 		if err != nil {
-			log.Printf("failed to scan row of tier_statement: %s\n", err)
+			log.Printf("insights: failed to scan row of tier_statement: %s\n", err)
 			return -1, -1, nil, err
 		}
 		tierCounts[(amount / 100)] = count
@@ -151,6 +153,7 @@ func scanPayments() map[string]int {
 			strftime('%m-%Y', DATETIME(created, 'unixepoch')) AS 'month-year'
 		FROM payment
 		WHERE currency='usd'
+		AND status='succeeded'
 		GROUP BY 'month-year';`
 
 	rows, err := db.Query(statement)

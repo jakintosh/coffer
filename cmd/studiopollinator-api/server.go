@@ -7,17 +7,30 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/stripe/stripe-go/v81"
 )
 
-var db *sql.DB
+type ResourceDesc struct {
+	Type string
+	ID   string
+}
+
+// environment vars
+var STRIPE_KEY string
 var ENDPOINT_SECRET string
 var CLIENT_URL string
 var DB_FILE_PATH string
 var FUNDING_PAGE_TMPL_PATH string
 var FUNDING_PAGE_FILE_PATH string
 var MONTHLY_INCOME_GOAL int
+
+// global resources
+var db *sql.DB
+var fetchResourceC chan ResourceDesc
+var rebuildPageC chan int
 
 func readEnvVar(name string) string {
 	var present bool
@@ -54,31 +67,35 @@ func initDB() *sql.DB {
 	db.Exec(`
 		CREATE TABLE IF NOT EXISTS customer (
 			id TEXT NOT NULL PRIMARY KEY,
-			created INT,
-			updated INT,
+			created INTEGER,
+			updated INTEGER,
 			email TEXT,
 			name TEXT
 		);
 		CREATE TABLE IF NOT EXISTS subscription (
 			id TEXT NOT NULL PRIMARY KEY,
-			created INT,
-			updated INT,
+			created INTEGER,
+			updated INTEGER,
 			customer TEXT,
 			status TEXT,
-			amount INT,
+			amount INTEGER,
 			currency TEXT
 		);
 		CREATE TABLE IF NOT EXISTS payment (
 			id TEXT NOT NULL PRIMARY KEY,
-			created INT,
+			created INTEGER,
+			updated INTEGER,
+			status TEXT,
 			customer TEXT,
-			amount INT,
+			amount INTEGER,
 			currency TEXT
 		);
 		CREATE TABLE IF NOT EXISTS payout (
 			id TEXT NOT NULL PRIMARY KEY,
-			created INT,
-			amount INT,
+			created INTEGER,
+			updated INTEGER,
+			status TEXT,
+			amount INTEGER,
 			currency TEXT
 		);
 	`)
@@ -88,6 +105,7 @@ func initDB() *sql.DB {
 func main() {
 
 	// load all env vars
+	STRIPE_KEY = readEnvVar("STRIPE_KEY")
 	CLIENT_URL = readEnvVar("CLIENT_URL")
 	ENDPOINT_SECRET = readEnvVar("ENDPOINT_SECRET")
 	DB_FILE_PATH = readEnvVar("DB_FILE_PATH")
@@ -97,11 +115,89 @@ func main() {
 	port := fmt.Sprintf(":%s", readEnvVar("PORT"))
 
 	// init
+	stripe.Key = STRIPE_KEY
 	db = initDB()
+	fetchResourceC = make(chan ResourceDesc, 32)
+	rebuildPageC = make(chan int, 1)
+
+	// async procs
+	go scheduleResourceFetches(fetchResourceC)
+	go schedulePageRebuilds(rebuildPageC)
 
 	// config routing
 	http.HandleFunc("/webhook", webhooks)
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, nil))
+}
+
+func schedulePageRebuilds(req <-chan int) {
+	var timer *time.Timer = nil
+	var c <-chan time.Time = nil
+	duration := time.Millisecond * 500
+	for {
+		select {
+		case <-req:
+			if timer != nil {
+				timer.Reset(duration)
+			} else {
+				timer = time.NewTimer(duration)
+				c = timer.C
+			}
+
+		case <-c:
+			c = nil
+			timer = nil
+			renderFundingPage()
+		}
+	}
+}
+
+func scheduleResourceFetches(incoming <-chan ResourceDesc) {
+	outgoing := make(chan ResourceDesc)
+	resets := make(map[string]chan int)
+	for {
+		select {
+		case resource := <-incoming:
+			if reset, ok := resets[resource.ID]; ok {
+				reset <- 0
+			} else {
+				reset := make(chan int, 1)
+				resets[resource.ID] = reset
+				go queueResourceFetch(resource, outgoing, reset)
+			}
+
+		case resource := <-outgoing:
+			delete(resets, resource.ID)
+
+			switch resource.Type {
+			case "customer":
+				go fetchCustomer(resource.ID)
+
+			case "subscription":
+				go fetchSubscription(resource.ID)
+
+			case "payment":
+				go fetchPaymentIntent(resource.ID)
+
+			case "payout":
+				go fetchPayout(resource.ID)
+			}
+		}
+	}
+}
+
+func queueResourceFetch(r ResourceDesc, requests chan<- ResourceDesc, reset <-chan int) {
+	duration := time.Millisecond * 500
+	timer := time.NewTimer(duration)
+out:
+	for {
+		select {
+		case <-reset:
+			timer.Reset(duration)
+		case <-timer.C:
+			break out
+		}
+	}
+	requests <- r
 }
