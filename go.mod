@@ -1,6 +1,6 @@
-module git.sr.ht/~jakintosh/salary
+module git.sr.ht/~jakintosh/studiopollinator-api
 
-go 1.22.6
+go 1.23.3
 
 require (
 	github.com/mattn/go-sqlite3 v1.14.22
