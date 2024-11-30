@@ -67,14 +67,14 @@ func renderFundingPage() {
 	// generate insights from database
 	insights, err := generateInsights()
 	if err != nil {
-		log.Printf("insights: failed to render funding page: couldn't generate insights: %v\n", err)
+		log.Printf("failed to render funding page: couldn't generate insights: %v\n", err)
 		return
 	}
 
 	// open writer for output page
 	f, err := os.Create(FUNDING_PAGE_FILE_PATH)
 	if err != nil {
-		log.Printf("insights: failed to render funding page: %v\n", err)
+		log.Printf("failed to render funding page: %v\n", err)
 		return
 	}
 	defer f.Close()
@@ -83,12 +83,12 @@ func renderFundingPage() {
 	// parse and render template
 	tmpl, err := template.ParseFiles(FUNDING_PAGE_TMPL_PATH)
 	if err != nil {
-		log.Printf("insights: failed to render funding page: %v\n", err)
+		log.Printf("failed to render funding page: %v\n", err)
 		return
 	}
 	err = tmpl.Execute(w, insights)
 	if err != nil {
-		log.Printf("insights: failed to render funding page: %v\n", err)
+		log.Printf("failed to render funding page: %v\n", err)
 		return
 	}
 	w.Flush()
@@ -100,7 +100,7 @@ func generateInsights() (*Insights, error) {
 
 	summary, err := database.QuerySubscriptionSummary()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query subscription summary: %v", err)
 	}
 	percentGoal := (float64(summary.Total) / float64(MONTHLY_INCOME_GOAL)) * 100
 	insights := Insights{

@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 
@@ -27,7 +26,7 @@ func Init(path string) {
 	var err error
 	db, err = sql.Open("sqlite3", path)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("failed to connect to database: %v\n", err)
 	}
 	db.Exec(`
 		CREATE TABLE IF NOT EXISTS customer (
@@ -78,18 +77,17 @@ func QuerySubscriptionSummary() (*SubscriptionSummary, error) {
 		AND currency='usd';`
 	rows, err := db.Query(summary_statement)
 	if err != nil {
-		log.Printf("db: failed to query summary_statement: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to query summary_statement: %v", err)
 	}
 
 	// scan summary rows
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, errors.New("sql failure: subscription summary query")
+		return nil, fmt.Errorf("subscription summary query unexpectedly empty")
 	}
 	err = rows.Scan(&summary.Count, &summary.Total)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("failed to scan row of summary_statement: %v\n", err))
+		return nil, fmt.Errorf("failed to scan row of summary statement: %v", err)
 	}
 
 	// adjust for cents
@@ -104,8 +102,7 @@ func QuerySubscriptionSummary() (*SubscriptionSummary, error) {
 		GROUP BY amount;`
 	rows, err = db.Query(tier_statement)
 	if err != nil {
-		log.Printf("db: failed to query tier_statement: %s\n", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to query tier_statement: %v", err)
 	}
 
 	// scan tier rows
@@ -114,8 +111,7 @@ func QuerySubscriptionSummary() (*SubscriptionSummary, error) {
 		var count int
 		err := rows.Scan(&amount, &count)
 		if err != nil {
-			log.Printf("db: failed to scan row of tier_statement: %s\n", err)
-			return nil, err
+			return nil, fmt.Errorf("failed to scan row of tier statement: %v", err)
 		}
 		summary.Tiers[(amount / 100)] = count
 	}

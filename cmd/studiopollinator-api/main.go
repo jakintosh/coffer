@@ -52,7 +52,7 @@ func readEnvInt(name string) int {
 	v := readEnvVar(name)
 	i, err := strconv.Atoi(v)
 	if err != nil {
-		log.Fatalf("required env var '%s' is not an integer (\"%s\")\n", name, v)
+		log.Fatalf("required env var '%s' could not be parsed as integer (\"%v\")\n", name, v)
 	}
 	return i
 }
