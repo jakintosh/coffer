@@ -37,6 +37,9 @@ func Init(
 	FUNDING_PAGE_TMPL_PATH = templatePath
 	MONTHLY_INCOME_GOAL = monthlyGoal
 
+	// render page once on startup
+	renderFundingPage()
+
 	go schedulePageRebuilds(requests)
 }
 
