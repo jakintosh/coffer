@@ -1,11 +1,14 @@
 #!/usr/bin/bash
-if [ -f env/local/studiopollinator-api.env ]; then
-  source env/local/studiopollinator-api.env
+
+name=studiopollinator-api
+
+if [ -f env/local/$name.env ]; then
+  source env/local/$name.env
 else
-  echo "no env/local/studiopollinator-api.env file"
+  echo "missing env/local/$name.env file"
   exit 1
 fi
 
-sudo systemctl stop studiopollinator-api.service
-sudo systemctl start studiopollinator-api.service
+sudo systemctl stop $name.service
+sudo systemctl start $name.service
 stripe listen --forward-to localhost:$PORT/webhook

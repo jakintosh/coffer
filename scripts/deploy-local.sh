@@ -1,20 +1,27 @@
 #!/usr/bin/bash
 
-if [ ! -f env/local/studiopollinator-api.env ]; then
-  echo "no env/local/studiopollinator-api.env file"
+name=studiopollinator-api
+
+if [ ! -f ./init/$name.service ]; then
+  echo "missing ./init/$name.service file"
   exit 1
 fi
 
-sudo systemctl stop studiopollinator-api.service
+if [ ! -f ./env/local/$name.env ]; then
+  echo "missing ./env/local/$name.env file"
+  exit 1
+fi
 
-go build -o bin/studiopollinator-api ./cmd/studiopollinator-api
+sudo systemctl stop $name.service
+
+go build -o ./bin/$name ./cmd/$name
 
 sudo mkdir -p /etc/systemd/system
-sudo mkdir -p /usr/local/bin
 sudo mkdir -p /usr/local/env
+sudo mkdir -p /usr/local/bin
 
-sudo cp ./init/studiopollinator-api.service  /etc/systemd/system/
-sudo cp ./bin/studiopollinator-api           /usr/local/bin/
-sudo cp ./env/local/studiopollinator-api.env /usr/local/env/
+sudo cp ./init/$name.service  /etc/systemd/system/
+sudo cp ./env/local/$name.env /usr/local/env/
+sudo cp ./bin/$name           /usr/local/bin/
 
 sudo systemctl daemon-reload
