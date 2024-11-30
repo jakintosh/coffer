@@ -10,11 +10,6 @@ import (
 	"github.com/stripe/stripe-go/v81/webhook"
 )
 
-func writeParseError(w http.ResponseWriter, err error) {
-	log.Printf("Error parsing webhook JSON: %v\n", err)
-	w.WriteHeader(http.StatusBadRequest)
-}
-
 func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 
 	// only accept POST
@@ -42,7 +37,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Printf("event RCVD: %s %s\n", event.Type, event.ID)
+	log.Printf("<- event %s %s\n", event.ID, event.Type)
 
 	switch event.Type {
 
@@ -55,7 +50,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- resourceDesc{"customer", customer.ID}
+		updateResourceC <- updateRequest{"customer", customer.ID}
 
 	case "customer.subscription.created",
 		"customer.subscription.paused",
@@ -69,7 +64,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- resourceDesc{"subscription", subscription.ID}
+		updateResourceC <- updateRequest{"subscription", subscription.ID}
 
 	case "payment_intent.succeeded":
 
@@ -79,7 +74,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- resourceDesc{"payment", paymentIntent.ID}
+		updateResourceC <- updateRequest{"payment", paymentIntent.ID}
 
 	case "payout.paid",
 		"payout.failed":
@@ -90,12 +85,17 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- resourceDesc{"payout", payout.ID}
+		updateResourceC <- updateRequest{"payout", payout.ID}
 
 	default:
 		break
 	}
 
-	log.Printf("event OKAY: %s %s", event.Type, event.ID)
+	log.Printf("OK event %s %s", event.ID, event.Type)
 	w.WriteHeader(http.StatusOK)
+}
+
+func writeParseError(w http.ResponseWriter, err error) {
+	log.Printf("Error parsing webhook JSON: %v\n", err)
+	w.WriteHeader(http.StatusBadRequest)
 }

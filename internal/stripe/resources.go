@@ -12,46 +12,50 @@ import (
 	"github.com/stripe/stripe-go/v81/subscription"
 )
 
-type resourceDesc struct {
+type updateRequest struct {
 	Type string
 	ID   string
 }
 
-func scheduleResourceUpdates(incoming <-chan resourceDesc) {
-	outgoing := make(chan resourceDesc)
+func scheduleResourceUpdates(requests <-chan updateRequest) {
 	resets := make(map[string]chan int)
+	ready := make(chan updateRequest)
 	for {
 		select {
-		case resource := <-incoming:
-			if reset, ok := resets[resource.ID]; ok {
+		case req := <-requests:
+			if reset, ok := resets[req.ID]; ok {
 				reset <- 0
 			} else {
 				reset := make(chan int, 1)
-				resets[resource.ID] = reset
-				go queueResourceFetch(resource, outgoing, reset)
+				resets[req.ID] = reset
+				go queueResourceUpdate(req, ready, reset)
 			}
 
-		case resource := <-outgoing:
-			delete(resets, resource.ID)
+		case req := <-ready:
+			delete(resets, req.ID)
 
-			switch resource.Type {
+			switch req.Type {
 			case "customer":
-				go updateCustomer(resource.ID)
+				go updateCustomer(req.ID)
 
 			case "subscription":
-				go updateSubscription(resource.ID)
+				go updateSubscription(req.ID)
 
 			case "payment":
-				go updatePaymentIntent(resource.ID)
+				go updatePaymentIntent(req.ID)
 
 			case "payout":
-				go updatePayout(resource.ID)
+				go updatePayout(req.ID)
 			}
 		}
 	}
 }
 
-func queueResourceFetch(r resourceDesc, requests chan<- resourceDesc, reset <-chan int) {
+func queueResourceUpdate(
+	req updateRequest,
+	ready chan<- updateRequest,
+	reset <-chan int,
+) {
 	duration := time.Millisecond * 500
 	timer := time.NewTimer(duration)
 out:
@@ -63,179 +67,141 @@ out:
 			break out
 		}
 	}
-	requests <- r
+	ready <- req
 }
 
 func updateCustomer(id string) {
-	cus, err := fetchCustomer(id)
+	customer, err := getResource("customer", id, getCustomer)
 	if err != nil {
-		// TODO: what do we do with failed requests?
-		log.Printf("update customer %s FAIL: fetch failure: %v\n", id, err)
-		return
+		return // TODO: what do we do with failed requests?
 	}
 
 	if err = database.InsertCustomer(
 		id,
-		cus.Created,
-		cus.Email,
-		cus.Name,
+		customer.Created,
+		customer.Email,
+		customer.Name,
 	); err != nil {
-		log.Printf("update customer %s FAIL: database failure: %v", id, err)
+		log.Printf("DB ERROR customer %s: %v", id, err)
 		return
 	}
 
-	log.Printf("updated customer %s\n", cus.ID)
+	log.Printf("OK customer %s\n", customer.ID)
 }
 
 func updateSubscription(id string) {
-	sub, err := fetchSubscription(id)
+	subscription, err := getResource("subscription", id, getSubscription)
 	if err != nil {
-		// TODO: what do we do with failed requests?
-		log.Printf("update subscription %s FAIL: fetch failure: %v\n", id, err)
-		return
+		return // TODO: what do we do with failed requests?
 	}
 
 	amount := int64(0)
 	currency := ""
-	if len(sub.Items.Data) > 0 {
-		price := sub.Items.Data[0].Price
+	if len(subscription.Items.Data) > 0 {
+		price := subscription.Items.Data[0].Price
 		amount = price.UnitAmount
 		currency = string(price.Currency)
 	}
 
 	if err = database.InsertSubscription(
 		id,
-		sub.Created,
-		sub.Customer.ID,
-		string(sub.Status),
+		subscription.Created,
+		subscription.Customer.ID,
+		string(subscription.Status),
 		amount,
 		currency,
 	); err != nil {
-		log.Printf("update subscription %s FAIL: database failure: %v\n", id, err)
+		log.Printf("DB ERROR subscription %s: %v\n", id, err)
 		return
 	}
 
-	log.Printf("updated subscription %s\n", id)
+	log.Printf("OK subscription %s\n", id)
 	requestPageRebuild <- 0
 }
 
 func updatePaymentIntent(id string) {
-	pmt, err := fetchPaymentIntent(id)
+	payment, err := getResource("payment intent", id, getPaymentIntent)
 	if err != nil {
-		// TODO: what do we do with failed requests?
-		log.Printf("update payment intent %s FAIL: fetch failure: %v\n", id, err)
-		return
+		return // TODO: what do we do with failed requests?
 	}
 
 	customer := "N/A"
-	if pmt.Customer != nil {
-		customer = pmt.Customer.ID
+	if payment.Customer != nil {
+		customer = payment.Customer.ID
 	}
-
 	if err = database.InsertPayment(
 		id,
-		pmt.Created,
-		string(pmt.Status),
+		payment.Created,
+		string(payment.Status),
 		customer,
-		pmt.Amount,
-		string(pmt.Currency),
+		payment.Amount,
+		string(payment.Currency),
 	); err != nil {
-		log.Printf("update payment intent %s FAIL: database failure: %s\n", id, err)
+		log.Printf("DB ERROR payment intent %s: %v\n", id, err)
 		return
 	}
 
-	log.Printf("updated payment intent %s\n", id)
+	log.Printf("OK payment intent %s\n", id)
 	requestPageRebuild <- 0
 }
 
 func updatePayout(id string) {
-	pay, err := fetchPayout(id)
+	payout, err := getResource("payout", id, getPayout)
 	if err != nil {
-		// TODO: what do we do with failed requests?
-		log.Printf("update payout %s FAIL: fetch failure: %v\n", id, err)
-		return
+		return // TODO: what do we do with failed requests?
 	}
 
 	if err = database.InsertPayout(
 		id,
-		pay.Created,
-		string(pay.Status),
-		pay.Amount,
-		string(pay.Currency),
+		payout.Created,
+		string(payout.Status),
+		payout.Amount,
+		string(payout.Currency),
 	); err != nil {
-		log.Printf("updade payout %s FAIL: %v\n", id, err)
+		log.Printf("DB ERROR payout %s: %v\n", id, err)
 		return
 	}
 
-	log.Printf("updated payout %s\n", id)
+	log.Printf("OK payout %s\n", id)
 	requestPageRebuild <- 0
 }
 
-func fetchCustomer(id string) (*stripe.Customer, error) {
-	log.Printf("-> customer %s", id)
+func getResource[T any](
+	kind string,
+	id string,
+	fetch func(id string) (*T, error),
+) (*T, error) {
+	log.Printf("-> %s %s", kind, id)
+	obj, err := fetch(id)
+	if err != nil {
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			log.Printf("<- %s %s STRIPE ERROR: %v\n", kind, id, stripeErr)
+		} else {
+			log.Printf("<- %s %s ERROR: %v\n", kind, id, err)
+		}
+		return nil, err
+	}
+	log.Printf("<- %s %s", kind, id)
+
+	return obj, nil
+}
+
+func getCustomer(id string) (*stripe.Customer, error) {
 	params := &stripe.CustomerParams{}
-	cus, err := customer.Get(id, params)
-	if err != nil {
-		if stripeErr, ok := err.(*stripe.Error); ok {
-			log.Printf("<- customer %s FAIL: stripe err: %v\n", id, stripeErr)
-		} else {
-			log.Printf("<- customer %s FAIL: %v\n", id, err)
-		}
-		return nil, err
-	}
-	log.Printf("<- customer %s SUCCESS", id)
-
-	return cus, nil
+	return customer.Get(id, params)
 }
 
-func fetchSubscription(id string) (*stripe.Subscription, error) {
-	log.Printf("-> subscription %s", id)
+func getSubscription(id string) (*stripe.Subscription, error) {
 	params := &stripe.SubscriptionParams{}
-	sub, err := subscription.Get(id, params)
-	if err != nil {
-		if stripeErr, ok := err.(*stripe.Error); ok {
-			log.Printf("<- subscription %s FAIL: stripe err: %v\n", id, stripeErr)
-		} else {
-			log.Printf("<- subscription %s FAIL: %v\n", id, err)
-		}
-		return nil, err
-	}
-	log.Printf("<- subscription %s SUCCESS", id)
-
-	return sub, nil
+	return subscription.Get(id, params)
 }
 
-func fetchPaymentIntent(id string) (*stripe.PaymentIntent, error) {
-	log.Printf("-> payment_intent %s", id)
+func getPaymentIntent(id string) (*stripe.PaymentIntent, error) {
 	params := &stripe.PaymentIntentParams{}
-	pmt, err := paymentintent.Get(id, params)
-	if err != nil {
-		if stripeErr, ok := err.(*stripe.Error); ok {
-			log.Printf("<- payment_intent %s FAIL: stripe err: %v\n", id, stripeErr)
-		} else {
-			log.Printf("<- payment_intent %s FAIL: %v\n", id, err)
-		}
-		return nil, err
-	}
-	log.Printf("<- payment_intent %s SUCCESS", id)
-
-	return pmt, nil
+	return paymentintent.Get(id, params)
 }
 
-func fetchPayout(id string) (*stripe.Payout, error) {
-	log.Printf("-> payout %s", id)
+func getPayout(id string) (*stripe.Payout, error) {
 	params := &stripe.PayoutParams{}
-	pay, err := payout.Get(id, params)
-	if err != nil {
-		if stripeErr, ok := err.(*stripe.Error); ok {
-			log.Printf("<- payout %s FAIL: stripe err: %v\n", id, stripeErr)
-		} else {
-			log.Printf("<- payout %s FAIL: %v\n", id, err)
-		}
-		return nil, err
-	}
-	log.Printf("<- payout %s SUCCESS", id)
-
-	return pay, nil
-
+	return payout.Get(id, params)
 }
