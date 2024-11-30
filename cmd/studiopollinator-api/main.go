@@ -10,7 +10,6 @@ import (
 	"git.sr.ht/~jakintosh/studiopollinator-api/internal/database"
 	"git.sr.ht/~jakintosh/studiopollinator-api/internal/insights"
 	"git.sr.ht/~jakintosh/studiopollinator-api/internal/stripe"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
