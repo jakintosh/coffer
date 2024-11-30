@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"git.sr.ht/~jakintosh/studiopollinator-api/internal/database"
@@ -14,15 +15,17 @@ import (
 
 func main() {
 
-	// load all env vars
-	// clientUrl := readEnvVar("CLIENT_URL")
-	stripeKey := readEnvVar("STRIPE_KEY")
-	endpointSecret := readEnvVar("ENDPOINT_SECRET")
+	// read all env vars
 	dbPath := readEnvVar("DB_FILE_PATH")
 	fundingTmplPath := readEnvVar("FUNDING_PAGE_TMPL_PATH")
 	fundingPagePath := readEnvVar("FUNDING_PAGE_FILE_PATH")
 	monthlyGoal := readEnvInt("MONTHLY_INCOME_GOAL")
 	port := fmt.Sprintf(":%s", readEnvVar("PORT"))
+
+	// load credentials
+	credsDir := readEnvVar("CREDENTIALS_DIRECTORY")
+	stripeKey := loadCredential("stripe_key", credsDir)
+	endpointSecret := loadCredential("endpoint_secret", credsDir)
 
 	// init channels
 	pageRebuildC := make(chan int, 1)
@@ -37,6 +40,15 @@ func main() {
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, nil))
+}
+
+func loadCredential(name string, credsDir string) string {
+	credPath := filepath.Join(credsDir, name)
+	cred, err := os.ReadFile(credPath)
+	if err != nil {
+		log.Fatalf("failed to load required credential '%s': %v\n", name, err)
+	}
+	return string(cred)
 }
 
 func readEnvVar(name string) string {

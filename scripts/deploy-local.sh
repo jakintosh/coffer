@@ -1,5 +1,4 @@
 #!/usr/bin/bash
-
 name=studiopollinator-api
 
 if [ ! -f ./init/$name.service ]; then
@@ -7,21 +6,14 @@ if [ ! -f ./init/$name.service ]; then
   exit 1
 fi
 
-if [ ! -f ./env/local/$name.env ]; then
-  echo "missing ./env/local/$name.env file"
-  exit 1
-fi
-
 sudo systemctl stop $name.service
 
 go build -o ./bin/$name ./cmd/$name
 
-sudo mkdir -p /etc/systemd/system
-sudo mkdir -p /usr/local/env
-sudo mkdir -p /usr/local/bin
+sudo mkdir -p /etc/$name
 
-sudo cp ./init/$name.service  /etc/systemd/system/
-sudo cp ./env/local/$name.env /usr/local/env/
-sudo cp ./bin/$name           /usr/local/bin/
+sudo cp    ./bin/$name  /usr/local/bin/
+sudo cp -r ./init/.     /etc/systemd/system/
+sudo cp -r ./secrets/.  /etc/$name/
 
 sudo systemctl daemon-reload
