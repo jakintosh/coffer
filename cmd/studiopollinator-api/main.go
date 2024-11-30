@@ -25,12 +25,12 @@ func main() {
 	port := fmt.Sprintf(":%s", readEnvVar("PORT"))
 
 	// init channels
-	pageBuildC := make(chan int, 1)
+	pageRebuildC := make(chan int, 1)
 
 	// init modules
 	database.Init(dbPath)
-	stripe.Init(stripeKey, endpointSecret, pageBuildC)
-	insights.Init(fundingPagePath, fundingTmplPath, monthlyGoal, pageBuildC)
+	stripe.Init(stripeKey, endpointSecret, pageRebuildC)
+	insights.Init(fundingPagePath, fundingTmplPath, monthlyGoal, pageRebuildC)
 
 	// config routing
 	http.HandleFunc("/webhook", stripe.HandleWebhook)

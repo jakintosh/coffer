@@ -116,7 +116,7 @@ func updateSubscription(id string) {
 	}
 
 	log.Printf("OK subscription %s\n", id)
-	requestPageRebuild <- 0
+	pageRebuildRequests <- 0
 }
 
 func updatePaymentIntent(id string) {
@@ -142,7 +142,7 @@ func updatePaymentIntent(id string) {
 	}
 
 	log.Printf("OK payment intent %s\n", id)
-	requestPageRebuild <- 0
+	pageRebuildRequests <- 0
 }
 
 func updatePayout(id string) {
@@ -163,7 +163,7 @@ func updatePayout(id string) {
 	}
 
 	log.Printf("OK payout %s\n", id)
-	requestPageRebuild <- 0
+	pageRebuildRequests <- 0
 }
 
 func getResource[T any](

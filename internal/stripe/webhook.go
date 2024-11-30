@@ -50,7 +50,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- updateRequest{"customer", customer.ID}
+		updateRequests <- updateRequest{"customer", customer.ID}
 
 	case "customer.subscription.created",
 		"customer.subscription.paused",
@@ -64,7 +64,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- updateRequest{"subscription", subscription.ID}
+		updateRequests <- updateRequest{"subscription", subscription.ID}
 
 	case "payment_intent.succeeded":
 
@@ -74,7 +74,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- updateRequest{"payment", paymentIntent.ID}
+		updateRequests <- updateRequest{"payment", paymentIntent.ID}
 
 	case "payout.paid",
 		"payout.failed":
@@ -85,7 +85,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 			writeParseError(w, err)
 			return
 		}
-		updateResourceC <- updateRequest{"payout", payout.ID}
+		updateRequests <- updateRequest{"payout", payout.ID}
 
 	default:
 		break
