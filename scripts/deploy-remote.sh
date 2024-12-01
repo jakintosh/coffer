@@ -1,21 +1,25 @@
 #!/usr/bin/bash
 name=studiopollinator-api
+domain=studiopollinator.com
+dpl_src=./deployment
+dpl_dst=deployments
 
 if [ ! -f ./init/$name.service ]; then
   echo "missing ./init/$name.service file"
   exit 1
 fi
 
-go build -o ./bin/$name ./cmd/$name
+# build the executable
+./scripts/build.sh
 
 # bundle up the deployment files
-./scripts/package.sh $name ./deployment
+./scripts/package.sh $name $dpl_src
 
 # send the deployment to the server
-rsync -rlpcgovziP ./deployment/ $WEBUSER@studiopollinator.com:deployments/$name/
+rsync -rlpcgovziP $dpl_src/ $WEBUSER@$domain:$dpl_dst/$name/
 
 # install the deployment on the server
-ssh -t $WEBUSER@studiopollinator.com "sudo -s bash deployments/$name/install.sh $name deployments/$name"
+ssh -t $WEBUSER@$domain "sudo -s bash $dpl_dst/$name/install.sh $name $dpl_dst/$name"
 
 # clean up the local deployment files
-rm -rf ./deployment
+rm -r $dpl_src

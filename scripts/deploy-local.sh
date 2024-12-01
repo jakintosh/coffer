@@ -1,18 +1,20 @@
 #!/usr/bin/bash
 name=studiopollinator-api
+dpl_src=./deployment
 
 if [ ! -f ./init/$name.service ]; then
   echo "missing ./init/$name.service file"
   exit 1
 fi
 
-go build -o ./bin/$name ./cmd/$name
+# build the executable
+./scripts/build.sh
 
-# bundle up the deployment
-./scripts/package.sh $name ./deployment
+# bundle up the deployment files
+./scripts/package.sh $name $dpl_src
 
 # install the deployment files
-./scripts/install.sh $name ./deployment
+$dpl_src/install.sh $name $dpl_src
 
 # clean up deployment files
-rm -r ./deployment
+rm -r $dpl_src
