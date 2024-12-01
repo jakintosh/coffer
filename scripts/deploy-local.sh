@@ -6,14 +6,13 @@ if [ ! -f ./init/$name.service ]; then
   exit 1
 fi
 
-sudo systemctl stop $name.service
-
 go build -o ./bin/$name ./cmd/$name
 
-sudo mkdir -p /etc/$name
+# bundle up the deployment
+./scripts/package.sh $name ./deployment
 
-sudo cp    ./bin/$name  /usr/local/bin/
-sudo cp -r ./init/.     /etc/systemd/system/
-sudo cp -r ./secrets/.  /etc/$name/
+# install the deployment files
+./scripts/install.sh $name ./deployment
 
-sudo systemctl daemon-reload
+# clean up deployment files
+rm -r ./deployment
