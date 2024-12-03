@@ -200,7 +200,7 @@ func InsertPayout(
 ) error {
 	_, err := db.Exec(`
 		INSERT INTO payout (id, created, status, amount, currency)
-		VALUES(?, ?, ?, ?)
+		VALUES(?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE
 			SET updated=unixepoch(),
 				status=excluded.status;`,
