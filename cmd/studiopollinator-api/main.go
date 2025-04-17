@@ -36,7 +36,7 @@ func main() {
 	insights.Init(fundingPagePath, fundingTmplPath, monthlyGoal, pageRebuildC)
 
 	// config routing
-	http.HandleFunc("/webhook", stripe.HandleWebhook)
+	http.HandleFunc("/stripe/webhook", stripe.HandleWebhook)
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, nil))
