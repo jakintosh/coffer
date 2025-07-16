@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"git.sr.ht/~jakintosh/studiopollinator-api/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/customer"
 	"github.com/stripe/stripe-go/v81/paymentintent"

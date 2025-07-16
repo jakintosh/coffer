@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"git.sr.ht/~jakintosh/studiopollinator-api/internal/database"
-	"git.sr.ht/~jakintosh/studiopollinator-api/internal/insights"
-	"git.sr.ht/~jakintosh/studiopollinator-api/internal/stripe"
+	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/insights"
+	"git.sr.ht/~jakintosh/coffer/internal/stripe"
 )
 
 func main() {
@@ -36,7 +36,8 @@ func main() {
 	insights.Init(fundingPagePath, fundingTmplPath, monthlyGoal, pageRebuildC)
 
 	// config routing
-	http.HandleFunc("/stripe/webhook", stripe.HandleWebhook)
+	http.HandleFunc("/api/v1/webhook", stripe.HandleWebhook)
+	http.HandleFunc("/api/v1/insights", insights.ServeInsights)
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, nil))

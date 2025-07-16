@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type SubscriptionSummary struct {
@@ -14,17 +14,11 @@ type SubscriptionSummary struct {
 	Tiers map[int]int
 }
 
-func NewSubscriptionSummary() (s *SubscriptionSummary) {
-	s = new(SubscriptionSummary)
-	s.Tiers = make(map[int]int)
-	return
-}
-
 var db *sql.DB
 
 func Init(path string) {
 	var err error
-	db, err = sql.Open("sqlite3", path)
+	db, err = sql.Open("sqlite", path)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v\n", err)
 	}
@@ -67,48 +61,46 @@ func Init(path string) {
 
 func QuerySubscriptionSummary() (*SubscriptionSummary, error) {
 
-	summary := NewSubscriptionSummary()
+	summary := &SubscriptionSummary{
+		Count: 0,
+		Total: 0,
+		Tiers: map[int]int{},
+	}
 
 	// query summary info
-	summary_statement := `
+	row := db.QueryRow(`
 		SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
 		FROM subscription
 		WHERE status='active'
-		AND currency='usd';`
-	rows, err := db.Query(summary_statement)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query summary_statement: %v", err)
-	}
+		AND currency='usd';`,
+	)
 
 	// scan summary rows
-	defer rows.Close()
-	if !rows.Next() {
-		return nil, fmt.Errorf("subscription summary query unexpectedly empty")
-	}
-	err = rows.Scan(&summary.Count, &summary.Total)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan row of summary statement: %v", err)
+	if err := row.Scan(&summary.Count, &summary.Total); err != nil {
+		return nil, fmt.Errorf("failed to scan row of summary statement: %w", err)
 	}
 
 	// adjust for cents
 	summary.Total /= 100
 
 	// query tier info
-	tier_statement := `
+	rows, err := db.Query(`
 		SELECT amount, COUNT(*) as count
 		FROM subscription
 		WHERE status='active'
 		AND currency='usd'
-		GROUP BY amount;`
-	rows, err = db.Query(tier_statement)
+		GROUP BY amount;`,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query tier_statement: %v", err)
+		return nil, fmt.Errorf("failed to query tier_statement: %w", err)
 	}
 
 	// scan tier rows
 	for rows.Next() {
-		var amount int
-		var count int
+		var (
+			amount int
+			count  int
+		)
 		err := rows.Scan(&amount, &count)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row of tier statement: %v", err)
@@ -127,7 +119,7 @@ func InsertCustomer(
 ) error {
 	_, err := db.Exec(`
 		INSERT INTO customer (id, created, email, name)
-		VALUES(?, ?, ?, ?)
+		VALUES(?1, ?2, ?3, ?4)
 		ON CONFLICT(id) DO
 			UPDATE SET
 				updated=unixepoch(),
@@ -151,7 +143,7 @@ func InsertSubscription(
 ) error {
 	_, err := db.Exec(`
 		INSERT INTO subscription (id, created, customer, status, amount, currency)
-		VALUES(?, ?, ?, ?, ?, ?)
+		VALUES(?1, ?2, ?3, ?4, ?5, ?6)
 		ON CONFLICT(id) DO UPDATE
 			SET updated=unixepoch(),
 				status=excluded.status,
@@ -177,7 +169,7 @@ func InsertPayment(
 ) error {
 	_, err := db.Exec(`
 		INSERT INTO payment (id, created, status, customer, amount, currency)
-		VALUES(?, ?, ?, ?, ?, ?)
+		VALUES(?1, ?2, ?3, ?4, ?5, ?6)
 		ON CONFLICT(id) DO UPDATE
 			SET updated=unixepoch(),
 				status=excluded.status;`,
@@ -200,7 +192,7 @@ func InsertPayout(
 ) error {
 	_, err := db.Exec(`
 		INSERT INTO payout (id, created, status, amount, currency)
-		VALUES(?, ?, ?, ?, ?)
+		VALUES(?1, ?2, ?3, ?4, ?5)
 		ON CONFLICT(id) DO UPDATE
 			SET updated=unixepoch(),
 				status=excluded.status;`,
@@ -212,34 +204,3 @@ func InsertPayout(
 	)
 	return err
 }
-
-/*
-func getPayments() map[string]int {
-	statement := `
-		SELECT COALESCE(SUM(amount), 0) as amount,
-			strftime('%m-%Y', DATETIME(created, 'unixepoch')) AS 'month-year'
-		FROM payment
-		WHERE currency='usd'
-		AND status='succeeded'
-		GROUP BY 'month-year';`
-
-	rows, err := db.Query(statement)
-	if err != nil {
-		// TODO: error handling
-	}
-
-	monthlyPayments := make(map[string]int)
-	defer rows.Close()
-	for rows.Next() {
-		var amount int
-		var date string
-		err := rows.Scan(&amount, &date)
-		if err != nil {
-			// TODO: error handling
-		}
-		monthlyPayments[date] = amount / 100
-	}
-
-	return monthlyPayments
-}
-*/

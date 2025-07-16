@@ -1,9 +1,0 @@
-[Unit]
-Description=Studio Pollinator internet API
-
-[Service]
-ExecStart=/usr/local/bin/studiopollinator-api
-Restart=always
-
-[Install]
-WantedBy=multi-user.target

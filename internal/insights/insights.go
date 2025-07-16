@@ -2,13 +2,16 @@ package insights
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
-	"git.sr.ht/~jakintosh/studiopollinator-api/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/database"
 )
 
 type Insights struct {
@@ -43,10 +46,17 @@ func Init(
 	go schedulePageRebuilds(requests)
 }
 
+var insightsJson string = "{}"
+
+func ServeInsights(w http.ResponseWriter, h *http.Request) {
+	io.WriteString(w, insightsJson)
+	w.WriteHeader(http.StatusOK)
+}
+
 func schedulePageRebuilds(req <-chan int) {
-	var timer *time.Timer = nil
-	var c <-chan time.Time = nil
-	duration := time.Millisecond * 500
+	const duration = time.Millisecond * 500
+	var timer *time.Timer
+	var c <-chan time.Time
 	for {
 		select {
 		case <-req:
@@ -60,7 +70,16 @@ func schedulePageRebuilds(req <-chan int) {
 		case <-c:
 			c = nil
 			timer = nil
-			renderFundingPage()
+
+			insights, err := generateInsights()
+			if err != nil {
+				// dang
+			}
+			bytes, err := json.Marshal(insights)
+			if err != nil {
+				// dang
+			}
+			insightsJson = string(bytes)
 		}
 	}
 }
