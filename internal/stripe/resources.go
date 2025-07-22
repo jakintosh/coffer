@@ -17,6 +17,10 @@ type updateRequest struct {
 	ID   string
 }
 
+// `scheduleResourceUpdates` first queues up an update request with a reset
+// timer, so that we can only send one request per resource. then, once it
+// gets a ready signal back on a resource update, it spawns a new goroutine
+// for that resource update to run
 func scheduleResourceUpdates(requests <-chan updateRequest) {
 	resets := make(map[string]chan int)
 	ready := make(chan updateRequest)
@@ -51,6 +55,11 @@ func scheduleResourceUpdates(requests <-chan updateRequest) {
 	}
 }
 
+// `queueResourceUpdate` gives a buffer time to allow for multiple queries of
+// the same resource before actually sending the API call. this makes sure
+// we don't needlessly send multiple fetches for the same resource to the
+// stripe API within milliseconds of each other. once the buffer time has
+// passed, the request gets passed along to be processed for real.
 func queueResourceUpdate(
 	req updateRequest,
 	ready chan<- updateRequest,
@@ -116,7 +125,6 @@ func updateSubscription(id string) {
 	}
 
 	log.Printf("OK subscription %s\n", id)
-	pageRebuildRequests <- 0
 }
 
 func updatePaymentIntent(id string) {
@@ -142,7 +150,6 @@ func updatePaymentIntent(id string) {
 	}
 
 	log.Printf("OK payment intent %s\n", id)
-	pageRebuildRequests <- 0
 }
 
 func updatePayout(id string) {
@@ -163,7 +170,6 @@ func updatePayout(id string) {
 	}
 
 	log.Printf("OK payout %s\n", id)
-	pageRebuildRequests <- 0
 }
 
 func getResource[T any](

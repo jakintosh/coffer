@@ -6,20 +6,26 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 
+	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
-	"git.sr.ht/~jakintosh/coffer/internal/insights"
 	"git.sr.ht/~jakintosh/coffer/internal/stripe"
+	"github.com/gorilla/mux"
 )
 
+/*
+Okay, what does this program do?
+
+It captures incoming events from the Strip API via a webhook, and then *does something* with that data. What does it do with that data? I guess it can make it available via API. This might be the best thing to do right now. Take in all the stripe data, and massage it into a specific "crowd funding API", and focus just on a publically accessible one for now. Later on we could add authenticated ones.
+
+So what needs to be in this API? Some simple overview numbers to start: total number of patrons, total monthly revenue. Perhaps there could be some notion of "goals"? That can be later on.
+
+Anyway, the main thing to do right now is to refactor this away from the static page generator it uses right now, and just expose a simple API. From there, I can do more.
+*/
 func main() {
 
 	// read all env vars
 	dbPath := readEnvVar("DB_FILE_PATH")
-	fundingTmplPath := readEnvVar("FUNDING_PAGE_TMPL_PATH")
-	fundingPagePath := readEnvVar("FUNDING_PAGE_FILE_PATH")
-	monthlyGoal := readEnvInt("MONTHLY_INCOME_GOAL")
 	port := fmt.Sprintf(":%s", readEnvVar("PORT"))
 
 	// load credentials
@@ -27,17 +33,15 @@ func main() {
 	stripeKey := loadCredential("stripe_key", credsDir)
 	endpointSecret := loadCredential("endpoint_secret", credsDir)
 
-	// init channels
-	pageRebuildC := make(chan int, 1)
-
 	// init modules
 	database.Init(dbPath)
-	stripe.Init(stripeKey, endpointSecret, pageRebuildC)
-	insights.Init(fundingPagePath, fundingTmplPath, monthlyGoal, pageRebuildC)
+	stripe.Init(stripeKey, endpointSecret)
 
 	// config routing
-	http.HandleFunc("/api/v1/webhook", stripe.HandleWebhook)
-	http.HandleFunc("/api/v1/insights", insights.ServeInsights)
+	r := mux.NewRouter()
+	apiRouter := r.PathPrefix("/api").Subrouter()
+	stripe.BuildRouter(apiRouter)
+	api.BuildRouter(apiRouter)
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, nil))
@@ -61,11 +65,11 @@ func readEnvVar(name string) string {
 	return str
 }
 
-func readEnvInt(name string) int {
-	v := readEnvVar(name)
-	i, err := strconv.Atoi(v)
-	if err != nil {
-		log.Fatalf("required env var '%s' could not be parsed as integer (\"%v\")\n", name, v)
-	}
-	return i
-}
+// func readEnvInt(name string) int {
+// 	v := readEnvVar(name)
+// 	i, err := strconv.Atoi(v)
+// 	if err != nil {
+// 		log.Fatalf("required env var '%s' could not be parsed as integer (\"%v\")\n", name, v)
+// 	}
+// 	return i
+// }
