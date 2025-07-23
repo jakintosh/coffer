@@ -44,7 +44,7 @@ func main() {
 	api.BuildRouter(apiRouter)
 
 	// serve
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(http.ListenAndServe(port, r))
 }
 
 func loadCredential(name string, credsDir string) string {

@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
-	"github.com/stripe/stripe-go/v81"
-	"github.com/stripe/stripe-go/v81/customer"
-	"github.com/stripe/stripe-go/v81/paymentintent"
-	"github.com/stripe/stripe-go/v81/payout"
-	"github.com/stripe/stripe-go/v81/subscription"
+	"github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v82/customer"
+	"github.com/stripe/stripe-go/v82/paymentintent"
+	"github.com/stripe/stripe-go/v82/payout"
+	"github.com/stripe/stripe-go/v82/subscription"
 )
 
 type updateRequest struct {
@@ -177,17 +177,17 @@ func getResource[T any](
 	id string,
 	fetch func(id string) (*T, error),
 ) (*T, error) {
-	log.Printf("-> %s %s", kind, id)
+	log.Printf(" -> %s %s", kind, id)
 	obj, err := fetch(id)
 	if err != nil {
 		if stripeErr, ok := err.(*stripe.Error); ok {
-			log.Printf("<- %s %s STRIPE ERROR: %v\n", kind, id, stripeErr)
+			log.Printf("<-  %s %s STRIPE ERROR: %v\n", kind, id, stripeErr)
 		} else {
-			log.Printf("<- %s %s ERROR: %v\n", kind, id, err)
+			log.Printf("<-  %s %s ERROR: %v\n", kind, id, err)
 		}
 		return nil, err
 	}
-	log.Printf("<- %s %s", kind, id)
+	log.Printf("<-  %s %s", kind, id)
 
 	return obj, nil
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/bash
-name=studiopollinator-api
+name=coffer
+domain=localhost
 
-sudo systemctl stop $name.service
-sudo systemctl start $name.service
-stripe listen --forward-to localhost:9000/webhook
+sudo systemctl stop $name@$domain
+sudo systemctl start $name@$domain
+stripe listen --forward-to localhost:9000/api/webhook

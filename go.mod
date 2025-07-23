@@ -4,7 +4,7 @@ go 1.24.2
 
 require (
 	github.com/gorilla/mux v1.8.1
-	github.com/stripe/stripe-go/v81 v81.0.0
+	github.com/stripe/stripe-go/v82 v82.3.0
 	modernc.org/sqlite v1.37.0
 )
 

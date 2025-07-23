@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/stripe/stripe-go/v81"
-	"github.com/stripe/stripe-go/v81/webhook"
+	"github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v82/webhook"
 )
 
 func HandleWebhook(w http.ResponseWriter, req *http.Request) {
@@ -37,7 +37,7 @@ func HandleWebhook(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Printf("<- event %s %s\n", event.ID, event.Type)
+	log.Printf("<-  event %s %s\n", event.ID, event.Type)
 
 	switch event.Type {
 

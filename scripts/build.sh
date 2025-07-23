@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-go build -o ./bin/studiopollinator-api ./cmd/studiopollinator-api
+go build -o ./bin/coffer ./cmd/coffer

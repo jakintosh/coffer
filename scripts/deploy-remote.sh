@@ -1,6 +1,7 @@
 #!/usr/bin/bash
-name=studiopollinator-api
-domain=studiopollinator.com
+DOMAIN=${1:?"Domain name required."} || exit 1
+
+name=coffer
 dpl_src=./deployment
 dpl_dst=deployments
 
@@ -16,10 +17,10 @@ fi
 ./scripts/package.sh $name $dpl_src
 
 # send the deployment to the server
-rsync -a --del $dpl_src/ $WEBUSER@$domain:$dpl_dst/$name/
+rsync -a --del $dpl_src/ $WEBUSER@$DOMAIN:$dpl_dst/$name/
 
 # install the deployment on the server
-ssh -t $WEBUSER@$domain "sudo -s bash $dpl_dst/$name/install.sh $name $dpl_dst/$name"
+ssh -t $WEBUSER@$DOMAIN "sudo -s bash $dpl_dst/$name/install.sh $name $DOMAIN $dpl_dst/$name"
 
 # clean up the local deployment files
 rm -r $dpl_src

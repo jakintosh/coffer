@@ -22,6 +22,24 @@ func Init(path string) {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v\n", err)
 	}
+
+	db.SetMaxOpenConns(1)
+
+	_, err = db.Exec("PRAGMA foreign_keys = ON;")
+	if err != nil {
+		log.Fatalf("could not enable foreign keys: %v", err)
+	}
+
+	_, err = db.Exec("PRAGMA journal_mode = WAL;")
+	if err != nil {
+		log.Fatalf("could not enable WAL mode: %v", err)
+	}
+
+	_, err = db.Exec("PRAGMA busy_timeout = 5000;")
+	if err != nil {
+		log.Fatalf("could not set busy timeout: %v", err)
+	}
+
 	db.Exec(`
 		CREATE TABLE IF NOT EXISTS customer (
 			id TEXT NOT NULL PRIMARY KEY,
