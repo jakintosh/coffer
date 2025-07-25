@@ -39,7 +39,7 @@ func main() {
 
 	// config routing
 	r := mux.NewRouter()
-	apiRouter := r.PathPrefix("/api").Subrouter()
+	apiRouter := r.PathPrefix("/api/v1").Subrouter()
 	stripe.BuildRouter(apiRouter)
 	api.BuildRouter(apiRouter)
 

@@ -40,7 +40,7 @@ func Init(path string) {
 		log.Fatalf("could not set busy timeout: %v", err)
 	}
 
-	db.Exec(`
+	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS customer (
 			id TEXT NOT NULL PRIMARY KEY,
 			created INTEGER,
@@ -74,7 +74,19 @@ func Init(path string) {
 			amount INTEGER,
 			currency TEXT
 		);
+		CREATE TABLE IF NOT EXISTS tx (
+			id INTEGER NOT NULL PRIMARY KEY,
+			created INTEGER,
+			updated INTEGER,
+			date INTEGER,
+			ledger TEXT,
+			label TEXT,
+			amount INTEGER
+		);
 	`)
+	if err != nil {
+		log.Fatalf("could not initialize tables: %v", err)
+	}
 }
 
 func QuerySubscriptionSummary() (*SubscriptionSummary, error) {
@@ -221,4 +233,132 @@ func InsertPayout(
 		currency,
 	)
 	return err
+}
+
+func InsertTransaction(
+	date int64,
+	ledger string,
+	label string,
+	amount int,
+) error {
+
+	_, err := db.Exec(`
+		INSERT INTO tx (created, date, amount, ledger, label)
+		VALUES(unixepoch(), ?1, ?2, ?3, ?4)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=unixepoch(),
+				amount=excluded.amount,
+				date=excluded.date,
+				ledger=excluded.ledger,
+				label=excluded.label;`,
+		date,
+		amount,
+		ledger,
+		label,
+	)
+	return err
+}
+
+// FundsSnapshot is the opening/incoming/outgoing/closing for a given ledger.
+type FundsSnapshot struct {
+	OpeningBalance int // cents before since
+	Incoming       int // cents ≥ since, amount>0
+	Outgoing       int // cents ≥ since, amount<0
+	ClosingBalance int // opening + incoming + outgoing
+}
+
+func QueryFundSnapshot(ledger string, since, until int64) (*FundsSnapshot, error) {
+
+	// Opening balance: sum of all amounts before 'since'
+	var opening int
+	row := db.QueryRow(`
+        SELECT COALESCE(SUM(amount),0)
+        FROM tx
+        WHERE ledger = ? AND date < ?;
+    `, ledger, since)
+	if err := row.Scan(&opening); err != nil {
+		return nil, fmt.Errorf("query opening balance: %w", err)
+	}
+
+	// Incoming funds: positive amounts within [since, until]
+	var incoming int
+	row = db.QueryRow(`
+        SELECT COALESCE(SUM(amount),0)
+        FROM tx
+        WHERE ledger = ? AND date >= ? AND date <= ? AND amount > 0;
+    `, ledger, since, until)
+	if err := row.Scan(&incoming); err != nil {
+		return nil, fmt.Errorf("query incoming funds: %w", err)
+	}
+
+	// Outgoing funds: negative amounts within [since, until]
+	var outgoing int
+	row = db.QueryRow(`
+        SELECT COALESCE(SUM(amount),0)
+        FROM tx
+        WHERE ledger = ? AND date >= ? AND date <= ? AND amount < 0;
+    `, ledger, since, until)
+	if err := row.Scan(&outgoing); err != nil {
+		return nil, fmt.Errorf("query outgoing funds: %w", err)
+	}
+
+	// Closing balance: opening + incoming + outgoing
+	return &FundsSnapshot{
+		OpeningBalance: opening,
+		Incoming:       incoming,
+		Outgoing:       outgoing,
+		ClosingBalance: opening + incoming + outgoing,
+	}, nil
+}
+
+// DBTransaction is the raw row from tx.
+type DBTransaction struct {
+	ID      int64
+	Date    int64
+	Ledger  string
+	Label   string
+	Amount  int
+	Created int64
+	Updated sql.NullInt64
+}
+
+// QueryTransactions returns a page of tx rows.
+func QueryTransactions(
+	ledger string,
+	limit int,
+	offset int,
+) ([]DBTransaction, error) {
+	rows, err := db.Query(`
+		SELECT id, date, ledger, label, amount, created, updated
+		FROM tx
+		WHERE ledger=?1
+		ORDER BY date DESC
+		LIMIT ?2 OFFSET ?3;
+		`,
+		ledger,
+		limit,
+		offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []DBTransaction
+	for rows.Next() {
+		var t DBTransaction
+		if err := rows.Scan(
+			&t.ID,
+			&t.Date,
+			&t.Ledger,
+			&t.Label,
+			&t.Amount,
+			&t.Created,
+			&t.Updated,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, nil
 }
