@@ -22,8 +22,13 @@ func buildPatronsRouter(r *mux.Router) {
 	r.HandleFunc("", handleListPatrons).Methods("GET")
 }
 
-func handleListPatrons(w http.ResponseWriter, r *http.Request) {
+func handleListPatrons(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
 	// TODO: validate Authorization header
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	if limit <= 0 {

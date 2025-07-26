@@ -37,12 +37,15 @@ type NewTransactionRequest struct {
 }
 
 func buildLedgerRouter(r *mux.Router) {
-	r.HandleFunc("/{ledger}", handleGetFundSnapshot).Methods("GET")
-	r.HandleFunc("/{ledger}/transactions", handleListTransactions).Methods("GET")
-	r.HandleFunc("/{ledger}/transactions", handleCreateTransaction).Methods("POST")
+	r.HandleFunc("/{ledger}", handleGetLedger).Methods("GET")
+	r.HandleFunc("/{ledger}/transactions", handleGetLedgerTransactions).Methods("GET")
+	r.HandleFunc("/{ledger}/transactions", handlePostLedgerTransaction).Methods("POST")
 }
 
-func handleGetFundSnapshot(w http.ResponseWriter, r *http.Request) {
+func handleGetLedger(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	vars := mux.Vars(r)
 	ledger := vars["ledger"]
 
@@ -72,7 +75,10 @@ func handleGetFundSnapshot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{nil, out})
 }
 
-func handleListTransactions(w http.ResponseWriter, r *http.Request) {
+func handleGetLedgerTransactions(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	vars := mux.Vars(r)
 	f := vars["ledger"]
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -102,7 +108,10 @@ func handleListTransactions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{nil, out})
 }
 
-func handleCreateTransaction(w http.ResponseWriter, r *http.Request) {
+func handlePostLedgerTransaction(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	// TODO: validate Authorization header
 
 	vars := mux.Vars(r)

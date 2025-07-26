@@ -67,7 +67,7 @@ func TestFundSnapshotAndTransactions(t *testing.T) {
 	}
 
 	// snapshot from-past to now
-	snap, err := QueryFundSnapshot("general", past, now)
+	snap, err := QueryLedgerSnapshot("general", past, now)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -137,6 +137,9 @@ func updatePaymentIntent(id string) {
 	if payment.Customer != nil {
 		customer = payment.Customer.ID
 	}
+
+	// TODO: If a payment was recieved, we need to log this in a ledger
+
 	if err = database.InsertPayment(
 		id,
 		payment.Created,

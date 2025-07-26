@@ -13,10 +13,13 @@ type HealthResponse struct {
 }
 
 func buildHealthRouter(r *mux.Router) {
-	r.HandleFunc("", handleHealth).Methods("GET")
+	r.HandleFunc("", handleGetHealth).Methods("GET")
 }
 
-func handleHealth(w http.ResponseWriter, r *http.Request) {
+func handleGetHealth(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	resp := HealthResponse{Status: "unimplemented", DB: "unimplemented"}
 	writeJSON(w, http.StatusOK, resp)
 }

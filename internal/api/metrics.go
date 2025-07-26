@@ -21,7 +21,11 @@ func buildMetricsRouter(r *mux.Router) {
 	r.HandleFunc("", handleGetMetrics).Methods("GET")
 }
 
-func handleGetMetrics(w http.ResponseWriter, r *http.Request) {
+func handleGetMetrics(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
 	summary, err := database.QuerySubscriptionSummary()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, &APIError{

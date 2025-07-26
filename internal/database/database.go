@@ -259,15 +259,15 @@ func InsertTransaction(
 	return err
 }
 
-// FundsSnapshot is the opening/incoming/outgoing/closing for a given ledger.
-type FundsSnapshot struct {
+// DBLedgerSnapshot is the opening/incoming/outgoing/closing for a given ledger.
+type DBLedgerSnapshot struct {
 	OpeningBalance int // cents before since
 	Incoming       int // cents ≥ since, amount>0
 	Outgoing       int // cents ≥ since, amount<0
 	ClosingBalance int // opening + incoming + outgoing
 }
 
-func QueryFundSnapshot(ledger string, since int64, until int64) (*FundsSnapshot, error) {
+func QueryLedgerSnapshot(ledger string, since int64, until int64) (*DBLedgerSnapshot, error) {
 
 	// Opening balance: sum of all amounts before 'since'
 	var opening int
@@ -303,7 +303,7 @@ func QueryFundSnapshot(ledger string, since int64, until int64) (*FundsSnapshot,
 	}
 
 	// Closing balance: opening + incoming + outgoing
-	return &FundsSnapshot{
+	return &DBLedgerSnapshot{
 		OpeningBalance: opening,
 		Incoming:       incoming,
 		Outgoing:       outgoing,
