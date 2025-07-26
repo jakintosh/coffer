@@ -73,14 +73,10 @@ func TestGetMetrics(t *testing.T) {
 	}
 }
 
-func TestFundEndpoints(t *testing.T) {
-
+func TestCreateTransactionSuccess(t *testing.T) {
 	router := setupRouterWithDB(t)
-	now := time.Now()
-
-	// POST tx
-	txTime := now.Add(time.Hour * 24 * -7).Format(time.RFC3339)
-	body := fmt.Sprintf(`{"date":"%s","label":"x","amount":50}`, txTime)
+	now := time.Now().Format(time.RFC3339)
+	body := fmt.Sprintf(`{"date":"%s","label":"base","amount":50}`, now)
 	req := httptest.NewRequest(
 		"POST",
 		"/ledger/general/transactions",
@@ -91,32 +87,120 @@ func TestFundEndpoints(t *testing.T) {
 	if res.Code != http.StatusCreated {
 		t.Fatalf("POST /ledger/general/transactions status %d", res.Code)
 	}
+}
 
-	// GET snapshot
-	endTime := now.Format("2006-01-02")
-	req = httptest.NewRequest(
-		"GET",
-		fmt.Sprintf("/ledger/general?since=2000-01-01&until=%s", endTime),
-		nil,
+func TestCreateTransactionBadInput(t *testing.T) {
+	router := setupRouterWithDB(t)
+	body := `{"date":"bad","label":"x","amount":50}`
+	req := httptest.NewRequest(
+		"POST",
+		"/ledger/general/transactions",
+		strings.NewReader(body),
 	)
-	res = httptest.NewRecorder()
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("POST /ledger/general/transactions status %d", res.Code)
+	}
+}
+
+func seedSnapshotData(t *testing.T) {
+	t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t3 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
+
+	if err := database.InsertTransaction(t1, "general", "base", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.InsertTransaction(t2, "general", "extra", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.InsertTransaction(t3, "general", "base", -50); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGetSnapshotNoParams(t *testing.T) {
+	router := setupRouterWithDB(t)
+	seedSnapshotData(t)
+
+	req := httptest.NewRequest("GET", "/ledger/general", nil)
+	res := httptest.NewRecorder()
 	router.ServeHTTP(res, req)
 	if res.Code != http.StatusOK {
 		t.Fatalf("GET /ledger/general status %d", res.Code)
 	}
 
-	// parse response
-	snapshotRes := struct {
+	var snapshotRes struct {
 		Error any           `json:"error"`
 		Data  FundsSnapshot `json:"data"`
-	}{}
-	err := json.Unmarshal(res.Body.Bytes(), &snapshotRes)
-	if err != nil {
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &snapshotRes); err != nil {
 		t.Fatal(err)
 	}
 
-	if snapshotRes.Data.IncomingCents != 50 {
-		t.Errorf("incoming want=123 got=%d", snapshotRes.Data.IncomingCents)
+	if snapshotRes.Data.OpeningBalanceCents != 0 {
+		t.Errorf("opening want 0 got %d", snapshotRes.Data.OpeningBalanceCents)
+	}
+	if snapshotRes.Data.IncomingCents != 200 {
+		t.Errorf("incoming want 200 got %d", snapshotRes.Data.IncomingCents)
+	}
+	if snapshotRes.Data.OutgoingCents != -50 {
+		t.Errorf("outgoing want -50 got %d", snapshotRes.Data.OutgoingCents)
+	}
+	if snapshotRes.Data.ClosingBalanceCents != 150 {
+		t.Errorf("closing want 150 got %d", snapshotRes.Data.ClosingBalanceCents)
+	}
+}
+
+func TestGetSnapshotWithParams(t *testing.T) {
+	router := setupRouterWithDB(t)
+	seedSnapshotData(t)
+
+	req := httptest.NewRequest(
+		"GET",
+		"/ledger/general?since=2025-01-01&until=2025-07-01",
+		nil,
+	)
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("GET /ledger/general status %d", res.Code)
+	}
+
+	var snapshotRes struct {
+		Error any           `json:"error"`
+		Data  FundsSnapshot `json:"data"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &snapshotRes); err != nil {
+		t.Fatal(err)
+	}
+
+	if snapshotRes.Data.OpeningBalanceCents != 100 {
+		t.Errorf("opening want 100 got %d", snapshotRes.Data.OpeningBalanceCents)
+	}
+	if snapshotRes.Data.IncomingCents != 100 {
+		t.Errorf("incoming want 100 got %d", snapshotRes.Data.IncomingCents)
+	}
+	if snapshotRes.Data.OutgoingCents != -50 {
+		t.Errorf("outgoing want -50 got %d", snapshotRes.Data.OutgoingCents)
+	}
+	if snapshotRes.Data.ClosingBalanceCents != 150 {
+		t.Errorf("closing want 150 got %d", snapshotRes.Data.ClosingBalanceCents)
+	}
+}
+
+func TestGetSnapshotBadParams(t *testing.T) {
+	router := setupRouterWithDB(t)
+	req := httptest.NewRequest(
+		"GET",
+		"/ledger/general?since=bad-date&until=2025-01-01",
+		nil,
+	)
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("GET /ledger/general status %d", res.Code)
 	}
 }
 
