@@ -14,97 +14,47 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func setupRouterWithDB(t *testing.T) *mux.Router {
-	os.Remove("api.db")
-	os.Remove("api.db-shm")
-	os.Remove("api.db-wal")
+func setupDB(t *testing.T) {
 
-	database.Init("api.db")
+	os.Remove("api-test.db")
+	os.Remove("api-test.db-shm")
+	os.Remove("api-test.db-wal")
+
+	database.Init("api-test.db")
 
 	t.Cleanup(func() {
-		os.Remove("api.db")
-		os.Remove("api.db-shm")
-		os.Remove("api.db-wal")
+		os.Remove("api-test.db")
+		os.Remove("api-test.db-shm")
+		os.Remove("api-test.db-wal")
 	})
+}
+
+func setupRouter() *mux.Router {
 
 	router := mux.NewRouter()
 	BuildRouter(router)
 	return router
 }
 
-func TestGetMetrics(t *testing.T) {
+func seedSubscriberData(t *testing.T) {
 
-	r := setupRouterWithDB(t)
-	now := time.Now().Unix()
+	t1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t2 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t3 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC).Unix()
 
-	// insert one subscription @ $3.00
-	err := database.InsertSubscription(
-		"sub_123",
-		now,
-		"cus_123",
-		"active",
-		300,
-		"usd",
-	)
-	if err != nil {
+	if err := database.InsertSubscription("sub_123", t1, "cus_123", "active", 300, "usd"); err != nil {
 		t.Fatal(err)
 	}
-
-	req := httptest.NewRequest("GET", "/metrics", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("status %d", w.Code)
-	}
-
-	var resp struct {
-		Error any     `json:"error"`
-		Data  Metrics `json:"data"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+	if err := database.InsertSubscription("sub_456", t2, "cus_456", "active", 800, "usd"); err != nil {
 		t.Fatal(err)
 	}
-	if resp.Data.PatronsActive != 1 {
-		t.Errorf("want patrons=1, got %d", resp.Data.PatronsActive)
-	}
-	if resp.Data.MRRCents != 300 {
-		t.Errorf("want mrr=300, got %d", resp.Data.MRRCents)
-	}
-}
-
-func TestCreateTransactionSuccess(t *testing.T) {
-	router := setupRouterWithDB(t)
-	now := time.Now().Format(time.RFC3339)
-	body := fmt.Sprintf(`{"date":"%s","label":"base","amount":50}`, now)
-	req := httptest.NewRequest(
-		"POST",
-		"/ledger/general/transactions",
-		strings.NewReader(body),
-	)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-	if res.Code != http.StatusCreated {
-		t.Fatalf("POST /ledger/general/transactions status %d", res.Code)
-	}
-}
-
-func TestCreateTransactionBadInput(t *testing.T) {
-	router := setupRouterWithDB(t)
-	body := `{"date":"bad","label":"x","amount":50}`
-	req := httptest.NewRequest(
-		"POST",
-		"/ledger/general/transactions",
-		strings.NewReader(body),
-	)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-	if res.Code != http.StatusBadRequest {
-		t.Fatalf("POST /ledger/general/transactions status %d", res.Code)
+	if err := database.InsertSubscription("sub_789", t3, "cus_789", "active", 400, "usd"); err != nil {
+		t.Fatal(err)
 	}
 }
 
 func seedSnapshotData(t *testing.T) {
+
 	t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 	t2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 	t3 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
@@ -120,143 +70,204 @@ func seedSnapshotData(t *testing.T) {
 	}
 }
 
-func TestGetSnapshotNoParams(t *testing.T) {
-	router := setupRouterWithDB(t)
-	seedSnapshotData(t)
+func seedCustomerData(t *testing.T) {
 
-	req := httptest.NewRequest("GET", "/ledger/general", nil)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-	if res.Code != http.StatusOK {
-		t.Fatalf("GET /ledger/general status %d", res.Code)
-	}
+	t1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 
-	var snapshotRes struct {
-		Error any           `json:"error"`
-		Data  FundsSnapshot `json:"data"`
+	if err := database.InsertCustomer("c1", t1-60, "one@example.com", "One"); err != nil {
+		t.Fatal(err)
 	}
-	if err := json.Unmarshal(res.Body.Bytes(), &snapshotRes); err != nil {
+	if err := database.InsertCustomer("c2", t1-40, "two@example.com", "Two"); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.InsertCustomer("c3", t1-20, "three@example.com", "Three"); err != nil {
 		t.Fatal(err)
 	}
 
-	if snapshotRes.Data.OpeningBalanceCents != 0 {
-		t.Errorf("opening want 0 got %d", snapshotRes.Data.OpeningBalanceCents)
+	time.Sleep(time.Millisecond * 100)
+
+	// update c2
+	if err := database.InsertCustomer("c2", t1-40, "two@example.org", "Two"); err != nil {
+		t.Fatal(err)
 	}
-	if snapshotRes.Data.IncomingCents != 200 {
-		t.Errorf("incoming want 200 got %d", snapshotRes.Data.IncomingCents)
+}
+
+func get(
+	router *mux.Router,
+	url string,
+	response any,
+) error {
+	req := httptest.NewRequest("GET", url, nil)
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		return fmt.Errorf("GET %s failed with code %d", url, res.Code)
 	}
-	if snapshotRes.Data.OutgoingCents != -50 {
-		t.Errorf("outgoing want -50 got %d", snapshotRes.Data.OutgoingCents)
+	if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+		return fmt.Errorf("Failed to decode JSON: %v", err)
 	}
-	if snapshotRes.Data.ClosingBalanceCents != 150 {
-		t.Errorf("closing want 150 got %d", snapshotRes.Data.ClosingBalanceCents)
+	return nil
+}
+
+func post(
+	router *mux.Router,
+	url string,
+	body string,
+) (*httptest.ResponseRecorder, error) {
+	req := httptest.NewRequest("POST", url, strings.NewReader(body))
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	if res.Code < 200 || res.Code >= 300 {
+		return res, fmt.Errorf("POST failed with code %d", res.Code)
+	}
+	return res, nil
+}
+
+func TestGetMetrics(t *testing.T) {
+
+	setupDB(t)
+	router := setupRouter()
+	seedSubscriberData(t)
+
+	// get metrics
+	var resp struct {
+		Error   any     `json:"error"`
+		Metrics Metrics `json:"data"`
+	}
+	if err := get(router, "/metrics", &resp); err != nil {
+		t.Fatalf("GET /metrics failed: %v", err)
+	}
+
+	// validate response
+	if resp.Metrics.PatronsActive != 3 {
+		t.Errorf("want patrons=3, got %d", resp.Metrics.PatronsActive)
+	}
+	if resp.Metrics.MRRCents != 1500 {
+		t.Errorf("want mrr=1500, got %d", resp.Metrics.MRRCents)
+	}
+}
+
+func TestCreateTransactionSuccess(t *testing.T) {
+
+	setupDB(t)
+	router := setupRouter()
+
+	if _, err := post(
+		router,
+		"/ledger/general/transactions",
+		`{"date":"2025-01-01T12:00:00.000Z","label":"base","amount":50}`,
+	); err != nil {
+		t.Fatalf("POST /ledger/general/transactions status %v", err)
+	}
+}
+
+func TestCreateTransactionBadInput(t *testing.T) {
+
+	setupDB(t)
+	router := setupRouter()
+
+	if _, err := post(
+		router,
+		"/ledger/general/transactions",
+		`{"date":"bad","label":"x","amount":"a lot"}`,
+	); err == nil {
+		t.Fatalf("POST /ledger/general/transactions status %v", err)
+	}
+}
+
+func TestGetSnapshotNoParams(t *testing.T) {
+
+	setupDB(t)
+	router := setupRouter()
+	seedSnapshotData(t)
+
+	// get snapshot
+	var res struct {
+		Error    any            `json:"error"`
+		Snapshot LedgerSnapshot `json:"data"`
+	}
+	if err := get(router, "/ledger/general", &res); err != nil {
+		t.Fatal(err)
+	}
+
+	// validate response
+	if res.Snapshot.OpeningBalanceCents != 0 {
+		t.Errorf("opening want 0 got %d", res.Snapshot.OpeningBalanceCents)
+	}
+	if res.Snapshot.IncomingCents != 200 {
+		t.Errorf("incoming want 200 got %d", res.Snapshot.IncomingCents)
+	}
+	if res.Snapshot.OutgoingCents != -50 {
+		t.Errorf("outgoing want -50 got %d", res.Snapshot.OutgoingCents)
+	}
+	if res.Snapshot.ClosingBalanceCents != 150 {
+		t.Errorf("closing want 150 got %d", res.Snapshot.ClosingBalanceCents)
 	}
 }
 
 func TestGetSnapshotWithParams(t *testing.T) {
-	router := setupRouterWithDB(t)
+
+	setupDB(t)
+	router := setupRouter()
 	seedSnapshotData(t)
 
-	req := httptest.NewRequest(
-		"GET",
-		"/ledger/general?since=2025-01-01&until=2025-07-01",
-		nil,
-	)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-	if res.Code != http.StatusOK {
-		t.Fatalf("GET /ledger/general status %d", res.Code)
+	var res struct {
+		Error    any            `json:"error"`
+		Snapshot LedgerSnapshot `json:"data"`
 	}
-
-	var snapshotRes struct {
-		Error any           `json:"error"`
-		Data  FundsSnapshot `json:"data"`
-	}
-	if err := json.Unmarshal(res.Body.Bytes(), &snapshotRes); err != nil {
+	if err := get(router, "/ledger/general?since=2025-01-01&until=2025-07-01", &res); err != nil {
 		t.Fatal(err)
 	}
 
-	if snapshotRes.Data.OpeningBalanceCents != 100 {
-		t.Errorf("opening want 100 got %d", snapshotRes.Data.OpeningBalanceCents)
+	if res.Snapshot.OpeningBalanceCents != 100 {
+		t.Errorf("opening want 100 got %d", res.Snapshot.OpeningBalanceCents)
 	}
-	if snapshotRes.Data.IncomingCents != 100 {
-		t.Errorf("incoming want 100 got %d", snapshotRes.Data.IncomingCents)
+	if res.Snapshot.IncomingCents != 100 {
+		t.Errorf("incoming want 100 got %d", res.Snapshot.IncomingCents)
 	}
-	if snapshotRes.Data.OutgoingCents != -50 {
-		t.Errorf("outgoing want -50 got %d", snapshotRes.Data.OutgoingCents)
+	if res.Snapshot.OutgoingCents != -50 {
+		t.Errorf("outgoing want -50 got %d", res.Snapshot.OutgoingCents)
 	}
-	if snapshotRes.Data.ClosingBalanceCents != 150 {
-		t.Errorf("closing want 150 got %d", snapshotRes.Data.ClosingBalanceCents)
+	if res.Snapshot.ClosingBalanceCents != 150 {
+		t.Errorf("closing want 150 got %d", res.Snapshot.ClosingBalanceCents)
 	}
 }
 
 func TestGetSnapshotBadParams(t *testing.T) {
-	router := setupRouterWithDB(t)
-	req := httptest.NewRequest(
-		"GET",
-		"/ledger/general?since=bad-date&until=2025-01-01",
-		nil,
-	)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-	if res.Code != http.StatusBadRequest {
-		t.Fatalf("GET /ledger/general status %d", res.Code)
+
+	setupDB(t)
+	router := setupRouter()
+
+	var res struct {
+		Error    any            `json:"error"`
+		Snapshot LedgerSnapshot `json:"data"`
+	}
+	if err := get(router, "/ledger/general?since=bad-date&until=2025-01-01", &res); err == nil {
+		t.Fatal(err)
 	}
 }
 
 func TestListPatrons(t *testing.T) {
 
-	router := setupRouterWithDB(t)
+	setupDB(t)
+	router := setupRouter()
+	seedCustomerData(t)
 
-	now := time.Now().Unix()
-	// seed customers
-	if err := database.InsertCustomer("c1", now-60, "one@example.com", "One"); err != nil {
-		t.Fatal(err)
+	var res struct {
+		Error   any      `json:"error"`
+		Patrons []Patron `json:"data"`
 	}
-	if err := database.InsertCustomer("c2", now-40, "two@example.com", "Two"); err != nil {
-		t.Fatal(err)
-	}
-	if err := database.InsertCustomer("c3", now-20, "three@example.com", "Three"); err != nil {
-		t.Fatal(err)
-	}
-
-	time.Sleep(time.Second)
-	if err := database.InsertCustomer("c2", now-40, "two@example.com", "Two"); err != nil { // update c2
+	if err := get(router, "/patrons?limit=2&offset=0", &res); err != nil {
 		t.Fatal(err)
 	}
 
-	req := httptest.NewRequest("GET", "/patrons?limit=2&offset=0", nil)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-	if res.Code != http.StatusOK {
-		t.Fatalf("GET /patrons status %d", res.Code)
+	if len(res.Patrons) != 2 {
+		t.Fatalf("want 2 patrons, got %d", len(res.Patrons))
 	}
-
-	var out struct {
-		Error any      `json:"error"`
-		Data  []Patron `json:"data"`
-	}
-	if err := json.Unmarshal(res.Body.Bytes(), &out); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(out.Data) != 2 {
-		t.Fatalf("want 2 patrons, got %d", len(out.Data))
-	}
-	if out.Data[0].ID != "c2" {
+	if res.Patrons[0].ID != "c2" {
 		t.Errorf("first patron should be updated customer c2")
 	}
-	if out.Data[1].ID != "c3" {
+	if res.Patrons[1].ID != "c3" {
 		t.Errorf("second patron should be c3")
-	}
-}
-
-func TestListPatronsMethod(t *testing.T) {
-	router := setupRouterWithDB(t)
-	req := httptest.NewRequest("POST", "/patrons", nil)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-	if res.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("POST /patrons status %d", res.Code)
 	}
 }

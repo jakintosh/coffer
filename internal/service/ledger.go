@@ -87,14 +87,17 @@ func GetSnapshot(ledger string, sinceStr string, untilStr string) (*FundsSnapsho
 // GetTransactions returns a page of Transactions for the specified ledger.
 // Limit values less than or equal to zero default to 100.
 // Database errors are wrapped in a DatabaseError.
-func GetTransactions(ledger string, limit, offset int) ([]Transaction, error) {
+func GetTransactions(ledger string, limit int, offset int) ([]Transaction, error) {
+
 	if limit <= 0 {
 		limit = 100
 	}
+
 	rows, err := database.QueryTransactions(ledger, limit, offset)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
+
 	var out []Transaction
 	for _, r := range rows {
 		out = append(out, Transaction{

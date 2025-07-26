@@ -267,14 +267,14 @@ type FundsSnapshot struct {
 	ClosingBalance int // opening + incoming + outgoing
 }
 
-func QueryFundSnapshot(ledger string, since, until int64) (*FundsSnapshot, error) {
+func QueryFundSnapshot(ledger string, since int64, until int64) (*FundsSnapshot, error) {
 
 	// Opening balance: sum of all amounts before 'since'
 	var opening int
 	row := db.QueryRow(`
         SELECT COALESCE(SUM(amount),0)
         FROM tx
-        WHERE ledger = ? AND date < ?;
+        WHERE ledger = ?1 AND date < ?2;
     `, ledger, since)
 	if err := row.Scan(&opening); err != nil {
 		return nil, fmt.Errorf("query opening balance: %w", err)
@@ -285,7 +285,7 @@ func QueryFundSnapshot(ledger string, since, until int64) (*FundsSnapshot, error
 	row = db.QueryRow(`
         SELECT COALESCE(SUM(amount),0)
         FROM tx
-        WHERE ledger = ? AND date >= ? AND date <= ? AND amount > 0;
+        WHERE ledger = ?1 AND date >= ?2 AND date <= ?3 AND amount > 0;
     `, ledger, since, until)
 	if err := row.Scan(&incoming); err != nil {
 		return nil, fmt.Errorf("query incoming funds: %w", err)
@@ -296,7 +296,7 @@ func QueryFundSnapshot(ledger string, since, until int64) (*FundsSnapshot, error
 	row = db.QueryRow(`
         SELECT COALESCE(SUM(amount),0)
         FROM tx
-        WHERE ledger = ? AND date >= ? AND date <= ? AND amount < 0;
+        WHERE ledger = ?1 AND date >= ?2 AND date <= ?3 AND amount < 0;
     `, ledger, since, until)
 	if err := row.Scan(&outgoing); err != nil {
 		return nil, fmt.Errorf("query outgoing funds: %w", err)

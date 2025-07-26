@@ -55,8 +55,8 @@ type Metrics struct {
 	GeneralFundBalanceCents   int     `json:"general_fund_balance_cents"`   // general fund balance
 }
 
-// FundsSnapshot holds fund balances for a period.
-type FundsSnapshot struct {
+// LedgerSnapshot holds fund balances for a period.
+type LedgerSnapshot struct {
 	OpeningBalanceCents int `json:"opening_balance_cents"`
 	IncomingCents       int `json:"incoming_cents"`
 	OutgoingCents       int `json:"outgoing_cents"`
@@ -158,7 +158,7 @@ func handleGetFundSnapshot(
 		return
 	}
 
-	out := FundsSnapshot{
+	out := LedgerSnapshot{
 		OpeningBalanceCents: snap.OpeningBalanceCents,
 		IncomingCents:       snap.IncomingCents,
 		OutgoingCents:       snap.OutgoingCents,
