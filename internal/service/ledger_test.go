@@ -9,20 +9,22 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 )
 
-func setupDB() {
+func setupDB(t *testing.T) {
 	os.Remove("service_test.db")
 	os.Remove("service_test.db-shm")
 	os.Remove("service_test.db-wal")
 	database.Init("service_test.db")
 	// cleanup files after tests
-	defer os.Remove("service_test.db")
-	defer os.Remove("service_test.db-shm")
-	defer os.Remove("service_test.db-wal")
+	t.Cleanup(func() {
+		os.Remove("service_test.db")
+		os.Remove("service_test.db-shm")
+		os.Remove("service_test.db-wal")
+	})
 }
 
 // TestAddTransactionSuccess verifies a valid transaction is inserted
 func TestAddTransactionSuccess(t *testing.T) {
-	setupDB()
+	setupDB(t)
 	now := time.Now().Format(time.RFC3339)
 	err := AddTransaction("general", now, "test", 100)
 	if err != nil {
@@ -39,7 +41,7 @@ func TestAddTransactionSuccess(t *testing.T) {
 
 // TestAddTransactionBadDate verifies date parsing failures are returned
 func TestAddTransactionBadDate(t *testing.T) {
-	setupDB()
+	setupDB(t)
 	err := AddTransaction("general", "bad-date", "test", 100)
 	if !errors.Is(err, ErrInvalidDate) {
 		t.Fatalf("expected ErrInvalidDate, got %v", err)
