@@ -50,7 +50,7 @@ func TestAddTransactionBadDate(t *testing.T) {
 
 // TestGetSnapshotSuccess verifies snapshot calculations over a window
 func TestGetSnapshotSuccess(t *testing.T) {
-	setupDB()
+	setupDB(t)
 	now := time.Now().Unix()
 	past := now - 86400
 	startOfPastDay := time.Unix(past, 0).Truncate(24 * time.Hour).Unix()
@@ -91,7 +91,7 @@ func TestGetSnapshotSuccess(t *testing.T) {
 
 // TestGetSnapshotBadDate ensures invalid dates return ErrInvalidDate
 func TestGetSnapshotBadDate(t *testing.T) {
-	setupDB()
+	setupDB(t)
 	_, err := GetSnapshot("general", "bad", "also-bad")
 	if !errors.Is(err, ErrInvalidDate) {
 		t.Fatalf("expected ErrInvalidDate, got %v", err)
@@ -100,7 +100,7 @@ func TestGetSnapshotBadDate(t *testing.T) {
 
 // TestGetTransactionsSuccess verifies transaction listing
 func TestGetTransactionsSuccess(t *testing.T) {
-	setupDB()
+	setupDB(t)
 	now := time.Now().Unix()
 	past := now - 86400
 
@@ -128,7 +128,7 @@ func TestGetTransactionsSuccess(t *testing.T) {
 
 // TestGetTransactionsDefaultLimit verifies negative limits default to 100
 func TestGetTransactionsDefaultLimit(t *testing.T) {
-	setupDB()
+	setupDB(t)
 	now := time.Now().Unix()
 	if err := database.InsertTransaction(now, "general", "t1", 1); err != nil {
 		t.Fatal(err)
