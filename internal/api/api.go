@@ -2,12 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"github.com/gorilla/mux"
 )
 
@@ -210,28 +212,30 @@ func handleCreateTransaction(
 		return
 	}
 
-	date, err := time.Parse(time.RFC3339, req.Date)
-	if err != nil {
-		error := &APIError{
-			Code:    "400",
-			Message: "Date parse error",
-		}
-		writeJSON(w, http.StatusBadRequest, error)
-		return
-	}
-
-	err = database.InsertTransaction(
-		date.Unix(),
+	err = service.AddTransaction(
 		ledger,
+		req.Date,
 		req.Label,
 		req.Amount,
 	)
 	if err != nil {
-		error := &APIError{
-			Code:    "500",
-			Message: fmt.Sprintf("Database insert error: %s", err),
+		switch {
+		case errors.Is(err, service.ErrInvalidDate):
+			writeJSON(w, http.StatusBadRequest, &APIError{
+				Code:    "400",
+				Message: "Date parse error",
+			})
+		case errors.As(err, &service.DatabaseError{}):
+			writeJSON(w, http.StatusInternalServerError, &APIError{
+				Code:    "500",
+				Message: fmt.Sprintf("Database insert error: %v", err),
+			})
+		default:
+			writeJSON(w, http.StatusInternalServerError, &APIError{
+				Code:    "500",
+				Message: err.Error(),
+			})
 		}
-		writeJSON(w, http.StatusInternalServerError, error)
 		return
 	}
 
