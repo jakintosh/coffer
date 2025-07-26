@@ -6,20 +6,22 @@ import (
 	"time"
 )
 
-func setupDb() {
+func setupDb(t *testing.T) {
 	os.Remove("test.db")
 	os.Remove("test.db-shm")
 	os.Remove("test.db-wal")
 	Init("test.db")
-	defer os.Remove("test.db")
-	defer os.Remove("test.db-shm")
-	defer os.Remove("test.db-wal")
+	t.Cleanup(func() {
+		os.Remove("test.db")
+		os.Remove("test.db-shm")
+		os.Remove("test.db-wal")
+	})
 
 }
 
 func TestQuerySubscriptionSummary(t *testing.T) {
 
-	setupDb()
+	setupDb(t)
 
 	// no data → zero
 	sum, err := QuerySubscriptionSummary()
@@ -45,7 +47,7 @@ func TestQuerySubscriptionSummary(t *testing.T) {
 
 func TestFundSnapshotAndTransactions(t *testing.T) {
 
-	setupDb()
+	setupDb(t)
 
 	// seed a couple of tx
 	now := time.Now().Unix()
