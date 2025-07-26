@@ -128,27 +128,23 @@ func handleGetFundSnapshot(
 	r *http.Request,
 ) {
 	vars := mux.Vars(r)
-	f := vars["ledger"]
-	sinceQ := r.URL.Query().Get("since")
-	untilQ := r.URL.Query().Get("until")
+	ledger := vars["ledger"]
 
-	now := time.Now().Unix()
 	since := int64(0)
-	if sinceQ != "" {
-		if t, err := time.Parse("2006-01-02", sinceQ); err == nil {
-			since = t.Unix()
-		}
-		fmt.Printf("since parsed as %d\n", since)
-	}
-	until := now
-	if untilQ != "" {
-		if t, err := time.Parse("2006-01-02", untilQ); err == nil {
-			until = t.Unix()
-		}
-		fmt.Printf("until parsed as %d\n", until)
+	if t, err := time.Parse("2006-01-02", r.URL.Query().Get("since")); err != nil {
+		since = t.Unix()
+	} else {
+		since = int64(0)
 	}
 
-	snap, err := database.QueryFundSnapshot(f, since, until)
+	until := int64(0)
+	if t, err := time.Parse("2006-01-02", r.URL.Query().Get("until")); err != nil {
+		until = t.Unix()
+	} else {
+		until = time.Now().Unix()
+	}
+
+	snap, err := database.QueryFundSnapshot(ledger, since, until)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, &APIError{"500", "snapshot error"})
 		return
