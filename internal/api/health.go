@@ -1,0 +1,22 @@
+package api
+
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+)
+
+// HealthResponse is the status of the service.
+type HealthResponse struct {
+	Status string `json:"status"`
+	DB     string `json:"db"`
+}
+
+func buildHealthRouter(r *mux.Router) {
+	r.HandleFunc("", handleHealth).Methods("GET")
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	resp := HealthResponse{Status: "unimplemented", DB: "unimplemented"}
+	writeJSON(w, http.StatusOK, resp)
+}
