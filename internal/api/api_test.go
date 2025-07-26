@@ -14,16 +14,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func setupRouterWithDB() *mux.Router {
+func setupRouterWithDB(t *testing.T) *mux.Router {
 	os.Remove("api.db")
 	os.Remove("api.db-shm")
 	os.Remove("api.db-wal")
 
 	database.Init("api.db")
 
-	defer os.Remove("api.db")
-	defer os.Remove("api.db-shm")
-	defer os.Remove("api.db-wal")
+	t.Cleanup(func() {
+		os.Remove("api.db")
+		os.Remove("api.db-shm")
+		os.Remove("api.db-wal")
+	})
 
 	router := mux.NewRouter()
 	BuildRouter(router)
@@ -32,7 +34,7 @@ func setupRouterWithDB() *mux.Router {
 
 func TestGetMetrics(t *testing.T) {
 
-	r := setupRouterWithDB()
+	r := setupRouterWithDB(t)
 	now := time.Now().Unix()
 
 	// insert one subscription @ $3.00
@@ -73,7 +75,7 @@ func TestGetMetrics(t *testing.T) {
 
 func TestFundEndpoints(t *testing.T) {
 
-	router := setupRouterWithDB()
+	router := setupRouterWithDB(t)
 	now := time.Now()
 
 	// POST tx
@@ -120,7 +122,7 @@ func TestFundEndpoints(t *testing.T) {
 
 func TestListPatrons(t *testing.T) {
 
-	router := setupRouterWithDB()
+	router := setupRouterWithDB(t)
 
 	now := time.Now().Unix()
 	// seed customers
@@ -166,7 +168,7 @@ func TestListPatrons(t *testing.T) {
 }
 
 func TestListPatronsMethod(t *testing.T) {
-	router := setupRouterWithDB()
+	router := setupRouterWithDB(t)
 	req := httptest.NewRequest("POST", "/patrons", nil)
 	res := httptest.NewRecorder()
 	router.ServeHTTP(res, req)
