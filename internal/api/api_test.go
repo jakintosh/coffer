@@ -117,3 +117,60 @@ func TestFundEndpoints(t *testing.T) {
 		t.Errorf("incoming want=123 got=%d", snapshotRes.Data.IncomingCents)
 	}
 }
+
+func TestListPatrons(t *testing.T) {
+
+	router := setupRouterWithDB()
+
+	now := time.Now().Unix()
+	// seed customers
+	if err := database.InsertCustomer("c1", now-60, "one@example.com", "One"); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.InsertCustomer("c2", now-40, "two@example.com", "Two"); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.InsertCustomer("c3", now-20, "three@example.com", "Three"); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Second)
+	if err := database.InsertCustomer("c2", now-40, "two@example.com", "Two"); err != nil { // update c2
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest("GET", "/patrons?limit=2&offset=0", nil)
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("GET /patrons status %d", res.Code)
+	}
+
+	var out struct {
+		Error any      `json:"error"`
+		Data  []Patron `json:"data"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(out.Data) != 2 {
+		t.Fatalf("want 2 patrons, got %d", len(out.Data))
+	}
+	if out.Data[0].ID != "c2" {
+		t.Errorf("first patron should be updated customer c2")
+	}
+	if out.Data[1].ID != "c3" {
+		t.Errorf("second patron should be c3")
+	}
+}
+
+func TestListPatronsMethod(t *testing.T) {
+	router := setupRouterWithDB()
+	req := httptest.NewRequest("POST", "/patrons", nil)
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	if res.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("POST /patrons status %d", res.Code)
+	}
+}

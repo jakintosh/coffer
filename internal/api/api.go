@@ -81,9 +81,9 @@ type NewTransactionRequest struct {
 type Patron struct {
 	ID        string `json:"id"`
 	Email     string `json:"email"`
-	Tier      string `json:"tier"`
-	StartedAt string `json:"started_at"`
-	Status    string `json:"status"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // HealthResponse is the status of the service.
@@ -244,13 +244,32 @@ func handleListPatrons(
 ) {
 	// TODO: validate Authorization header
 
-	limit := r.URL.Query().Get("limit")
-	offset := r.URL.Query().Get("offset")
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if limit <= 0 {
+		limit = 100
+	}
 
-	_ = limit
-	_ = offset
+	rows, err := database.QueryCustomers(limit, offset)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, &APIError{"500", "list error"})
+		return
+	}
 
 	patrons := []Patron{}
+	for _, c := range rows {
+		updated := c.Created
+		if c.Updated.Valid {
+			updated = c.Updated.Int64
+		}
+		patrons = append(patrons, Patron{
+			ID:        c.ID,
+			Email:     c.Email,
+			Name:      c.Name,
+			CreatedAt: time.Unix(c.Created, 0).Format(time.RFC3339),
+			UpdatedAt: time.Unix(updated, 0).Format(time.RFC3339),
+		})
+	}
 
 	response := APIResponse{
 		Error: nil,

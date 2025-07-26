@@ -362,3 +362,38 @@ func QueryTransactions(
 	}
 	return out, nil
 }
+
+// DBCustomer represents a raw customer row from the database.
+type DBCustomer struct {
+	ID      string
+	Email   string
+	Name    string
+	Created int64
+	Updated sql.NullInt64
+}
+
+// QueryCustomers returns a page of customers sorted by most recently updated.
+func QueryCustomers(limit, offset int) ([]DBCustomer, error) {
+	rows, err := db.Query(`
+                SELECT id, email, name, created, updated
+                FROM customer
+                ORDER BY COALESCE(updated, created) DESC
+                LIMIT ?1 OFFSET ?2;`,
+		limit,
+		offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []DBCustomer
+	for rows.Next() {
+		var c DBCustomer
+		if err := rows.Scan(&c.ID, &c.Email, &c.Name, &c.Created, &c.Updated); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
