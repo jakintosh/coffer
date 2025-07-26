@@ -132,31 +132,37 @@ func handleGetFundSnapshot(
 	vars := mux.Vars(r)
 	ledger := vars["ledger"]
 
-	since := int64(0)
-	if t, err := time.Parse("2006-01-02", r.URL.Query().Get("since")); err != nil {
-		since = t.Unix()
-	} else {
-		since = int64(0)
-	}
-
-	until := int64(0)
-	if t, err := time.Parse("2006-01-02", r.URL.Query().Get("until")); err != nil {
-		until = t.Unix()
-	} else {
-		until = time.Now().Unix()
-	}
-
-	snap, err := database.QueryFundSnapshot(ledger, since, until)
+	snap, err := service.GetSnapshot(
+		ledger,
+		r.URL.Query().Get("since"),
+		r.URL.Query().Get("until"),
+	)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, &APIError{"500", "snapshot error"})
+		switch {
+		case errors.Is(err, service.ErrInvalidDate):
+			writeJSON(w, http.StatusBadRequest, &APIError{
+				Code:    "400",
+				Message: "Date parse error",
+			})
+		case errors.As(err, &service.DatabaseError{}):
+			writeJSON(w, http.StatusInternalServerError, &APIError{
+				Code:    "500",
+				Message: fmt.Sprintf("snapshot error: %v", err),
+			})
+		default:
+			writeJSON(w, http.StatusInternalServerError, &APIError{
+				Code:    "500",
+				Message: err.Error(),
+			})
+		}
 		return
 	}
 
 	out := FundsSnapshot{
-		OpeningBalanceCents: snap.OpeningBalance,
-		IncomingCents:       snap.Incoming,
-		OutgoingCents:       snap.Outgoing,
-		ClosingBalanceCents: snap.ClosingBalance,
+		OpeningBalanceCents: snap.OpeningBalanceCents,
+		IncomingCents:       snap.IncomingCents,
+		OutgoingCents:       snap.OutgoingCents,
+		ClosingBalanceCents: snap.ClosingBalanceCents,
 	}
 	writeJSON(w, http.StatusOK, APIResponse{nil, out})
 }
@@ -169,13 +175,15 @@ func handleListTransactions(
 	f := vars["ledger"]
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-	if limit <= 0 {
-		limit = 100
-	}
 
-	rows, err := database.QueryTransactions(f, limit, offset)
+	rows, err := service.GetTransactions(f, limit, offset)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, &APIError{"500", "list error"})
+		switch err.(type) {
+		case service.DatabaseError:
+			writeJSON(w, http.StatusInternalServerError, &APIError{"500", fmt.Sprintf("list error: %v", err)})
+		default:
+			writeJSON(w, http.StatusInternalServerError, &APIError{"500", err.Error()})
+		}
 		return
 	}
 
@@ -183,7 +191,7 @@ func handleListTransactions(
 	for _, t := range rows {
 		out = append(out, Transaction{
 			ID:     fmt.Sprint(t.ID),
-			Date:   time.Unix(t.Date, 0).Format(time.RFC3339),
+			Date:   t.Date.Format(time.RFC3339),
 			Ledger: t.Ledger,
 			Label:  t.Label,
 			Amount: t.Amount,
