@@ -37,6 +37,8 @@ func main() {
 	// init modules
 	database.Init(dbPath)
 	service.SetLedgerStore(database.NewLedgerStore())
+	service.SetMetricsStore(database.NewMetricsStore())
+	service.SetPatronStore(database.NewPatronStore())
 	stripe.Init(stripeKey, endpointSecret)
 
 	// config routing
@@ -66,12 +68,3 @@ func readEnvVar(name string) string {
 	}
 	return str
 }
-
-// func readEnvInt(name string) int {
-// 	v := readEnvVar(name)
-// 	i, err := strconv.Atoi(v)
-// 	if err != nil {
-// 		log.Fatalf("required env var '%s' could not be parsed as integer (\"%v\")\n", name, v)
-// 	}
-// 	return i
-// }
