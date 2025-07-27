@@ -7,7 +7,6 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-// DBCustomer represents a raw customer row from the database.
 type DBCustomer struct {
 	ID      string
 	Email   string
@@ -16,14 +15,17 @@ type DBCustomer struct {
 	Updated sql.NullInt64
 }
 
-// PatronStore implements service.PatronStore using the global DB.
 type PatronStore struct{}
 
-// NewPatronStore returns a new PatronStore.
 func NewPatronStore() PatronStore { return PatronStore{} }
 
-// GetCustomers returns a page of customers sorted by most recently updated.
-func (PatronStore) GetCustomers(limit, offset int) ([]service.Patron, error) {
+func (PatronStore) GetCustomers(
+	limit int,
+	offset int,
+) (
+	[]service.Patron,
+	error,
+) {
 	rows, err := db.Query(`
 		SELECT id, email, name, created, updated
 		FROM customer

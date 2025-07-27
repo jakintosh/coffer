@@ -8,7 +8,6 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-// DBTransaction is the raw row from tx.
 type DBTransaction struct {
 	ID      int64
 	Created int64
@@ -19,16 +18,14 @@ type DBTransaction struct {
 	Amount  int
 }
 
-// LedgerStore implements service.LedgerStore using the global DB.
-type LedgerStore struct{}
+type DBLedgerStore struct{}
 
-// NewLedgerStore returns a new LedgerStore.
-func NewLedgerStore() LedgerStore { return LedgerStore{} }
+func NewLedgerStore() DBLedgerStore { return DBLedgerStore{} }
 
-// InsertTransaction inserts or updates a ledger transaction.
-func (LedgerStore) InsertTransaction(
+func (DBLedgerStore) InsertTransaction(
 	date int64,
-	ledger, label string,
+	ledger string,
+	label string,
 	amount int,
 ) error {
 	_, err := db.Exec(`
@@ -48,11 +45,14 @@ func (LedgerStore) InsertTransaction(
 	return err
 }
 
-// GetLedgerSnapshot returns aggregate balances for a ledger.
-func (LedgerStore) GetLedgerSnapshot(
+func (DBLedgerStore) GetLedgerSnapshot(
 	ledger string,
-	since, until int64,
-) (*service.LedgerSnapshot, error) {
+	since int64,
+	until int64,
+) (
+	*service.LedgerSnapshot,
+	error,
+) {
 	var (
 		opening  int
 		incoming int
@@ -61,39 +61,46 @@ func (LedgerStore) GetLedgerSnapshot(
 	row := db.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
-		WHERE ledger=?1 AND date<?2;
+		WHERE ledger=?1
+			AND date<?2;
 	    `,
 		ledger,
 		since,
 	)
 	if err := row.Scan(&opening); err != nil {
-		return nil, fmt.Errorf("query opening balance: %w", err)
+		return nil, fmt.Errorf("failed to query opening balance: %w", err)
 	}
 
 	row = db.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
-		WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount>0;
+		WHERE ledger=?1
+			AND date>=?2
+			AND date<=?3
+			AND amount>0;
 		`,
 		ledger,
 		since,
 		until,
 	)
 	if err := row.Scan(&incoming); err != nil {
-		return nil, fmt.Errorf("query incoming funds: %w", err)
+		return nil, fmt.Errorf("failed to query incoming funds: %w", err)
 	}
 
 	row = db.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
-		WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount<0;
+		WHERE ledger=?1
+			AND date>=?2
+			AND date<=?3
+			AND amount<0;
 		`,
 		ledger,
 		since,
 		until,
 	)
 	if err := row.Scan(&outgoing); err != nil {
-		return nil, fmt.Errorf("query outgoing funds: %w", err)
+		return nil, fmt.Errorf("failed to query outgoing funds: %w", err)
 	}
 
 	snapshot := &service.LedgerSnapshot{
@@ -105,13 +112,16 @@ func (LedgerStore) GetLedgerSnapshot(
 	return snapshot, nil
 }
 
-// GetTransactions returns normalized Transactions from the ledger.
-func (LedgerStore) GetTransactions(
+func (DBLedgerStore) GetTransactions(
 	ledger string,
-	limit, offset int,
-) ([]service.Transaction, error) {
+	limit int,
+	offset int,
+) (
+	[]service.Transaction,
+	error,
+) {
 	rows, err := db.Query(`
-		SELECT id, date, ledger, label, amount
+		SELECT id, date, label, amount
 		FROM tx
 		WHERE ledger=?1
 		ORDER BY date DESC
@@ -122,29 +132,29 @@ func (LedgerStore) GetTransactions(
 		offset,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query transactions: %w", err)
 	}
 
 	defer rows.Close()
+	var (
+		id     int64
+		date   int64
+		label  string
+		amount int
+	)
 	var txs []service.Transaction
 	for rows.Next() {
-		var tx DBTransaction
-		if err := rows.Scan(
-			&tx.ID,
-			&tx.Date,
-			&tx.Ledger,
-			&tx.Label,
-			&tx.Amount,
-		); err != nil {
+		if err := rows.Scan(&id, &date, &label, &amount); err != nil {
 			return nil, err
 		}
-		txs = append(txs, service.Transaction{
-			ID:     tx.ID,
-			Date:   time.Unix(tx.Date, 0),
-			Ledger: tx.Ledger,
-			Label:  tx.Label,
-			Amount: tx.Amount,
-		})
+		tx := service.Transaction{
+			ID:     id,
+			Date:   time.Unix(date, 0),
+			Ledger: ledger,
+			Label:  label,
+			Amount: amount,
+		}
+		txs = append(txs, tx)
 	}
 	return txs, nil
 }

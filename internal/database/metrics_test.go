@@ -8,6 +8,7 @@ import (
 )
 
 func TestQuerySubscriptionSummary(t *testing.T) {
+
 	setupDb(t)
 	metricsStore := database.NewMetricsStore()
 

@@ -8,6 +8,7 @@ import (
 )
 
 func seedCustomerData(t *testing.T) {
+
 	ts := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 	if err := database.InsertCustomer("c1", ts-60, "one@example.com", "One"); err != nil {
 		t.Fatal(err)
@@ -18,13 +19,14 @@ func seedCustomerData(t *testing.T) {
 	if err := database.InsertCustomer("c3", ts-20, "three@example.com", "Three"); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond * 100)
+
 	if err := database.InsertCustomer("c2", ts-40, "two@example.org", "Two"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestGetCustomers(t *testing.T) {
+
 	setupDb(t)
 	seedCustomerData(t)
 

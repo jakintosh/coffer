@@ -6,13 +6,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// HealthResponse is the status of the service.
 type HealthResponse struct {
 	Status string `json:"status"`
 	DB     string `json:"db"`
 }
 
-func buildHealthRouter(r *mux.Router) {
+func buildHealthRouter(
+	r *mux.Router,
+) {
 	r.HandleFunc("", handleGetHealth).Methods("GET")
 }
 

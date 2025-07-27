@@ -5,32 +5,39 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
-func TestFundSnapshotAndTransactions(t *testing.T) {
+const hour = int64(time.Hour)
+
+func seedTransactions(
+	t *testing.T,
+	ledgerStore database.DBLedgerStore,
+	start int64,
+) {
+	if err := ledgerStore.InsertTransaction(start-hour, "general", "old", 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := ledgerStore.InsertTransaction(start+hour, "general", "in", 200); err != nil {
+		t.Fatal(err)
+	}
+	if err := ledgerStore.InsertTransaction(start+(hour*2), "general", "out", -50); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLedgerSnapshotAndTransactions(t *testing.T) {
+
 	setupDb(t)
-
-	// seed a couple of tx
-	now := time.Now().Unix()
-	past := now - 86400
-
 	ledgerStore := database.NewLedgerStore()
 
-	// before window
-	if err := ledgerStore.InsertTransaction(past-10, "general", "old", 100); err != nil {
-		t.Fatal(err)
-	}
+	start := util.MakeDateUnix(2025, 7, 1)
+	end := start + (hour * 12)
 
-	// in window: +200 & -50
-	if err := ledgerStore.InsertTransaction(past+5, "general", "in", 200); err != nil {
-		t.Fatal(err)
-	}
-	if err := ledgerStore.InsertTransaction(past+10, "general", "out", -50); err != nil {
-		t.Fatal(err)
-	}
+	seedTransactions(t, ledgerStore, start)
 
-	// snapshot from-past to now
-	snapshot, err := ledgerStore.GetLedgerSnapshot("general", past, now)
+	// snapshot frrom start to end
+	snapshot, err := ledgerStore.GetLedgerSnapshot("general", start, end)
 	if err != nil {
 		t.Fatal(err)
 	}

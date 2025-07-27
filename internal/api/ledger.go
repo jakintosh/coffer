@@ -6,19 +6,21 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"github.com/gorilla/mux"
 )
 
-// NewTransactionRequest is the payload for creating a transaction.
-type NewTransactionRequest struct {
+type CreateTransactionRequest struct {
 	Date   string `json:"date"`
 	Amount int    `json:"amount"`
 	Label  string `json:"label"`
 }
 
-func buildLedgerRouter(r *mux.Router) {
+func buildLedgerRouter(
+	r *mux.Router,
+) {
 	r.HandleFunc("/{ledger}", handleGetLedger).Methods("GET")
 	r.HandleFunc("/{ledger}/transactions", handleGetLedgerTransactions).Methods("GET")
 	r.HandleFunc("/{ledger}/transactions", handlePostLedgerTransaction).Methods("POST")
@@ -30,18 +32,41 @@ func handleGetLedger(
 ) {
 	vars := mux.Vars(r)
 	ledger := vars["ledger"]
-	since := r.URL.Query().Get("since")
-	until := r.URL.Query().Get("until")
+	sinceQ := r.URL.Query().Get("since")
+	untilQ := r.URL.Query().Get("until")
+
+	var (
+		err   error
+		since time.Time
+		until time.Time
+	)
+
+	if sinceQ != "" {
+		if since, err = time.Parse("2006-01-02", sinceQ); err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid 'since' query")
+			return
+		}
+	} else {
+		since = time.Unix(0, 0)
+	}
+
+	if untilQ != "" {
+		if until, err = time.Parse("2006-01-02", untilQ); err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid 'until' query")
+			return
+		}
+	} else {
+		until = time.Now()
+	}
 
 	snapshot, err := service.GetSnapshot(ledger, since, until)
 	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
 		switch {
-		case errors.Is(err, service.ErrInvalidDate):
-			writeError(w, http.StatusBadRequest, "Date parse error")
 		case errors.As(err, &service.DatabaseError{}):
-			writeError(w, http.StatusInternalServerError, fmt.Sprintf("snapshot error: %v", err))
+			// TODO: log?
 		default:
-			writeError(w, http.StatusInternalServerError, err.Error())
+			// TODO: log?
 		}
 		return
 	}
@@ -82,21 +107,28 @@ func handlePostLedgerTransaction(
 	vars := mux.Vars(r)
 	ledger := vars["ledger"]
 
-	var req NewTransactionRequest
+	// decode body
+	var req CreateTransactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "Malformed JSON")
 		return
 	}
 
-	err := service.AddTransaction(req.Date, ledger, req.Label, req.Amount)
+	// validate date as RFC3339
+	date, err := time.Parse(time.RFC3339, req.Date)
 	if err != nil {
+		fmt.Printf("Invalid date: %v", err)
+		writeError(w, http.StatusBadRequest, "Invalid date")
+	}
+
+	err = service.AddTransaction(date, ledger, req.Label, req.Amount)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Internal server error")
 		switch {
-		case errors.Is(err, service.ErrInvalidDate):
-			writeError(w, http.StatusBadRequest, "Invalid date")
 		case errors.As(err, &service.DatabaseError{}):
-			writeError(w, http.StatusInternalServerError, "Internal server error")
+			// TODO: log?
 		default:
-			writeError(w, http.StatusInternalServerError, "Internal server error")
+			// TODO: log?
 		}
 		return
 	}

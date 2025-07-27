@@ -8,9 +8,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Patron is defined in the service package.
-
-func buildPatronsRouter(r *mux.Router) {
+func buildPatronsRouter(
+	r *mux.Router,
+) {
 	r.HandleFunc("", handleListPatrons).Methods("GET")
 }
 
@@ -20,14 +20,20 @@ func handleListPatrons(
 ) {
 	// TODO: validate Authorization header
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid 'limit' query")
+	}
+
+	offset, err := strconv.Atoi(r.URL.Query().Get("offset"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid 'offset' query")
+	}
 
 	patrons, err := service.ListPatrons(limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to get customers")
-		return
+	} else {
+		writeData(w, http.StatusOK, patrons)
 	}
-
-	writeData(w, http.StatusOK, patrons)
 }

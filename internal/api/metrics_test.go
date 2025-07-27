@@ -1,8 +1,10 @@
-package api
+package api_test
 
 import (
+	"net/http"
 	"testing"
 
+	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
@@ -13,19 +15,23 @@ func TestGetMetrics(t *testing.T) {
 	seedSubscriberData(t)
 
 	// get metrics
-	var resp struct {
-		Error   APIError        `json:"error"`
+	url := "/metrics"
+	var response struct {
+		Error   api.APIError    `json:"error"`
 		Metrics service.Metrics `json:"data"`
 	}
-	if err := get(router, "/metrics", &resp); err != nil {
-		t.Fatalf("GET /metrics failed: %v", err)
+	result := get(router, url, &response)
+
+	// validate result
+	if err := expectStatus(http.StatusOK, result); err != nil {
+		t.Fatal(err)
 	}
 
 	// validate response
-	if resp.Metrics.PatronsActive != 3 {
-		t.Errorf("want patrons=3, got %d", resp.Metrics.PatronsActive)
+	if response.Metrics.PatronsActive != 3 {
+		t.Errorf("want patrons=3, got %d", response.Metrics.PatronsActive)
 	}
-	if resp.Metrics.MRRCents != 1500 {
-		t.Errorf("want mrr=1500, got %d", resp.Metrics.MRRCents)
+	if response.Metrics.MRRCents != 1500 {
+		t.Errorf("want mrr=1500, got %d", response.Metrics.MRRCents)
 	}
 }

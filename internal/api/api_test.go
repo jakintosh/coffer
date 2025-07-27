@@ -1,19 +1,24 @@
-package api
+package api_test
 
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
-	"time"
 
+	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 	"github.com/gorilla/mux"
 )
+
+type HttpResult struct {
+	Code  int
+	Error error
+}
 
 func setupDB(t *testing.T) {
 
@@ -36,100 +41,126 @@ func setupDB(t *testing.T) {
 func setupRouter() *mux.Router {
 
 	router := mux.NewRouter()
-	BuildRouter(router)
+	api.BuildRouter(router)
 	return router
+}
+
+func seedCustomerData(t *testing.T) {
+
+	t1 := util.MakeDateUnix(2025, 1, 1)
+
+	err := database.InsertCustomer("c1", t1-60, "one@example.com", "One")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = database.InsertCustomer("c2", t1-40, "two@example.com", "Two")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = database.InsertCustomer("c3", t1-20, "three@example.com", "Three")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// update c2
+	err = database.InsertCustomer("c2", t1-40, "two@example.org", "Two")
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func seedSubscriberData(t *testing.T) {
 
-	t1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t2 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t3 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t1 := util.MakeDateUnix(2025, 1, 1)
+	err := database.InsertSubscription("sub_123", t1, "cus_123", "active", 300, "usd")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := database.InsertSubscription("sub_123", t1, "cus_123", "active", 300, "usd"); err != nil {
+	t2 := util.MakeDateUnix(2025, 2, 1)
+	err = database.InsertSubscription("sub_456", t2, "cus_456", "active", 800, "usd")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertSubscription("sub_456", t2, "cus_456", "active", 800, "usd"); err != nil {
-		t.Fatal(err)
-	}
-	if err := database.InsertSubscription("sub_789", t3, "cus_789", "active", 400, "usd"); err != nil {
+
+	t3 := util.MakeDateUnix(2025, 3, 1)
+	err = database.InsertSubscription("sub_789", t3, "cus_789", "active", 400, "usd")
+	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func seedSnapshotData(t *testing.T) {
 
-	t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
-	t2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
-	t3 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	t1 := util.MakeDate(2024, 1, 1)
+	err := service.AddTransaction(t1, "general", "base", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if err := service.AddTransaction(t1, "general", "base", 100); err != nil {
+	t2 := util.MakeDate(2025, 1, 1)
+	err = service.AddTransaction(t2, "general", "extra", 100)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := service.AddTransaction(t2, "general", "extra", 100); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.AddTransaction(t3, "general", "base", -50); err != nil {
+
+	t3 := util.MakeDate(2025, 2, 1)
+	err = service.AddTransaction(t3, "general", "base", -50)
+	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func seedCustomerData(t *testing.T) {
-
-	t1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-
-	if err := database.InsertCustomer("c1", t1-60, "one@example.com", "One"); err != nil {
-		t.Fatal(err)
+func expectStatus(
+	code int,
+	result HttpResult,
+) error {
+	if result.Code == code {
+		return nil
 	}
-	if err := database.InsertCustomer("c2", t1-40, "two@example.com", "Two"); err != nil {
-		t.Fatal(err)
-	}
-	if err := database.InsertCustomer("c3", t1-20, "three@example.com", "Three"); err != nil {
-		t.Fatal(err)
-	}
-
-	time.Sleep(time.Millisecond * 100)
-
-	// update c2
-	if err := database.InsertCustomer("c2", t1-40, "two@example.org", "Two"); err != nil {
-		t.Fatal(err)
-	}
+	return fmt.Errorf("expected status %d, got %d: %v", code, result.Code, result.Error)
 }
 
 func get(
 	router *mux.Router,
 	url string,
 	response any,
-) error {
+) HttpResult {
 	req := httptest.NewRequest("GET", url, nil)
 	res := httptest.NewRecorder()
 	router.ServeHTTP(res, req)
-	if res.Code != http.StatusOK {
-		return fmt.Errorf("GET %s failed with code %d", url, res.Code)
-	}
+
+	// decode response
 	if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-		return fmt.Errorf("Failed to decode JSON: %v", err)
+		return HttpResult{
+			Code:  res.Code,
+			Error: fmt.Errorf("Failed to decode JSON: %v\n%s", err, res.Body.String()),
+		}
 	}
-	return nil
+
+	return HttpResult{res.Code, nil}
 }
 
 func post(
 	router *mux.Router,
 	url string,
 	body string,
-) (*httptest.ResponseRecorder, error) {
+	response any,
+) HttpResult {
 	req := httptest.NewRequest("POST", url, strings.NewReader(body))
 	res := httptest.NewRecorder()
 	router.ServeHTTP(res, req)
-	if res.Code < 200 || res.Code >= 300 {
-		if res.Body != nil {
-			var response *APIResponse
-			if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-				return res, fmt.Errorf("Failed to decode JSON body: %v", err)
+
+	if res.Body != nil {
+		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+			return HttpResult{
+				Code:  res.Code,
+				Error: fmt.Errorf("Failed to decode JSON body: %v", err),
 			}
-			return res, fmt.Errorf("POST failed (%d): %s", response.Error.Code, response.Error.Message)
 		}
-		return res, fmt.Errorf("POST failed with code %d", res.Code)
 	}
-	return res, nil
+
+	return HttpResult{res.Code, nil}
 }

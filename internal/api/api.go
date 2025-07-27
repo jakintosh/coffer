@@ -17,7 +17,9 @@ type APIError struct {
 	Message string `json:"message"`
 }
 
-func BuildRouter(r *mux.Router) {
+func BuildRouter(
+	r *mux.Router,
+) {
 	buildMetricsRouter(r.PathPrefix("/metrics").Subrouter())
 	buildLedgerRouter(r.PathPrefix("/ledger").Subrouter())
 	buildPatronsRouter(r.PathPrefix("/patrons").Subrouter())
@@ -31,11 +33,8 @@ func writeError(
 ) {
 	w.WriteHeader(code)
 	writeJSON(w, APIResponse{
-		Error: &APIError{
-			Code:    code,
-			Message: message,
-		},
-		Data: nil,
+		Error: &APIError{code, message},
+		Data:  nil,
 	})
 }
 
@@ -44,12 +43,14 @@ func writeData(
 	code int,
 	data any,
 ) {
-	w.WriteHeader(code)
 	if data != nil {
+		w.WriteHeader(code)
 		writeJSON(w, APIResponse{
 			Error: nil,
 			Data:  data,
 		})
+	} else {
+		w.WriteHeader(code)
 	}
 }
 
@@ -57,6 +58,8 @@ func writeJSON(
 	w http.ResponseWriter,
 	data any,
 ) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	if data != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
+	}
 }

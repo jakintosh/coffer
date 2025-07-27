@@ -5,11 +5,13 @@ import (
 	"fmt"
 )
 
-// ErrInvalidDate is returned when the provided date string cannot be parsed.
-var ErrInvalidDate = errors.New("invalid date format")
+var (
+	ErrInvalidDate    = errors.New("invalid date format")
+	ErrNoLedgerStore  = errors.New("ledger store not configured")
+	ErrNoMetricsStore = errors.New("metrics store not configured")
+	ErrNoPatronStore  = errors.New("patron store not configured")
+)
 
-// DatabaseError wraps database level errors so that callers can
-// differentiate them from validation errors.
 type DatabaseError struct{ Err error }
 
 func (e DatabaseError) Error() string { return fmt.Sprintf("database error: %v", e.Err) }

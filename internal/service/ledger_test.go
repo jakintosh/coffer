@@ -1,13 +1,13 @@
 package service_test
 
 import (
-	"errors"
 	"os"
 	"testing"
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func setupDB(t *testing.T) {
@@ -26,11 +26,31 @@ func setupDB(t *testing.T) {
 	})
 }
 
+func seedTransactions(
+	t *testing.T,
+	start time.Time,
+) {
+	t1 := start.Add(time.Hour * -1)
+	if err := service.AddTransaction(t1, "general", "old", 100); err != nil {
+		t.Fatal(err)
+	}
+
+	t2 := start.Add(time.Hour * 1)
+	if err := service.AddTransaction(t2, "general", "in", 200); err != nil {
+		t.Fatal(err)
+	}
+
+	t3 := start.Add(time.Hour * 2)
+	if err := service.AddTransaction(t3, "general", "out", -50); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestAddTransactionSuccess verifies a valid transaction is inserted
 func TestAddTransactionSuccess(t *testing.T) {
 
 	setupDB(t)
-	t1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	t1 := util.MakeDate(2025, 1, 1)
 
 	if err := service.AddTransaction(t1, "general", "test", 100); err != nil {
 		t.Fatalf("add transaction: %v", err)
@@ -45,44 +65,15 @@ func TestAddTransactionSuccess(t *testing.T) {
 	}
 }
 
-// TestAddTransactionBadDate verifies date parsing failures are returned
-func TestAddTransactionBadDate(t *testing.T) {
-
-	setupDB(t)
-
-	err := service.AddTransaction("bad-date", "general", "test", 100)
-	if !errors.Is(err, service.ErrInvalidDate) {
-		t.Fatalf("expected ErrInvalidDate, got %v", err)
-	}
-}
-
 // TestGetSnapshotSuccess verifies snapshot calculations over a window
 func TestGetSnapshotSuccess(t *testing.T) {
 
 	setupDB(t)
-	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t1 := time.Unix(start-1000, 0).Format(time.RFC3339)
-	t2 := time.Unix(start+1000, 0).Format(time.RFC3339)
-	t3 := time.Unix(start+2000, 0).UTC().Format(time.RFC3339)
-	end := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
+	start := util.MakeDate(2025, 1, 1)
+	end := util.MakeDate(2025, 2, 1)
+	seedTransactions(t, start)
 
-	// before window
-	if err := service.AddTransaction(t1, "general", "old", 100); err != nil {
-		t.Fatal(err)
-	}
-	// in window
-	if err := service.AddTransaction(t2, "general", "in", 200); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.AddTransaction(t3, "general", "out", -50); err != nil {
-		t.Fatal(err)
-	}
-
-	snap, err := service.GetSnapshot(
-		"general",
-		time.Unix(start, 0).UTC().Format("2006-01-02"),
-		time.Unix(end, 0).UTC().Format("2006-01-02"),
-	)
+	snap, err := service.GetSnapshot("general", start, end)
 	if err != nil {
 		t.Fatalf("GetSnapshot: %v", err)
 	}
@@ -100,34 +91,11 @@ func TestGetSnapshotSuccess(t *testing.T) {
 	}
 }
 
-// TestGetSnapshotBadDate ensures invalid dates return ErrInvalidDate
-func TestGetSnapshotBadDate(t *testing.T) {
-
-	setupDB(t)
-	_, err := service.GetSnapshot("general", "bad", "also-bad")
-	if !errors.Is(err, service.ErrInvalidDate) {
-		t.Fatalf("expected ErrInvalidDate, got %v", err)
-	}
-}
-
 // TestGetTransactionsSuccess verifies transaction listing
 func TestGetTransactionsSuccess(t *testing.T) {
 
 	setupDB(t)
-	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t1 := time.Unix(start-1000, 0).Format(time.RFC3339)
-	t2 := time.Unix(start+1000, 0).Format(time.RFC3339)
-	t3 := time.Unix(start+2000, 0).UTC().Format(time.RFC3339)
-
-	if err := service.AddTransaction(t1, "general", "old", 100); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.AddTransaction(t2, "general", "in", 200); err != nil {
-		t.Fatal(err)
-	}
-	if err := service.AddTransaction(t3, "general", "out", -50); err != nil {
-		t.Fatal(err)
-	}
+	seedTransactions(t, util.MakeDate(2025, 1, 1))
 
 	txs, err := service.GetTransactions("general", 10, 0)
 	if err != nil {

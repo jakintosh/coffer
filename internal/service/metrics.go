@@ -1,14 +1,10 @@
 package service
 
-import "errors"
-
 type MetricsStore interface {
 	GetSubscriptionSummary() (*SubscriptionSummary, error)
 }
 
 var metricsStore MetricsStore
-
-var errNoMetricsStore = errors.New("metrics store not configured")
 
 func SetMetricsStore(store MetricsStore) {
 	metricsStore = store
@@ -32,7 +28,7 @@ type SubscriptionSummary struct {
 func GetMetrics() (*Metrics, error) {
 
 	if metricsStore == nil {
-		return nil, DatabaseError{errNoMetricsStore}
+		return nil, ErrNoMetricsStore
 	}
 
 	sum, err := metricsStore.GetSubscriptionSummary()

@@ -7,9 +7,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Metrics is defined in the service package.
-
-func buildMetricsRouter(r *mux.Router) {
+func buildMetricsRouter(
+	r *mux.Router,
+) {
 	r.HandleFunc("", handleGetMetrics).Methods("GET")
 }
 
@@ -20,7 +20,7 @@ func handleGetMetrics(
 	metrics, err := service.GetMetrics()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Failed to generate summary")
-		return
+	} else {
+		writeData(w, http.StatusOK, metrics)
 	}
-	writeData(w, http.StatusOK, metrics)
 }

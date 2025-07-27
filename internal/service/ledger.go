@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"time"
 )
 
@@ -12,8 +11,6 @@ type LedgerStore interface {
 }
 
 var ledgerStore LedgerStore
-
-var errNoLedgerStore = errors.New("ledger store not configured")
 
 func SetLedgerStore(p LedgerStore) {
 	ledgerStore = p
@@ -35,26 +32,23 @@ type Transaction struct {
 }
 
 func AddTransaction(
-	dateStr string, // format: "2006-01-02T03:04:05Z"
-	ledger, label string,
+	date time.Time,
+	ledger string,
+	label string,
 	amount int,
 ) error {
 
 	if ledgerStore == nil {
-		return DatabaseError{errNoLedgerStore}
+		return ErrNoLedgerStore
 	}
 
-	date, err := time.Parse(time.RFC3339, dateStr)
-	if err != nil {
-		return ErrInvalidDate
-	}
-
-	if err := ledgerStore.InsertTransaction(
+	err := ledgerStore.InsertTransaction(
 		date.Unix(),
 		ledger,
 		label,
 		amount,
-	); err != nil {
+	)
+	if err != nil {
 		return DatabaseError{err}
 	}
 
@@ -63,37 +57,21 @@ func AddTransaction(
 
 func GetSnapshot(
 	ledger string,
-	sinceStr string, // format: "2006-01-02"
-	untilStr string, // format: "2006-01-02"
-) (*LedgerSnapshot, error) {
-
+	since time.Time,
+	until time.Time,
+) (
+	*LedgerSnapshot,
+	error,
+) {
 	if ledgerStore == nil {
-		return nil, DatabaseError{errNoLedgerStore}
+		return nil, ErrNoLedgerStore
 	}
 
-	// anonymous function for parsing date query strings
-	parseOr := func(queryStr string, fallback int64) (int64, error) {
-		if queryStr == "" {
-			return fallback, nil
-		}
-		if t, err := time.Parse("2006-01-02", queryStr); err != nil {
-			return 0, ErrInvalidDate
-		} else {
-			return t.Unix(), nil
-		}
-	}
-
-	since, err := parseOr(sinceStr, 0)
-	if err != nil {
-		return nil, ErrInvalidDate
-	}
-
-	until, err := parseOr(untilStr, time.Now().Unix())
-	if err != nil {
-		return nil, ErrInvalidDate
-	}
-
-	snapshot, err := ledgerStore.GetLedgerSnapshot(ledger, since, until)
+	snapshot, err := ledgerStore.GetLedgerSnapshot(
+		ledger,
+		since.Unix(),
+		until.Unix(),
+	)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
@@ -105,19 +83,26 @@ func GetTransactions(
 	ledger string,
 	limit int,
 	offset int,
-) ([]Transaction, error) {
-
+) (
+	[]Transaction,
+	error,
+) {
 	if ledgerStore == nil {
-		return nil, DatabaseError{errNoLedgerStore}
+		return nil, ErrNoLedgerStore
 	}
 
 	if limit <= 0 {
 		limit = 100
 	}
 
-	txs, err := ledgerStore.GetTransactions(ledger, limit, offset)
+	txs, err := ledgerStore.GetTransactions(
+		ledger,
+		limit,
+		offset,
+	)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
+
 	return txs, nil
 }

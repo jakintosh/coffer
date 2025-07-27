@@ -14,15 +14,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-/*
-Okay, what does this program do?
-
-It captures incoming events from the Strip API via a webhook, and then *does something* with that data. What does it do with that data? I guess it can make it available via API. This might be the best thing to do right now. Take in all the stripe data, and massage it into a specific "crowd funding API", and focus just on a publically accessible one for now. Later on we could add authenticated ones.
-
-So what needs to be in this API? Some simple overview numbers to start: total number of patrons, total monthly revenue. Perhaps there could be some notion of "goals"? That can be later on.
-
-Anyway, the main thing to do right now is to refactor this away from the static page generator it uses right now, and just expose a simple API. From there, I can do more.
-*/
 func main() {
 
 	// read all env vars
@@ -51,7 +42,10 @@ func main() {
 	log.Fatal(http.ListenAndServe(port, r))
 }
 
-func loadCredential(name string, credsDir string) string {
+func loadCredential(
+	name string,
+	credsDir string,
+) string {
 	credPath := filepath.Join(credsDir, name)
 	cred, err := os.ReadFile(credPath)
 	if err != nil {
@@ -60,7 +54,9 @@ func loadCredential(name string, credsDir string) string {
 	return string(cred)
 }
 
-func readEnvVar(name string) string {
+func readEnvVar(
+	name string,
+) string {
 	var present bool
 	str, present := os.LookupEnv(name)
 	if !present {

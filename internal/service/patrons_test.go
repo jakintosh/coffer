@@ -35,7 +35,7 @@ func seedCustomers(t *testing.T) {
 	if err := database.InsertCustomer("c3", ts-20, "three@example.com", "Three"); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond * 100)
+
 	if err := database.InsertCustomer("c2", ts-40, "two@example.org", "Two"); err != nil {
 		t.Fatal(err)
 	}

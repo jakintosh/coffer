@@ -6,14 +6,14 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-// MetricsStore implements service.MetricsStore using the global DB.
 type MetricsStore struct{}
 
-// NewMetricsStore returns a new MetricsStore.
 func NewMetricsStore() MetricsStore { return MetricsStore{} }
 
-// GetSubscriptionSummary implements service.MetricsStore.GetSubscriptionSummary.
-func (MetricsStore) GetSubscriptionSummary() (*service.SubscriptionSummary, error) {
+func (MetricsStore) GetSubscriptionSummary() (
+	*service.SubscriptionSummary,
+	error,
+) {
 	summary := &service.SubscriptionSummary{
 		Count: 0,
 		Total: 0,

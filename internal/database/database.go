@@ -69,12 +69,12 @@ func Init(path string) {
 		);
 		CREATE TABLE IF NOT EXISTS tx (
 			id INTEGER NOT NULL PRIMARY KEY,
-			created INTEGER,
+			created INTEGER NOT NULL,
 			updated INTEGER,
-			date INTEGER,
-			ledger TEXT,
+			date INTEGER NOT NULL,
+			ledger TEXT NOT NULL,
 			label TEXT,
-			amount INTEGER
+			amount INTEGER NOT NULL
 		);
 	`)
 	if err != nil {
