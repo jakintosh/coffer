@@ -2,9 +2,8 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
-
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 )
 
 // LedgerSnapshot represents the state of a ledger within a window.
@@ -22,6 +21,24 @@ type Transaction struct {
 	Ledger string
 	Label  string
 	Amount int
+}
+
+// LedgerDataProvider defines the database operations used by this
+// service package. Implementations provide the persistence layer for
+// ledger data.
+type LedgerDataProvider interface {
+	InsertTransaction(date int64, ledger, label string, amount int) error
+	QueryLedgerSnapshot(ledger string, since, until int64) (opening, incoming, outgoing int, err error)
+	QueryTransactions(ledger string, limit, offset int) ([]Transaction, error)
+}
+
+var ledgerDataProvider LedgerDataProvider
+
+var errNoProvider = errors.New("ledger data provider not configured")
+
+// SetLedgerDataProvider injects the provider used by ledger functions.
+func SetLedgerDataProvider(p LedgerDataProvider) {
+	ledgerDataProvider = p
 }
 
 func (t Transaction) MarshalJSON() ([]byte, error) {
@@ -66,7 +83,11 @@ func AddTransaction(
 		return ErrInvalidDate
 	}
 
-	if err := database.InsertTransaction(
+	if ledgerDataProvider == nil {
+		return DatabaseError{errNoProvider}
+	}
+
+	if err := ledgerDataProvider.InsertTransaction(
 		date.Unix(),
 		ledger,
 		label,
@@ -106,7 +127,11 @@ func GetSnapshot(
 		return nil, ErrInvalidDate
 	}
 
-	opening, incoming, outgoing, err := database.QueryLedgerSnapshot(ledger, since, until)
+	if ledgerDataProvider == nil {
+		return nil, DatabaseError{errNoProvider}
+	}
+
+	opening, incoming, outgoing, err := ledgerDataProvider.QueryLedgerSnapshot(ledger, since, until)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
@@ -133,20 +158,13 @@ func GetTransactions(
 		limit = 100
 	}
 
-	rows, err := database.QueryTransactions(ledger, limit, offset)
-	if err != nil {
-		return nil, DatabaseError{err}
+	if ledgerDataProvider == nil {
+		return nil, DatabaseError{errNoProvider}
 	}
 
-	var txs []Transaction
-	for _, tx := range rows {
-		txs = append(txs, Transaction{
-			ID:     tx.ID,
-			Date:   time.Unix(tx.Date, 0),
-			Ledger: tx.Ledger,
-			Label:  tx.Label,
-			Amount: tx.Amount,
-		})
+	txs, err := ledgerDataProvider.QueryTransactions(ledger, limit, offset)
+	if err != nil {
+		return nil, DatabaseError{err}
 	}
 	return txs, nil
 }
