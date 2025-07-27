@@ -18,7 +18,6 @@ func handleListPatrons(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-
 	// TODO: validate Authorization header
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))

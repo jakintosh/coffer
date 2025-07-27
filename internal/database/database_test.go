@@ -1,9 +1,11 @@
-package database
+package database_test
 
 import (
 	"os"
 	"testing"
 	"time"
+
+	"git.sr.ht/~jakintosh/coffer/internal/database"
 )
 
 func setupDb(t *testing.T) {
@@ -12,7 +14,7 @@ func setupDb(t *testing.T) {
 	os.Remove("test.db-shm")
 	os.Remove("test.db-wal")
 
-	Init("test.db")
+	database.Init("test.db")
 
 	t.Cleanup(func() {
 		os.Remove("test.db")
@@ -24,9 +26,10 @@ func setupDb(t *testing.T) {
 func TestQuerySubscriptionSummary(t *testing.T) {
 
 	setupDb(t)
+	metricsStore := database.NewMetricsStore()
 
 	// no data → zero
-	sum, err := QuerySubscriptionSummary()
+	sum, err := metricsStore.GetSubscriptionSummary()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,10 +38,10 @@ func TestQuerySubscriptionSummary(t *testing.T) {
 	}
 
 	// insert one active USD subscription @ $5.00
-	if err := InsertSubscription("s1", time.Now().Unix(), "c1", "active", 500, "usd"); err != nil {
+	if err := database.InsertSubscription("s1", time.Now().Unix(), "c1", "active", 500, "usd"); err != nil {
 		t.Fatal(err)
 	}
-	sum, err = QuerySubscriptionSummary()
+	sum, err = metricsStore.GetSubscriptionSummary()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,23 +58,23 @@ func TestFundSnapshotAndTransactions(t *testing.T) {
 	now := time.Now().Unix()
 	past := now - 86400
 
-	store := NewLedgerStore()
+	ledgerStore := database.NewLedgerStore()
 
 	// before window
-	if err := store.InsertTransaction(past-10, "general", "old", 100); err != nil {
+	if err := ledgerStore.InsertTransaction(past-10, "general", "old", 100); err != nil {
 		t.Fatal(err)
 	}
 
 	// in window: +200 & -50
-	if err := store.InsertTransaction(past+5, "general", "in", 200); err != nil {
+	if err := ledgerStore.InsertTransaction(past+5, "general", "in", 200); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.InsertTransaction(past+10, "general", "out", -50); err != nil {
+	if err := ledgerStore.InsertTransaction(past+10, "general", "out", -50); err != nil {
 		t.Fatal(err)
 	}
 
 	// snapshot from-past to now
-	snapshot, err := store.QueryLedgerSnapshot("general", past, now)
+	snapshot, err := ledgerStore.GetLedgerSnapshot("general", past, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +89,7 @@ func TestFundSnapshotAndTransactions(t *testing.T) {
 	}
 
 	// list transactions
-	rows, err := store.QueryTransactions("general", 10, 0)
+	rows, err := ledgerStore.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

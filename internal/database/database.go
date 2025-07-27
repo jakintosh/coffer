@@ -11,6 +11,15 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
+// DBCustomer represents a raw customer row from the database.
+type DBCustomer struct {
+	ID      string
+	Email   string
+	Name    string
+	Created int64
+	Updated sql.NullInt64
+}
+
 // DBTransaction is the raw row from tx.
 type DBTransaction struct {
 	ID      int64
@@ -20,12 +29,6 @@ type DBTransaction struct {
 	Ledger  string
 	Label   string
 	Amount  int
-}
-
-type SubscriptionSummary struct {
-	Count int
-	Total int
-	Tiers map[int]int
 }
 
 var db *sql.DB
@@ -119,68 +122,6 @@ func Init(path string) {
 	if err != nil {
 		log.Fatalf("could not initialize tables: %v", err)
 	}
-}
-
-func QuerySubscriptionSummary() (*SubscriptionSummary, error) {
-
-	summary := &SubscriptionSummary{
-		Count: 0,
-		Total: 0,
-		Tiers: map[int]int{},
-	}
-
-	// query summary info
-	row := db.QueryRow(`
-		SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
-		FROM subscription
-		WHERE status='active'
-		AND currency='usd';`,
-	)
-
-	// scan summary rows
-	if err := row.Scan(&summary.Count, &summary.Total); err != nil {
-		return nil, fmt.Errorf("failed to scan row of summary statement: %w", err)
-	}
-
-	// adjust for cents
-	summary.Total /= 100
-
-	// query tier info
-	rows, err := db.Query(`
-		SELECT amount, COUNT(*) as count
-		FROM subscription
-		WHERE status='active'
-		AND currency='usd'
-		GROUP BY amount;`,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query tier_statement: %w", err)
-	}
-
-	// scan tier rows
-	for rows.Next() {
-		var (
-			amount int
-			count  int
-		)
-		err := rows.Scan(&amount, &count)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan row of tier statement: %v", err)
-		}
-		summary.Tiers[(amount / 100)] = count
-	}
-
-	return summary, nil
-}
-
-// QuerySubscriptionSummary implements service.MetricsStore.QuerySubscriptionSummary.
-func (MetricsStore) QuerySubscriptionSummary() (*service.SubscriptionSummary, error) {
-	sum, err := QuerySubscriptionSummary()
-	if err != nil {
-		return nil, err
-	}
-	out := &service.SubscriptionSummary{Count: sum.Count, Total: sum.Total, Tiers: sum.Tiers}
-	return out, nil
 }
 
 func InsertCustomer(
@@ -277,49 +218,78 @@ func InsertPayout(
 	return err
 }
 
-// DBCustomer represents a raw customer row from the database.
-type DBCustomer struct {
-	ID      string
-	Email   string
-	Name    string
-	Created int64
-	Updated sql.NullInt64
+// GetSubscriptionSummary implements service.MetricsStore.GetSubscriptionSummary.
+func (MetricsStore) GetSubscriptionSummary() (*service.SubscriptionSummary, error) {
+
+	summary := &service.SubscriptionSummary{
+		Count: 0,
+		Total: 0,
+		Tiers: map[int]int{},
+	}
+
+	row := db.QueryRow(`
+		SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+		FROM subscription
+		WHERE status='active'
+		AND currency='usd';`)
+	if err := row.Scan(&summary.Count, &summary.Total); err != nil {
+		return nil, fmt.Errorf("failed to scan row of summary statement: %w", err)
+	}
+	summary.Total /= 100
+
+	rows, err := db.Query(`
+		SELECT amount, COUNT(*) as count
+		FROM subscription
+		WHERE status='active'
+		AND currency='usd'
+		GROUP BY amount;`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tier_statement: %w", err)
+	}
+
+	for rows.Next() {
+		var (
+			amount int
+			count  int
+		)
+		err := rows.Scan(&amount, &count)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row of tier statement: %v", err)
+		}
+		summary.Tiers[(amount / 100)] = count
+	}
+
+	return summary, nil
 }
 
-// QueryCustomers returns a page of customers sorted by most recently updated.
-func QueryCustomers(limit, offset int) ([]DBCustomer, error) {
+// GetCustomers returns a page of customers sorted by most recently updated.
+func (PatronStore) GetCustomers(limit, offset int) ([]service.Patron, error) {
+
 	rows, err := db.Query(`
-                SELECT id, email, name, created, updated
-                FROM customer
-                ORDER BY COALESCE(updated, created) DESC
-                LIMIT ?1 OFFSET ?2;`,
+		    SELECT id, email, name, created, updated
+		    FROM customer
+		    ORDER BY COALESCE(updated, created) DESC
+		    LIMIT ?1 OFFSET ?2;`,
 		limit,
 		offset,
 	)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var out []DBCustomer
+	defer rows.Close()
+	var patrons []service.Patron
 	for rows.Next() {
 		var c DBCustomer
-		if err := rows.Scan(&c.ID, &c.Email, &c.Name, &c.Created, &c.Updated); err != nil {
+		if err := rows.Scan(
+			&c.ID,
+			&c.Email,
+			&c.Name,
+			&c.Created,
+			&c.Updated,
+		); err != nil {
 			return nil, err
 		}
-		out = append(out, c)
-	}
-	return out, nil
-}
-
-// QueryCustomers implements service.PatronStore.QueryCustomers.
-func (PatronStore) QueryCustomers(limit, offset int) ([]service.Patron, error) {
-	rows, err := QueryCustomers(limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	var patrons []service.Patron
-	for _, c := range rows {
 		updated := c.Created
 		if c.Updated.Valid {
 			updated = c.Updated.Int64
@@ -349,15 +319,21 @@ func (LedgerStore) InsertTransaction(
 				amount=excluded.amount,
 				date=excluded.date,
 				ledger=excluded.ledger,
-				label=excluded.label;`, date, amount, ledger, label)
+				label=excluded.label;`,
+		date,
+		amount,
+		ledger,
+		label,
+	)
 	return err
 }
 
-// QueryLedgerSnapshot returns aggregate balances for a ledger.
-func (LedgerStore) QueryLedgerSnapshot(
+// GetLedgerSnapshot returns aggregate balances for a ledger.
+func (LedgerStore) GetLedgerSnapshot(
 	ledger string,
 	since, until int64,
 ) (*service.LedgerSnapshot, error) {
+
 	var (
 		opening  int
 		incoming int
@@ -399,19 +375,23 @@ func (LedgerStore) QueryLedgerSnapshot(
 	return snapshot, nil
 }
 
-// QueryTransactions returns normalized Transactions from the ledger.
-func (LedgerStore) QueryTransactions(
+// GetTransactions returns normalized Transactions from the ledger.
+func (LedgerStore) GetTransactions(
 	ledger string,
 	limit, offset int,
 ) ([]service.Transaction, error) {
 
 	rows, err := db.Query(`
-		SELECT id, date, ledger, label, amount, created, updated
+		SELECT id, date, ledger, label, amount
 		FROM tx
 		WHERE ledger=?1
 		ORDER BY date DESC
 		LIMIT ?2 OFFSET ?3;
-		`, ledger, limit, offset)
+		`,
+		ledger,
+		limit,
+		offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -426,8 +406,6 @@ func (LedgerStore) QueryTransactions(
 			&tx.Ledger,
 			&tx.Label,
 			&tx.Amount,
-			&tx.Created,
-			&tx.Updated,
 		); err != nil {
 			return nil, err
 		}

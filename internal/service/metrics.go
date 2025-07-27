@@ -2,19 +2,18 @@ package service
 
 import "errors"
 
-// MetricsStore defines required methods for metrics operations.
 type MetricsStore interface {
-	QuerySubscriptionSummary() (*SubscriptionSummary, error)
+	GetSubscriptionSummary() (*SubscriptionSummary, error)
 }
 
 var metricsStore MetricsStore
 
 var errNoMetricsStore = errors.New("metrics store not configured")
 
-// SetMetricsStore configures the MetricsStore implementation.
-func SetMetricsStore(s MetricsStore) { metricsStore = s }
+func SetMetricsStore(store MetricsStore) {
+	metricsStore = store
+}
 
-// Metrics holds the metrics for the public dashboard.
 type Metrics struct {
 	PatronsActive             int     `json:"patrons_active"`
 	MRRCents                  int     `json:"mrr_cents"`
@@ -24,20 +23,19 @@ type Metrics struct {
 	GeneralFundBalanceCents   int     `json:"general_fund_balance_cents"`
 }
 
-// SubscriptionSummary is a summary of active subscriptions.
 type SubscriptionSummary struct {
 	Count int
 	Total int
 	Tiers map[int]int
 }
 
-// GetMetrics gathers and calculates dashboard metrics.
 func GetMetrics() (*Metrics, error) {
+
 	if metricsStore == nil {
 		return nil, DatabaseError{errNoMetricsStore}
 	}
 
-	sum, err := metricsStore.QuerySubscriptionSummary()
+	sum, err := metricsStore.GetSubscriptionSummary()
 	if err != nil {
 		return nil, DatabaseError{err}
 	}

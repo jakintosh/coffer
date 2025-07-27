@@ -7,16 +7,16 @@ import (
 
 type LedgerStore interface {
 	InsertTransaction(date int64, ledger, label string, amount int) error
-	QueryLedgerSnapshot(ledger string, since, until int64) (*LedgerSnapshot, error)
-	QueryTransactions(ledger string, limit, offset int) ([]Transaction, error)
+	GetLedgerSnapshot(ledger string, since, until int64) (*LedgerSnapshot, error)
+	GetTransactions(ledger string, limit, offset int) ([]Transaction, error)
 }
 
-var store LedgerStore
+var ledgerStore LedgerStore
 
 var errNoLedgerStore = errors.New("ledger store not configured")
 
 func SetLedgerStore(p LedgerStore) {
-	store = p
+	ledgerStore = p
 }
 
 type LedgerSnapshot struct {
@@ -40,7 +40,7 @@ func AddTransaction(
 	amount int,
 ) error {
 
-	if store == nil {
+	if ledgerStore == nil {
 		return DatabaseError{errNoLedgerStore}
 	}
 
@@ -49,7 +49,7 @@ func AddTransaction(
 		return ErrInvalidDate
 	}
 
-	if err := store.InsertTransaction(
+	if err := ledgerStore.InsertTransaction(
 		date.Unix(),
 		ledger,
 		label,
@@ -67,7 +67,7 @@ func GetSnapshot(
 	untilStr string, // format: "2006-01-02"
 ) (*LedgerSnapshot, error) {
 
-	if store == nil {
+	if ledgerStore == nil {
 		return nil, DatabaseError{errNoLedgerStore}
 	}
 
@@ -93,7 +93,7 @@ func GetSnapshot(
 		return nil, ErrInvalidDate
 	}
 
-	snapshot, err := store.QueryLedgerSnapshot(ledger, since, until)
+	snapshot, err := ledgerStore.GetLedgerSnapshot(ledger, since, until)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
@@ -107,7 +107,7 @@ func GetTransactions(
 	offset int,
 ) ([]Transaction, error) {
 
-	if store == nil {
+	if ledgerStore == nil {
 		return nil, DatabaseError{errNoLedgerStore}
 	}
 
@@ -115,7 +115,7 @@ func GetTransactions(
 		limit = 100
 	}
 
-	txs, err := store.QueryTransactions(ledger, limit, offset)
+	txs, err := ledgerStore.GetTransactions(ledger, limit, offset)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
