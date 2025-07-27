@@ -7,16 +7,18 @@ import (
 )
 
 func setupDb(t *testing.T) {
+
 	os.Remove("test.db")
 	os.Remove("test.db-shm")
 	os.Remove("test.db-wal")
+
 	Init("test.db")
+
 	t.Cleanup(func() {
 		os.Remove("test.db")
 		os.Remove("test.db-shm")
 		os.Remove("test.db-wal")
 	})
-
 }
 
 func TestQuerySubscriptionSummary(t *testing.T) {
@@ -53,36 +55,38 @@ func TestFundSnapshotAndTransactions(t *testing.T) {
 	now := time.Now().Unix()
 	past := now - 86400
 
+	store := NewLedgerStore()
+
 	// before window
-	if err := InsertTransaction(past-10, "general", "old", 100); err != nil {
+	if err := store.InsertTransaction(past-10, "general", "old", 100); err != nil {
 		t.Fatal(err)
 	}
 
 	// in window: +200 & -50
-	if err := InsertTransaction(past+5, "general", "in", 200); err != nil {
+	if err := store.InsertTransaction(past+5, "general", "in", 200); err != nil {
 		t.Fatal(err)
 	}
-	if err := InsertTransaction(past+10, "general", "out", -50); err != nil {
+	if err := store.InsertTransaction(past+10, "general", "out", -50); err != nil {
 		t.Fatal(err)
 	}
 
 	// snapshot from-past to now
-	opening, incoming, outgoing, err := QueryLedgerSnapshot("general", past, now)
+	snapshot, err := store.QueryLedgerSnapshot("general", past, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if opening != 100 {
-		t.Errorf("opening: want 100, got %d", opening)
+	if snapshot.OpeningBalance != 100 {
+		t.Errorf("opening: want 100, got %d", snapshot.OpeningBalance)
 	}
-	if incoming != 200 {
-		t.Errorf("incoming: want 200, got %d", incoming)
+	if snapshot.IncomingFunds != 200 {
+		t.Errorf("incoming: want 200, got %d", snapshot.IncomingFunds)
 	}
-	if outgoing != -50 {
-		t.Errorf("outgoing: want -50, got %d", outgoing)
+	if snapshot.OutgoingFunds != -50 {
+		t.Errorf("outgoing: want -50, got %d", snapshot.OutgoingFunds)
 	}
 
 	// list transactions
-	rows, err := QueryTransactions("general", 10, 0)
+	rows, err := store.QueryTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

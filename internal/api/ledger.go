@@ -88,7 +88,7 @@ func handlePostLedgerTransaction(
 		return
 	}
 
-	err := service.AddTransaction(ledger, req.Date, req.Label, req.Amount)
+	err := service.AddTransaction(req.Date, ledger, req.Label, req.Amount)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidDate):

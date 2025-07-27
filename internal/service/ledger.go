@@ -1,93 +1,55 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"time"
 )
 
-// LedgerSnapshot represents the state of a ledger within a window.
-type LedgerSnapshot struct {
-	OpeningBalance int
-	IncomingFunds  int
-	OutgoingFunds  int
-	ClosingBalance int
-}
-
-// Transaction is a normalized representation of a ledger transaction.
-type Transaction struct {
-	ID     int64
-	Date   time.Time
-	Ledger string
-	Label  string
-	Amount int
-}
-
-// LedgerDataProvider defines the database operations used by this
-// service package. Implementations provide the persistence layer for
-// ledger data.
-type LedgerDataProvider interface {
+type LedgerStore interface {
 	InsertTransaction(date int64, ledger, label string, amount int) error
-	QueryLedgerSnapshot(ledger string, since, until int64) (opening, incoming, outgoing int, err error)
+	QueryLedgerSnapshot(ledger string, since, until int64) (*LedgerSnapshot, error)
 	QueryTransactions(ledger string, limit, offset int) ([]Transaction, error)
 }
 
-var ledgerDataProvider LedgerDataProvider
+var store LedgerStore
 
-var errNoProvider = errors.New("ledger data provider not configured")
+var errNoLedgerStore = errors.New("ledger store not configured")
 
-// SetLedgerDataProvider injects the provider used by ledger functions.
-func SetLedgerDataProvider(p LedgerDataProvider) {
-	ledgerDataProvider = p
+func SetLedgerStore(p LedgerStore) {
+	store = p
 }
 
-func (t Transaction) MarshalJSON() ([]byte, error) {
-	type Alias Transaction // Create an alias to avoid recursion
-
-	return json.Marshal(&struct {
-		Date string `json:"date"`
-		*Alias
-	}{
-		Date:  t.Date.Format(time.RFC3339),
-		Alias: (*Alias)(&t),
-	})
+type LedgerSnapshot struct {
+	OpeningBalance int `json:"opening_balance"`
+	IncomingFunds  int `json:"incoming_funds"`
+	OutgoingFunds  int `json:"outgoing_funds"`
+	ClosingBalance int `json:"closing_balance"`
 }
 
-func (t *Transaction) UnmarshalJSON(data []byte) error {
-	type Alias Transaction
-	aux := &struct {
-		Date string `json:"date"`
-		*Alias
-	}{
-		Alias: (*Alias)(t),
-	}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-	parsed, err := time.Parse(time.RFC3339, aux.Date)
-	if err != nil {
-		return err
-	}
-	t.Date = parsed
-	return nil
+type Transaction struct {
+	ID     int64     `json:"id"`
+	Date   time.Time `json:"date"`
+	Ledger string    `json:"ledger"`
+	Label  string    `json:"label"`
+	Amount int       `json:"amount"`
 }
 
 func AddTransaction(
-	ledger string,
-	dateStr string,
-	label string,
+	dateStr string, // format: "2006-01-02T03:04:05Z"
+	ledger, label string,
 	amount int,
 ) error {
+
+	if store == nil {
+		return DatabaseError{errNoLedgerStore}
+	}
+
 	date, err := time.Parse(time.RFC3339, dateStr)
 	if err != nil {
 		return ErrInvalidDate
 	}
 
-	if ledgerDataProvider == nil {
-		return DatabaseError{errNoProvider}
-	}
-
-	if err := ledgerDataProvider.InsertTransaction(
+	if err := store.InsertTransaction(
 		date.Unix(),
 		ledger,
 		label,
@@ -104,6 +66,10 @@ func GetSnapshot(
 	sinceStr string, // format: "2006-01-02"
 	untilStr string, // format: "2006-01-02"
 ) (*LedgerSnapshot, error) {
+
+	if store == nil {
+		return nil, DatabaseError{errNoLedgerStore}
+	}
 
 	// anonymous function for parsing date query strings
 	parseOr := func(queryStr string, fallback int64) (int64, error) {
@@ -127,42 +93,29 @@ func GetSnapshot(
 		return nil, ErrInvalidDate
 	}
 
-	if ledgerDataProvider == nil {
-		return nil, DatabaseError{errNoProvider}
-	}
-
-	opening, incoming, outgoing, err := ledgerDataProvider.QueryLedgerSnapshot(ledger, since, until)
+	snapshot, err := store.QueryLedgerSnapshot(ledger, since, until)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
 
-	snapshot := &LedgerSnapshot{
-		OpeningBalance: opening,
-		IncomingFunds:  incoming,
-		OutgoingFunds:  outgoing,
-		ClosingBalance: opening + incoming + outgoing,
-	}
 	return snapshot, nil
 }
 
-// GetTransactions returns a page of Transactions for the specified ledger.
-// Limit values less than or equal to zero default to 100.
-// Database errors are wrapped in a DatabaseError.
 func GetTransactions(
 	ledger string,
 	limit int,
 	offset int,
 ) ([]Transaction, error) {
 
+	if store == nil {
+		return nil, DatabaseError{errNoLedgerStore}
+	}
+
 	if limit <= 0 {
 		limit = 100
 	}
 
-	if ledgerDataProvider == nil {
-		return nil, DatabaseError{errNoProvider}
-	}
-
-	txs, err := ledgerDataProvider.QueryTransactions(ledger, limit, offset)
+	txs, err := store.QueryTransactions(ledger, limit, offset)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}

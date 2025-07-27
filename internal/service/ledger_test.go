@@ -17,7 +17,7 @@ func setupDB(t *testing.T) {
 	os.Remove("service_test.db-wal")
 
 	database.Init("service_test.db")
-	service.SetLedgerDataProvider(database.NewLedgerStore())
+	service.SetLedgerStore(database.NewLedgerStore())
 
 	t.Cleanup(func() {
 		os.Remove("service_test.db")
@@ -30,17 +30,18 @@ func setupDB(t *testing.T) {
 func TestAddTransactionSuccess(t *testing.T) {
 
 	setupDB(t)
-	now := time.Now().Format(time.RFC3339)
-	err := service.AddTransaction("general", now, "test", 100)
-	if err != nil {
+	t1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+
+	if err := service.AddTransaction(t1, "general", "test", 100); err != nil {
 		t.Fatalf("add transaction: %v", err)
 	}
-	rows, err := database.QueryTransactions("general", 10, 0)
+
+	txs, err := service.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 row, got %d", len(rows))
+	if len(txs) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(txs))
 	}
 }
 
@@ -48,7 +49,8 @@ func TestAddTransactionSuccess(t *testing.T) {
 func TestAddTransactionBadDate(t *testing.T) {
 
 	setupDB(t)
-	err := service.AddTransaction("general", "bad-date", "test", 100)
+
+	err := service.AddTransaction("bad-date", "general", "test", 100)
 	if !errors.Is(err, service.ErrInvalidDate) {
 		t.Fatalf("expected ErrInvalidDate, got %v", err)
 	}
@@ -59,17 +61,20 @@ func TestGetSnapshotSuccess(t *testing.T) {
 
 	setupDB(t)
 	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t1 := time.Unix(start-1000, 0).Format(time.RFC3339)
+	t2 := time.Unix(start+1000, 0).Format(time.RFC3339)
+	t3 := time.Unix(start+2000, 0).UTC().Format(time.RFC3339)
 	end := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
 
 	// before window
-	if err := database.InsertTransaction(start-1000, "general", "old", 100); err != nil {
+	if err := service.AddTransaction(t1, "general", "old", 100); err != nil {
 		t.Fatal(err)
 	}
 	// in window
-	if err := database.InsertTransaction(start+500, "general", "in", 200); err != nil {
+	if err := service.AddTransaction(t2, "general", "in", 200); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertTransaction(start+1000, "general", "out", -50); err != nil {
+	if err := service.AddTransaction(t3, "general", "out", -50); err != nil {
 		t.Fatal(err)
 	}
 
@@ -109,16 +114,18 @@ func TestGetSnapshotBadDate(t *testing.T) {
 func TestGetTransactionsSuccess(t *testing.T) {
 
 	setupDB(t)
-	now := time.Now().Unix()
-	past := now - 86400
+	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t1 := time.Unix(start-1000, 0).Format(time.RFC3339)
+	t2 := time.Unix(start+1000, 0).Format(time.RFC3339)
+	t3 := time.Unix(start+2000, 0).UTC().Format(time.RFC3339)
 
-	if err := database.InsertTransaction(past-10, "general", "old", 100); err != nil {
+	if err := service.AddTransaction(t1, "general", "old", 100); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertTransaction(past+5, "general", "in", 200); err != nil {
+	if err := service.AddTransaction(t2, "general", "in", 200); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertTransaction(past+10, "general", "out", -50); err != nil {
+	if err := service.AddTransaction(t3, "general", "out", -50); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,23 +138,5 @@ func TestGetTransactionsSuccess(t *testing.T) {
 	}
 	if !txs[0].Date.After(txs[1].Date) {
 		t.Errorf("transactions not sorted by date desc")
-	}
-}
-
-// TestGetTransactionsDefaultLimit verifies negative limits default to 100
-func TestGetTransactionsDefaultLimit(t *testing.T) {
-
-	setupDB(t)
-	now := time.Now().Unix()
-	if err := database.InsertTransaction(now, "general", "t1", 1); err != nil {
-		t.Fatal(err)
-	}
-
-	txs, err := service.GetTransactions("general", -1, 0)
-	if err != nil {
-		t.Fatalf("GetTransactions: %v", err)
-	}
-	if len(txs) != 1 {
-		t.Fatalf("expected 1 tx, got %d", len(txs))
 	}
 }

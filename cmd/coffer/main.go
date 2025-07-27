@@ -36,7 +36,7 @@ func main() {
 
 	// init modules
 	database.Init(dbPath)
-	service.SetLedgerDataProvider(database.NewLedgerStore())
+	service.SetLedgerStore(database.NewLedgerStore())
 	stripe.Init(stripeKey, endpointSecret)
 
 	// config routing

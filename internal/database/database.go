@@ -255,125 +255,6 @@ func InsertPayout(
 	return err
 }
 
-func InsertTransaction(
-	date int64,
-	ledger string,
-	label string,
-	amount int,
-) error {
-
-	_, err := db.Exec(`
-		INSERT INTO tx (created, date, amount, ledger, label)
-		VALUES(unixepoch(), ?1, ?2, ?3, ?4)
-		ON CONFLICT(id) DO UPDATE
-			SET updated=unixepoch(),
-				amount=excluded.amount,
-				date=excluded.date,
-				ledger=excluded.ledger,
-				label=excluded.label;`,
-		date,
-		amount,
-		ledger,
-		label,
-	)
-	return err
-}
-
-// DBLedgerSnapshot is the opening/incoming/outgoing/closing for a given ledger.
-type DBLedgerSnapshot struct {
-	OpeningBalance int // cents before since
-	Incoming       int // cents ≥ since, amount>0
-	Outgoing       int // cents ≥ since, amount<0
-	ClosingBalance int // opening + incoming + outgoing
-}
-
-func QueryLedgerSnapshot(
-	ledger string,
-	since int64,
-	until int64,
-) (
-	opening int,
-	incoming int,
-	outgoing int,
-	err error,
-) {
-
-	// Opening balance: sum of all amounts before 'since'
-	row := db.QueryRow(`
-        SELECT COALESCE(SUM(amount),0)
-        FROM tx
-        WHERE ledger=?1 AND date<?2;
-    `, ledger, since)
-	if err := row.Scan(&opening); err != nil {
-		err = fmt.Errorf("query opening balance: %w", err)
-	}
-
-	// Incoming funds: positive amounts within [since, until]
-	row = db.QueryRow(`
-        SELECT COALESCE(SUM(amount),0)
-        FROM tx
-        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount>0;
-    `, ledger, since, until)
-	if err = row.Scan(&incoming); err != nil {
-		err = fmt.Errorf("query incoming funds: %w", err)
-		return
-	}
-
-	// Outgoing funds: negative amounts within [since, until]
-	row = db.QueryRow(`
-        SELECT COALESCE(SUM(amount),0)
-        FROM tx
-        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount<0;
-    `, ledger, since, until)
-	if err = row.Scan(&outgoing); err != nil {
-		err = fmt.Errorf("query outgoing funds: %w", err)
-		return
-	}
-
-	return
-}
-
-// QueryTransactions returns a page of tx rows.
-func QueryTransactions(
-	ledger string,
-	limit int,
-	offset int,
-) ([]DBTransaction, error) {
-	rows, err := db.Query(`
-		SELECT id, date, ledger, label, amount, created, updated
-		FROM tx
-		WHERE ledger=?1
-		ORDER BY date DESC
-		LIMIT ?2 OFFSET ?3;
-		`,
-		ledger,
-		limit,
-		offset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []DBTransaction
-	for rows.Next() {
-		var t DBTransaction
-		if err := rows.Scan(
-			&t.ID,
-			&t.Date,
-			&t.Ledger,
-			&t.Label,
-			&t.Amount,
-			&t.Created,
-			&t.Updated,
-		); err != nil {
-			return nil, err
-		}
-		out = append(out, t)
-	}
-	return out, nil
-}
-
 // DBCustomer represents a raw customer row from the database.
 type DBCustomer struct {
 	ID      string
@@ -410,23 +291,101 @@ func QueryCustomers(limit, offset int) ([]DBCustomer, error) {
 }
 
 // InsertTransaction inserts or updates a ledger transaction.
-func (LedgerStore) InsertTransaction(date int64, ledger, label string, amount int) error {
-	return InsertTransaction(date, ledger, label, amount)
+func (LedgerStore) InsertTransaction(
+	date int64,
+	ledger, label string,
+	amount int,
+) error {
+	_, err := db.Exec(`
+		INSERT INTO tx (created, date, amount, ledger, label)
+		VALUES(unixepoch(), ?1, ?2, ?3, ?4)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=unixepoch(),
+				amount=excluded.amount,
+				date=excluded.date,
+				ledger=excluded.ledger,
+				label=excluded.label;`, date, amount, ledger, label)
+	return err
 }
 
 // QueryLedgerSnapshot returns aggregate balances for a ledger.
-func (LedgerStore) QueryLedgerSnapshot(ledger string, since, until int64) (int, int, int, error) {
-	return QueryLedgerSnapshot(ledger, since, until)
+func (LedgerStore) QueryLedgerSnapshot(
+	ledger string,
+	since, until int64,
+) (*service.LedgerSnapshot, error) {
+	var (
+		opening  int
+		incoming int
+		outgoing int
+	)
+	row := db.QueryRow(`
+        SELECT COALESCE(SUM(amount),0)
+        FROM tx
+        WHERE ledger=?1 AND date<?2;
+    `, ledger, since)
+	if err := row.Scan(&opening); err != nil {
+		return nil, fmt.Errorf("query opening balance: %w", err)
+	}
+
+	row = db.QueryRow(`
+        SELECT COALESCE(SUM(amount),0)
+        FROM tx
+        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount>0;
+    `, ledger, since, until)
+	if err := row.Scan(&incoming); err != nil {
+		return nil, fmt.Errorf("query incoming funds: %w", err)
+	}
+
+	row = db.QueryRow(`
+        SELECT COALESCE(SUM(amount),0)
+        FROM tx
+        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount<0;
+    `, ledger, since, until)
+	if err := row.Scan(&outgoing); err != nil {
+		return nil, fmt.Errorf("query outgoing funds: %w", err)
+	}
+
+	snapshot := &service.LedgerSnapshot{
+		OpeningBalance: opening,
+		IncomingFunds:  incoming,
+		OutgoingFunds:  outgoing,
+		ClosingBalance: opening + incoming + outgoing,
+	}
+	return snapshot, nil
 }
 
 // QueryTransactions returns normalized Transactions from the ledger.
-func (LedgerStore) QueryTransactions(ledger string, limit, offset int) ([]service.Transaction, error) {
-	rows, err := QueryTransactions(ledger, limit, offset)
+func (LedgerStore) QueryTransactions(
+	ledger string,
+	limit, offset int,
+) ([]service.Transaction, error) {
+
+	rows, err := db.Query(`
+		SELECT id, date, ledger, label, amount, created, updated
+		FROM tx
+		WHERE ledger=?1
+		ORDER BY date DESC
+		LIMIT ?2 OFFSET ?3;
+		`, ledger, limit, offset)
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 	var txs []service.Transaction
-	for _, tx := range rows {
+	for rows.Next() {
+		var tx DBTransaction
+		if err := rows.Scan(
+			&tx.ID,
+			&tx.Date,
+			&tx.Ledger,
+			&tx.Label,
+			&tx.Amount,
+			&tx.Created,
+			&tx.Updated,
+		); err != nil {
+			return nil, err
+		}
 		txs = append(txs, service.Transaction{
 			ID:     tx.ID,
 			Date:   time.Unix(tx.Date, 0),

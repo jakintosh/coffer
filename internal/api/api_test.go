@@ -22,7 +22,7 @@ func setupDB(t *testing.T) {
 	os.Remove("api-test.db-wal")
 
 	database.Init("api-test.db")
-	service.SetLedgerDataProvider(database.NewLedgerStore())
+	service.SetLedgerStore(database.NewLedgerStore())
 
 	t.Cleanup(func() {
 		os.Remove("api-test.db")
@@ -57,17 +57,17 @@ func seedSubscriberData(t *testing.T) {
 
 func seedSnapshotData(t *testing.T) {
 
-	t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t3 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
+	t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	t2 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	t3 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 
-	if err := database.InsertTransaction(t1, "general", "base", 100); err != nil {
+	if err := service.AddTransaction(t1, "general", "base", 100); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertTransaction(t2, "general", "extra", 100); err != nil {
+	if err := service.AddTransaction(t2, "general", "extra", 100); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertTransaction(t3, "general", "base", -50); err != nil {
+	if err := service.AddTransaction(t3, "general", "base", -50); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -120,6 +120,13 @@ func post(
 	res := httptest.NewRecorder()
 	router.ServeHTTP(res, req)
 	if res.Code < 200 || res.Code >= 300 {
+		if res.Body != nil {
+			var response *APIResponse
+			if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+				return res, fmt.Errorf("Failed to decode JSON body: %v", err)
+			}
+			return res, fmt.Errorf("POST failed (%d): %s", response.Error.Code, response.Error.Message)
+		}
 		return res, fmt.Errorf("POST failed with code %d", res.Code)
 	}
 	return res, nil
@@ -133,8 +140,8 @@ func TestGetMetrics(t *testing.T) {
 
 	// get metrics
 	var resp struct {
-		Error   any     `json:"error"`
-		Metrics Metrics `json:"data"`
+		Error   APIError `json:"error"`
+		Metrics Metrics  `json:"data"`
 	}
 	if err := get(router, "/metrics", &resp); err != nil {
 		t.Fatalf("GET /metrics failed: %v", err)
@@ -185,7 +192,7 @@ func TestGetSnapshotNoParams(t *testing.T) {
 
 	// get snapshot
 	var res struct {
-		Error    any                    `json:"error"`
+		Error    APIError               `json:"error"`
 		Snapshot service.LedgerSnapshot `json:"data"`
 	}
 	if err := get(router, "/ledger/general", &res); err != nil {
@@ -214,7 +221,7 @@ func TestGetSnapshotWithParams(t *testing.T) {
 	seedSnapshotData(t)
 
 	var res struct {
-		Error    any                    `json:"error"`
+		Error    APIError               `json:"error"`
 		Snapshot service.LedgerSnapshot `json:"data"`
 	}
 	if err := get(router, "/ledger/general?since=2025-01-01&until=2025-07-01", &res); err != nil {
@@ -241,7 +248,7 @@ func TestGetSnapshotBadParams(t *testing.T) {
 	router := setupRouter()
 
 	var res struct {
-		Error    any                    `json:"error"`
+		Error    APIError               `json:"error"`
 		Snapshot service.LedgerSnapshot `json:"data"`
 	}
 	if err := get(router, "/ledger/general?since=bad-date&until=2025-01-01", &res); err == nil {
@@ -256,7 +263,7 @@ func TestListPatrons(t *testing.T) {
 	seedCustomerData(t)
 
 	var res struct {
-		Error   any      `json:"error"`
+		Error   APIError `json:"error"`
 		Patrons []Patron `json:"data"`
 	}
 	if err := get(router, "/patrons?limit=2&offset=0", &res); err != nil {
