@@ -6,28 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"github.com/gorilla/mux"
 )
-
-// LedgerSnapshot holds fund balances for a period.
-type LedgerSnapshot struct {
-	OpeningBalanceCents int `json:"opening_balance_cents"`
-	IncomingCents       int `json:"incoming_cents"`
-	OutgoingCents       int `json:"outgoing_cents"`
-	ClosingBalanceCents int `json:"closing_balance_cents"`
-}
-
-// Transaction represents a subsidy or expense.
-type Transaction struct {
-	ID     string `json:"id"`
-	Date   string `json:"date"`
-	Amount int    `json:"amount"`
-	Ledger string `json:"ledger"`
-	Label  string `json:"label"`
-}
 
 // NewTransactionRequest is the payload for creating a transaction.
 type NewTransactionRequest struct {
@@ -48,31 +30,23 @@ func handleGetLedger(
 ) {
 	vars := mux.Vars(r)
 	ledger := vars["ledger"]
+	since := r.URL.Query().Get("since")
+	until := r.URL.Query().Get("until")
 
-	snap, err := service.GetSnapshot(
-		ledger,
-		r.URL.Query().Get("since"),
-		r.URL.Query().Get("until"),
-	)
+	snapshot, err := service.GetSnapshot(ledger, since, until)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidDate):
-			writeJSON(w, http.StatusBadRequest, &APIError{Code: "400", Message: "Date parse error"})
+			writeError(w, http.StatusBadRequest, "Date parse error")
 		case errors.As(err, &service.DatabaseError{}):
-			writeJSON(w, http.StatusInternalServerError, &APIError{Code: "500", Message: fmt.Sprintf("snapshot error: %v", err)})
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("snapshot error: %v", err))
 		default:
-			writeJSON(w, http.StatusInternalServerError, &APIError{Code: "500", Message: err.Error()})
+			writeError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	out := LedgerSnapshot{
-		OpeningBalanceCents: snap.OpeningBalanceCents,
-		IncomingCents:       snap.IncomingCents,
-		OutgoingCents:       snap.OutgoingCents,
-		ClosingBalanceCents: snap.ClosingBalanceCents,
-	}
-	writeJSON(w, http.StatusOK, APIResponse{nil, out})
+	writeData(w, http.StatusOK, snapshot)
 }
 
 func handleGetLedgerTransactions(
@@ -84,28 +58,19 @@ func handleGetLedgerTransactions(
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
-	rows, err := service.GetTransactions(f, limit, offset)
+	transactions, err := service.GetTransactions(f, limit, offset)
 	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
 		switch err.(type) {
 		case service.DatabaseError:
-			writeJSON(w, http.StatusInternalServerError, &APIError{"500", fmt.Sprintf("list error: %v", err)})
+			// TODO: log?
 		default:
-			writeJSON(w, http.StatusInternalServerError, &APIError{"500", err.Error()})
+			// TODO: log?
 		}
 		return
 	}
 
-	var out []Transaction
-	for _, t := range rows {
-		out = append(out, Transaction{
-			ID:     fmt.Sprint(t.ID),
-			Date:   t.Date.Format(time.RFC3339),
-			Ledger: t.Ledger,
-			Label:  t.Label,
-			Amount: t.Amount,
-		})
-	}
-	writeJSON(w, http.StatusOK, APIResponse{nil, out})
+	writeData(w, http.StatusOK, transactions)
 }
 
 func handlePostLedgerTransaction(
@@ -119,7 +84,7 @@ func handlePostLedgerTransaction(
 
 	var req NewTransactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, &APIError{Code: "400", Message: "Malformed JSON"})
+		writeError(w, http.StatusBadRequest, "Malformed JSON")
 		return
 	}
 
@@ -127,11 +92,11 @@ func handlePostLedgerTransaction(
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidDate):
-			writeJSON(w, http.StatusBadRequest, &APIError{Code: "400", Message: "Date parse error"})
+			writeError(w, http.StatusBadRequest, "Invalid date")
 		case errors.As(err, &service.DatabaseError{}):
-			writeJSON(w, http.StatusInternalServerError, &APIError{Code: "500", Message: fmt.Sprintf("Database insert error: %v", err)})
+			writeError(w, http.StatusInternalServerError, "Internal server error")
 		default:
-			writeJSON(w, http.StatusInternalServerError, &APIError{Code: "500", Message: err.Error()})
+			writeError(w, http.StatusInternalServerError, "Internal server error")
 		}
 		return
 	}

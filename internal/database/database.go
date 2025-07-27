@@ -8,6 +8,17 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// DBTransaction is the raw row from tx.
+type DBTransaction struct {
+	ID      int64
+	Created int64
+	Updated sql.NullInt64
+	Date    int64
+	Ledger  string
+	Label   string
+	Amount  int
+}
+
 type SubscriptionSummary struct {
 	Count int
 	Total int
@@ -267,59 +278,50 @@ type DBLedgerSnapshot struct {
 	ClosingBalance int // opening + incoming + outgoing
 }
 
-func QueryLedgerSnapshot(ledger string, since int64, until int64) (*DBLedgerSnapshot, error) {
+func QueryLedgerSnapshot(
+	ledger string,
+	since int64,
+	until int64,
+) (
+	opening int,
+	incoming int,
+	outgoing int,
+	err error,
+) {
 
 	// Opening balance: sum of all amounts before 'since'
-	var opening int
 	row := db.QueryRow(`
         SELECT COALESCE(SUM(amount),0)
         FROM tx
-        WHERE ledger = ?1 AND date < ?2;
+        WHERE ledger=?1 AND date<?2;
     `, ledger, since)
 	if err := row.Scan(&opening); err != nil {
-		return nil, fmt.Errorf("query opening balance: %w", err)
+		err = fmt.Errorf("query opening balance: %w", err)
 	}
 
 	// Incoming funds: positive amounts within [since, until]
-	var incoming int
 	row = db.QueryRow(`
         SELECT COALESCE(SUM(amount),0)
         FROM tx
-        WHERE ledger = ?1 AND date >= ?2 AND date <= ?3 AND amount > 0;
+        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount>0;
     `, ledger, since, until)
-	if err := row.Scan(&incoming); err != nil {
-		return nil, fmt.Errorf("query incoming funds: %w", err)
+	if err = row.Scan(&incoming); err != nil {
+		err = fmt.Errorf("query incoming funds: %w", err)
+		return
 	}
 
 	// Outgoing funds: negative amounts within [since, until]
-	var outgoing int
 	row = db.QueryRow(`
         SELECT COALESCE(SUM(amount),0)
         FROM tx
-        WHERE ledger = ?1 AND date >= ?2 AND date <= ?3 AND amount < 0;
+        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount<0;
     `, ledger, since, until)
-	if err := row.Scan(&outgoing); err != nil {
-		return nil, fmt.Errorf("query outgoing funds: %w", err)
+	if err = row.Scan(&outgoing); err != nil {
+		err = fmt.Errorf("query outgoing funds: %w", err)
+		return
 	}
 
-	// Closing balance: opening + incoming + outgoing
-	return &DBLedgerSnapshot{
-		OpeningBalance: opening,
-		Incoming:       incoming,
-		Outgoing:       outgoing,
-		ClosingBalance: opening + incoming + outgoing,
-	}, nil
-}
-
-// DBTransaction is the raw row from tx.
-type DBTransaction struct {
-	ID      int64
-	Date    int64
-	Ledger  string
-	Label   string
-	Amount  int
-	Created int64
-	Updated sql.NullInt64
+	return
 }
 
 // QueryTransactions returns a page of tx rows.

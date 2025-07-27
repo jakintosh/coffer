@@ -28,10 +28,7 @@ func handleGetMetrics(
 
 	summary, err := database.QuerySubscriptionSummary()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, &APIError{
-			Code:    "500",
-			Message: "Failed to query metrics",
-		})
+		writeError(w, http.StatusInternalServerError, "Failed to generate summary")
 		return
 	}
 
@@ -43,6 +40,5 @@ func handleGetMetrics(
 		CommunityFundBalanceCents: 0,
 		GeneralFundBalanceCents:   0,
 	}
-
-	writeJSON(w, http.StatusOK, APIResponse{nil, metrics})
+	writeData(w, http.StatusOK, metrics)
 }

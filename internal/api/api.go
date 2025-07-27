@@ -13,7 +13,7 @@ type APIResponse struct {
 }
 
 type APIError struct {
-	Code    string `json:"code"`
+	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
@@ -24,8 +24,39 @@ func BuildRouter(r *mux.Router) {
 	buildHealthRouter(r.PathPrefix("/health").Subrouter())
 }
 
-func writeJSON(w http.ResponseWriter, statusCode int, payload any) {
+func writeError(
+	w http.ResponseWriter,
+	code int,
+	message string,
+) {
+	w.WriteHeader(code)
+	writeJSON(w, APIResponse{
+		Error: &APIError{
+			Code:    code,
+			Message: message,
+		},
+		Data: nil,
+	})
+}
+
+func writeData(
+	w http.ResponseWriter,
+	code int,
+	data any,
+) {
+	w.WriteHeader(code)
+	if data != nil {
+		writeJSON(w, APIResponse{
+			Error: nil,
+			Data:  data,
+		})
+	}
+}
+
+func writeJSON(
+	w http.ResponseWriter,
+	data any,
+) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(payload)
+	json.NewEncoder(w).Encode(data)
 }

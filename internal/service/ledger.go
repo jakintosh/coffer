@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
@@ -8,10 +9,10 @@ import (
 
 // LedgerSnapshot represents the state of a ledger within a window.
 type LedgerSnapshot struct {
-	OpeningBalanceCents int
-	IncomingCents       int
-	OutgoingCents       int
-	ClosingBalanceCents int
+	OpeningBalance int
+	IncomingFunds  int
+	OutgoingFunds  int
+	ClosingBalance int
 }
 
 // Transaction is a normalized representation of a ledger transaction.
@@ -23,9 +24,37 @@ type Transaction struct {
 	Amount int
 }
 
-// AddTransaction parses the provided data and stores the transaction in the
-// database. It returns ErrInvalidDate for malformed dates or a DatabaseError
-// for any failure talking to the database.
+func (t Transaction) MarshalJSON() ([]byte, error) {
+	type Alias Transaction // Create an alias to avoid recursion
+
+	return json.Marshal(&struct {
+		Date string `json:"date"`
+		*Alias
+	}{
+		Date:  t.Date.Format(time.RFC3339),
+		Alias: (*Alias)(&t),
+	})
+}
+
+func (t *Transaction) UnmarshalJSON(data []byte) error {
+	type Alias Transaction
+	aux := &struct {
+		Date string `json:"date"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	parsed, err := time.Parse(time.RFC3339, aux.Date)
+	if err != nil {
+		return err
+	}
+	t.Date = parsed
+	return nil
+}
+
 func AddTransaction(
 	ledger string,
 	dateStr string,
@@ -49,16 +78,13 @@ func AddTransaction(
 	return nil
 }
 
-// GetSnapshot returns a LedgerSnapshot for the given ledger and time window.
-// The since and until parameters should be in the format "2006-01-02".
-// If the dates cannot be parsed, ErrInvalidDate is returned. Database errors
-// are wrapped in a DatabaseError.
 func GetSnapshot(
 	ledger string,
-	sinceStr string,
-	untilStr string,
+	sinceStr string, // format: "2006-01-02"
+	untilStr string, // format: "2006-01-02"
 ) (*LedgerSnapshot, error) {
 
+	// anonymous function for parsing date query strings
 	parseOr := func(queryStr string, fallback int64) (int64, error) {
 		if queryStr == "" {
 			return fallback, nil
@@ -80,18 +106,18 @@ func GetSnapshot(
 		return nil, ErrInvalidDate
 	}
 
-	snap, err := database.QueryLedgerSnapshot(ledger, since, until)
+	opening, incoming, outgoing, err := database.QueryLedgerSnapshot(ledger, since, until)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
 
-	out := &LedgerSnapshot{
-		OpeningBalanceCents: snap.OpeningBalance,
-		IncomingCents:       snap.Incoming,
-		OutgoingCents:       snap.Outgoing,
-		ClosingBalanceCents: snap.ClosingBalance,
+	snapshot := &LedgerSnapshot{
+		OpeningBalance: opening,
+		IncomingFunds:  incoming,
+		OutgoingFunds:  outgoing,
+		ClosingBalance: opening + incoming + outgoing,
 	}
-	return out, nil
+	return snapshot, nil
 }
 
 // GetTransactions returns a page of Transactions for the specified ledger.

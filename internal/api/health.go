@@ -20,6 +20,9 @@ func handleGetHealth(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	resp := HealthResponse{Status: "unimplemented", DB: "unimplemented"}
-	writeJSON(w, http.StatusOK, resp)
+	w.WriteHeader(http.StatusOK)
+	writeJSON(w, HealthResponse{
+		Status: "unimplemented",
+		DB:     "unimplemented",
+	})
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"github.com/gorilla/mux"
 )
 
@@ -183,25 +184,25 @@ func TestGetSnapshotNoParams(t *testing.T) {
 
 	// get snapshot
 	var res struct {
-		Error    any            `json:"error"`
-		Snapshot LedgerSnapshot `json:"data"`
+		Error    any                    `json:"error"`
+		Snapshot service.LedgerSnapshot `json:"data"`
 	}
 	if err := get(router, "/ledger/general", &res); err != nil {
 		t.Fatal(err)
 	}
 
 	// validate response
-	if res.Snapshot.OpeningBalanceCents != 0 {
-		t.Errorf("opening want 0 got %d", res.Snapshot.OpeningBalanceCents)
+	if res.Snapshot.OpeningBalance != 0 {
+		t.Errorf("opening want 0 got %d", res.Snapshot.OpeningBalance)
 	}
-	if res.Snapshot.IncomingCents != 200 {
-		t.Errorf("incoming want 200 got %d", res.Snapshot.IncomingCents)
+	if res.Snapshot.IncomingFunds != 200 {
+		t.Errorf("incoming want 200 got %d", res.Snapshot.IncomingFunds)
 	}
-	if res.Snapshot.OutgoingCents != -50 {
-		t.Errorf("outgoing want -50 got %d", res.Snapshot.OutgoingCents)
+	if res.Snapshot.OutgoingFunds != -50 {
+		t.Errorf("outgoing want -50 got %d", res.Snapshot.OutgoingFunds)
 	}
-	if res.Snapshot.ClosingBalanceCents != 150 {
-		t.Errorf("closing want 150 got %d", res.Snapshot.ClosingBalanceCents)
+	if res.Snapshot.ClosingBalance != 150 {
+		t.Errorf("closing want 150 got %d", res.Snapshot.ClosingBalance)
 	}
 }
 
@@ -212,24 +213,24 @@ func TestGetSnapshotWithParams(t *testing.T) {
 	seedSnapshotData(t)
 
 	var res struct {
-		Error    any            `json:"error"`
-		Snapshot LedgerSnapshot `json:"data"`
+		Error    any                    `json:"error"`
+		Snapshot service.LedgerSnapshot `json:"data"`
 	}
 	if err := get(router, "/ledger/general?since=2025-01-01&until=2025-07-01", &res); err != nil {
 		t.Fatal(err)
 	}
 
-	if res.Snapshot.OpeningBalanceCents != 100 {
-		t.Errorf("opening want 100 got %d", res.Snapshot.OpeningBalanceCents)
+	if res.Snapshot.OpeningBalance != 100 {
+		t.Errorf("opening want 100 got %d", res.Snapshot.OpeningBalance)
 	}
-	if res.Snapshot.IncomingCents != 100 {
-		t.Errorf("incoming want 100 got %d", res.Snapshot.IncomingCents)
+	if res.Snapshot.IncomingFunds != 100 {
+		t.Errorf("incoming want 100 got %d", res.Snapshot.IncomingFunds)
 	}
-	if res.Snapshot.OutgoingCents != -50 {
-		t.Errorf("outgoing want -50 got %d", res.Snapshot.OutgoingCents)
+	if res.Snapshot.OutgoingFunds != -50 {
+		t.Errorf("outgoing want -50 got %d", res.Snapshot.OutgoingFunds)
 	}
-	if res.Snapshot.ClosingBalanceCents != 150 {
-		t.Errorf("closing want 150 got %d", res.Snapshot.ClosingBalanceCents)
+	if res.Snapshot.ClosingBalance != 150 {
+		t.Errorf("closing want 150 got %d", res.Snapshot.ClosingBalance)
 	}
 }
 
@@ -239,8 +240,8 @@ func TestGetSnapshotBadParams(t *testing.T) {
 	router := setupRouter()
 
 	var res struct {
-		Error    any            `json:"error"`
-		Snapshot LedgerSnapshot `json:"data"`
+		Error    any                    `json:"error"`
+		Snapshot service.LedgerSnapshot `json:"data"`
 	}
 	if err := get(router, "/ledger/general?since=bad-date&until=2025-01-01", &res); err == nil {
 		t.Fatal(err)

@@ -37,7 +37,7 @@ func handleListPatrons(
 
 	rows, err := database.QueryCustomers(limit, offset)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, &APIError{"500", "list error"})
+		writeError(w, http.StatusInternalServerError, "Failed to get customers")
 		return
 	}
 
@@ -56,5 +56,5 @@ func handleListPatrons(
 		})
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{nil, patrons})
+	writeData(w, http.StatusOK, patrons)
 }

@@ -67,21 +67,18 @@ func TestFundSnapshotAndTransactions(t *testing.T) {
 	}
 
 	// snapshot from-past to now
-	snap, err := QueryLedgerSnapshot("general", past, now)
+	opening, incoming, outgoing, err := QueryLedgerSnapshot("general", past, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snap.OpeningBalance != 100 {
-		t.Errorf("opening: want 100, got %d", snap.OpeningBalance)
+	if opening != 100 {
+		t.Errorf("opening: want 100, got %d", opening)
 	}
-	if snap.Incoming != 200 {
-		t.Errorf("incoming: want 200, got %d", snap.Incoming)
+	if incoming != 200 {
+		t.Errorf("incoming: want 200, got %d", incoming)
 	}
-	if snap.Outgoing != -50 {
-		t.Errorf("outgoing: want -50, got %d", snap.Outgoing)
-	}
-	if snap.ClosingBalance != 100+200-50 {
-		t.Errorf("closing: want %d, got %d", 100+200-50, snap.ClosingBalance)
+	if outgoing != -50 {
+		t.Errorf("outgoing: want -50, got %d", outgoing)
 	}
 
 	// list transactions
