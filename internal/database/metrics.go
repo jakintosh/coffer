@@ -21,21 +21,23 @@ func (MetricsStore) GetSubscriptionSummary() (*service.SubscriptionSummary, erro
 	}
 
 	row := db.QueryRow(`
-                SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
-                FROM subscription
-                WHERE status='active'
-                AND currency='usd';`)
+		SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+		FROM subscription
+		WHERE status='active'
+		AND currency='usd';
+	`)
 	if err := row.Scan(&summary.Count, &summary.Total); err != nil {
 		return nil, fmt.Errorf("failed to scan row of summary statement: %w", err)
 	}
 	summary.Total /= 100
 
 	rows, err := db.Query(`
-                SELECT amount, COUNT(*) as count
-                FROM subscription
-                WHERE status='active'
-                AND currency='usd'
-                GROUP BY amount;`)
+		SELECT amount, COUNT(*) as count
+		FROM subscription
+		WHERE status='active'
+		AND currency='usd'
+		GROUP BY amount;
+	`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tier_statement: %w", err)
 	}

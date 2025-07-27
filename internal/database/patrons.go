@@ -25,10 +25,11 @@ func NewPatronStore() PatronStore { return PatronStore{} }
 // GetCustomers returns a page of customers sorted by most recently updated.
 func (PatronStore) GetCustomers(limit, offset int) ([]service.Patron, error) {
 	rows, err := db.Query(`
-                    SELECT id, email, name, created, updated
-                    FROM customer
-                    ORDER BY COALESCE(updated, created) DESC
-                    LIMIT ?1 OFFSET ?2;`,
+		SELECT id, email, name, created, updated
+		FROM customer
+		ORDER BY COALESCE(updated, created) DESC
+		LIMIT ?1 OFFSET ?2;
+		`,
 		limit,
 		offset,
 	)

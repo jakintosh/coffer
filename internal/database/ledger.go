@@ -19,7 +19,7 @@ type DBTransaction struct {
 	Amount  int
 }
 
-// LedgerStore implements service.LedgerDataProvider using the global DB.
+// LedgerStore implements service.LedgerStore using the global DB.
 type LedgerStore struct{}
 
 // NewLedgerStore returns a new LedgerStore.
@@ -32,14 +32,14 @@ func (LedgerStore) InsertTransaction(
 	amount int,
 ) error {
 	_, err := db.Exec(`
-                INSERT INTO tx (created, date, amount, ledger, label)
-                VALUES(unixepoch(), ?1, ?2, ?3, ?4)
-                ON CONFLICT(id) DO UPDATE
-                        SET updated=unixepoch(),
-                                amount=excluded.amount,
-                                date=excluded.date,
-                                ledger=excluded.ledger,
-                                label=excluded.label;`,
+		INSERT INTO tx (created, date, amount, ledger, label)
+		VALUES(unixepoch(), ?1, ?2, ?3, ?4)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=unixepoch(),
+				amount=excluded.amount,
+				date=excluded.date,
+				ledger=excluded.ledger,
+				label=excluded.label;`,
 		date,
 		amount,
 		ledger,
@@ -59,28 +59,39 @@ func (LedgerStore) GetLedgerSnapshot(
 		outgoing int
 	)
 	row := db.QueryRow(`
-        SELECT COALESCE(SUM(amount),0)
-        FROM tx
-        WHERE ledger=?1 AND date<?2;
-    `, ledger, since)
+		SELECT COALESCE(SUM(amount),0)
+		FROM tx
+		WHERE ledger=?1 AND date<?2;
+	    `,
+		ledger,
+		since,
+	)
 	if err := row.Scan(&opening); err != nil {
 		return nil, fmt.Errorf("query opening balance: %w", err)
 	}
 
 	row = db.QueryRow(`
-        SELECT COALESCE(SUM(amount),0)
-        FROM tx
-        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount>0;
-    `, ledger, since, until)
+		SELECT COALESCE(SUM(amount),0)
+		FROM tx
+		WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount>0;
+		`,
+		ledger,
+		since,
+		until,
+	)
 	if err := row.Scan(&incoming); err != nil {
 		return nil, fmt.Errorf("query incoming funds: %w", err)
 	}
 
 	row = db.QueryRow(`
-        SELECT COALESCE(SUM(amount),0)
-        FROM tx
-        WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount<0;
-    `, ledger, since, until)
+		SELECT COALESCE(SUM(amount),0)
+		FROM tx
+		WHERE ledger=?1 AND date>=?2 AND date<=?3 AND amount<0;
+		`,
+		ledger,
+		since,
+		until,
+	)
 	if err := row.Scan(&outgoing); err != nil {
 		return nil, fmt.Errorf("query outgoing funds: %w", err)
 	}
@@ -100,12 +111,12 @@ func (LedgerStore) GetTransactions(
 	limit, offset int,
 ) ([]service.Transaction, error) {
 	rows, err := db.Query(`
-                SELECT id, date, ledger, label, amount
-                FROM tx
-                WHERE ledger=?1
-                ORDER BY date DESC
-                LIMIT ?2 OFFSET ?3;
-                `,
+		SELECT id, date, ledger, label, amount
+		FROM tx
+		WHERE ledger=?1
+		ORDER BY date DESC
+		LIMIT ?2 OFFSET ?3;
+		`,
 		ledger,
 		limit,
 		offset,
