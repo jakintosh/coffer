@@ -22,6 +22,7 @@ func setupDB(t *testing.T) {
 	os.Remove("api-test.db-wal")
 
 	database.Init("api-test.db")
+	service.SetLedgerDataProvider(database.NewLedgerStore())
 
 	t.Cleanup(func() {
 		os.Remove("api-test.db")

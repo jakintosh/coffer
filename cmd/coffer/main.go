@@ -9,6 +9,7 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/stripe"
 	"github.com/gorilla/mux"
 )
@@ -35,6 +36,7 @@ func main() {
 
 	// init modules
 	database.Init(dbPath)
+	service.SetLedgerDataProvider(database.NewLedgerStore())
 	stripe.Init(stripeKey, endpointSecret)
 
 	// config routing

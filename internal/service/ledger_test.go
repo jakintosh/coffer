@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
 func setupDB(t *testing.T) {
@@ -16,6 +17,7 @@ func setupDB(t *testing.T) {
 	os.Remove("service_test.db-wal")
 
 	database.Init("service_test.db")
+	service.SetLedgerDataProvider(database.NewLedgerStore())
 
 	t.Cleanup(func() {
 		os.Remove("service_test.db")
@@ -29,7 +31,7 @@ func TestAddTransactionSuccess(t *testing.T) {
 
 	setupDB(t)
 	now := time.Now().Format(time.RFC3339)
-	err := AddTransaction("general", now, "test", 100)
+	err := service.AddTransaction("general", now, "test", 100)
 	if err != nil {
 		t.Fatalf("add transaction: %v", err)
 	}
@@ -46,8 +48,8 @@ func TestAddTransactionSuccess(t *testing.T) {
 func TestAddTransactionBadDate(t *testing.T) {
 
 	setupDB(t)
-	err := AddTransaction("general", "bad-date", "test", 100)
-	if !errors.Is(err, ErrInvalidDate) {
+	err := service.AddTransaction("general", "bad-date", "test", 100)
+	if !errors.Is(err, service.ErrInvalidDate) {
 		t.Fatalf("expected ErrInvalidDate, got %v", err)
 	}
 }
@@ -71,7 +73,7 @@ func TestGetSnapshotSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	snap, err := GetSnapshot(
+	snap, err := service.GetSnapshot(
 		"general",
 		time.Unix(start, 0).UTC().Format("2006-01-02"),
 		time.Unix(end, 0).UTC().Format("2006-01-02"),
@@ -97,8 +99,8 @@ func TestGetSnapshotSuccess(t *testing.T) {
 func TestGetSnapshotBadDate(t *testing.T) {
 
 	setupDB(t)
-	_, err := GetSnapshot("general", "bad", "also-bad")
-	if !errors.Is(err, ErrInvalidDate) {
+	_, err := service.GetSnapshot("general", "bad", "also-bad")
+	if !errors.Is(err, service.ErrInvalidDate) {
 		t.Fatalf("expected ErrInvalidDate, got %v", err)
 	}
 }
@@ -120,7 +122,7 @@ func TestGetTransactionsSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txs, err := GetTransactions("general", 10, 0)
+	txs, err := service.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatalf("GetTransactions: %v", err)
 	}
@@ -141,7 +143,7 @@ func TestGetTransactionsDefaultLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txs, err := GetTransactions("general", -1, 0)
+	txs, err := service.GetTransactions("general", -1, 0)
 	if err != nil {
 		t.Fatalf("GetTransactions: %v", err)
 	}

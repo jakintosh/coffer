@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	_ "modernc.org/sqlite"
+
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
 // DBTransaction is the raw row from tx.
@@ -26,6 +29,12 @@ type SubscriptionSummary struct {
 }
 
 var db *sql.DB
+
+// LedgerStore implements service.LedgerDataProvider using the global DB.
+type LedgerStore struct{}
+
+// NewLedgerStore returns a new LedgerStore.
+func NewLedgerStore() LedgerStore { return LedgerStore{} }
 
 func Init(path string) {
 	var err error
@@ -398,4 +407,33 @@ func QueryCustomers(limit, offset int) ([]DBCustomer, error) {
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// InsertTransaction inserts or updates a ledger transaction.
+func (LedgerStore) InsertTransaction(date int64, ledger, label string, amount int) error {
+	return InsertTransaction(date, ledger, label, amount)
+}
+
+// QueryLedgerSnapshot returns aggregate balances for a ledger.
+func (LedgerStore) QueryLedgerSnapshot(ledger string, since, until int64) (int, int, int, error) {
+	return QueryLedgerSnapshot(ledger, since, until)
+}
+
+// QueryTransactions returns normalized Transactions from the ledger.
+func (LedgerStore) QueryTransactions(ledger string, limit, offset int) ([]service.Transaction, error) {
+	rows, err := QueryTransactions(ledger, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	var txs []service.Transaction
+	for _, tx := range rows {
+		txs = append(txs, service.Transaction{
+			ID:     tx.ID,
+			Date:   time.Unix(tx.Date, 0),
+			Ledger: tx.Ledger,
+			Label:  tx.Label,
+			Amount: tx.Amount,
+		})
+	}
+	return txs, nil
 }
