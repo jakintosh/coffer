@@ -36,6 +36,18 @@ type LedgerStore struct{}
 // NewLedgerStore returns a new LedgerStore.
 func NewLedgerStore() LedgerStore { return LedgerStore{} }
 
+// MetricsStore implements service.MetricsStore using the global DB.
+type MetricsStore struct{}
+
+// NewMetricsStore returns a new MetricsStore.
+func NewMetricsStore() MetricsStore { return MetricsStore{} }
+
+// PatronStore implements service.PatronStore using the global DB.
+type PatronStore struct{}
+
+// NewPatronStore returns a new PatronStore.
+func NewPatronStore() PatronStore { return PatronStore{} }
+
 func Init(path string) {
 	var err error
 	db, err = sql.Open("sqlite", path)
@@ -159,6 +171,16 @@ func QuerySubscriptionSummary() (*SubscriptionSummary, error) {
 	}
 
 	return summary, nil
+}
+
+// QuerySubscriptionSummary implements service.MetricsStore.QuerySubscriptionSummary.
+func (MetricsStore) QuerySubscriptionSummary() (*service.SubscriptionSummary, error) {
+	sum, err := QuerySubscriptionSummary()
+	if err != nil {
+		return nil, err
+	}
+	out := &service.SubscriptionSummary{Count: sum.Count, Total: sum.Total, Tiers: sum.Tiers}
+	return out, nil
 }
 
 func InsertCustomer(
@@ -288,6 +310,29 @@ func QueryCustomers(limit, offset int) ([]DBCustomer, error) {
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// QueryCustomers implements service.PatronStore.QueryCustomers.
+func (PatronStore) QueryCustomers(limit, offset int) ([]service.Patron, error) {
+	rows, err := QueryCustomers(limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	var patrons []service.Patron
+	for _, c := range rows {
+		updated := c.Created
+		if c.Updated.Valid {
+			updated = c.Updated.Int64
+		}
+		patrons = append(patrons, service.Patron{
+			ID:        c.ID,
+			Email:     c.Email,
+			Name:      c.Name,
+			CreatedAt: time.Unix(c.Created, 0),
+			UpdatedAt: time.Unix(updated, 0),
+		})
+	}
+	return patrons, nil
 }
 
 // InsertTransaction inserts or updates a ledger transaction.
