@@ -34,9 +34,8 @@ func main() {
 
 	// config routing
 	r := mux.NewRouter()
-	apiRouter := r.PathPrefix("/api/v1").Subrouter()
-	stripe.BuildRouter(apiRouter)
-	api.BuildRouter(apiRouter)
+	api.BuildRouter(r.PathPrefix("/api/v1").Subrouter())
+	stripe.BuildRouter(r.PathPrefix("/api/v1/stripe").Subrouter())
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, r))

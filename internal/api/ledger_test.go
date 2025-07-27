@@ -8,7 +8,7 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func TestCreateTransactionSuccess(t *testing.T) {
+func TestCreateTransaction(t *testing.T) {
 
 	setupDB(t)
 	router := setupRouter()
@@ -60,11 +60,11 @@ func TestCreateTransactionBadInput(t *testing.T) {
 	}
 }
 
-func TestGetSnapshotNoParams(t *testing.T) {
+func TestGetSnapshot(t *testing.T) {
 
 	setupDB(t)
 	router := setupRouter()
-	seedSnapshotData(t)
+	seedTransactions(t)
 
 	// get snapshot
 	url := "/ledger/general"
@@ -99,7 +99,7 @@ func TestGetSnapshotWithParams(t *testing.T) {
 
 	setupDB(t)
 	router := setupRouter()
-	seedSnapshotData(t)
+	seedTransactions(t)
 
 	// get snapshot
 	url := "/ledger/general?since=2025-01-01&until=2025-07-01"
@@ -143,5 +143,99 @@ func TestGetSnapshotBadParams(t *testing.T) {
 	err := expectStatus(http.StatusBadRequest, result)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestGetTransactions(t *testing.T) {
+
+	setupDB(t)
+	router := setupRouter()
+	seedTransactions(t)
+
+	// get snapshot
+	url := "/ledger/general/transactions"
+	var response struct {
+		Error        api.APIError          `json:"error"`
+		Transactions []service.Transaction `json:"data"`
+	}
+	result := get(router, url, &response)
+
+	// verify result
+	err := expectStatus(http.StatusOK, result)
+	if err != nil {
+		t.Fatalf("%v\n%v", err, response)
+	}
+
+	// validate response
+	txs := response.Transactions
+	if len(txs) != 3 {
+		t.Fatalf("want 3 transactions, got %d", len(txs))
+	}
+}
+
+func TestGetTransactionsPaginated(t *testing.T) {
+
+	setupDB(t)
+	router := setupRouter()
+	seedTransactions(t)
+
+	// get snapshot
+	url := "/ledger/general/transactions?offset=1"
+	var response struct {
+		Error        api.APIError          `json:"error"`
+		Transactions []service.Transaction `json:"data"`
+	}
+	result := get(router, url, &response)
+
+	// verify result
+	err := expectStatus(http.StatusOK, result)
+	if err != nil {
+		t.Fatalf("%v\n%v", err, response)
+	}
+
+	// validate response
+	txs := response.Transactions
+	if len(txs) != 2 {
+		t.Fatalf("want 2 transactions, got %d", len(txs))
+	}
+
+	if txs[0].ID != 2 {
+		t.Errorf("first transaction should be id 2, got %d", txs[0].ID)
+	}
+	if txs[0].Amount != 100 {
+		t.Errorf("first transaction should be amount 100, got %d", txs[0].Amount)
+	}
+	if txs[0].Label != "extra" {
+		t.Errorf("first transaction should be label 'extra', got %s", txs[0].Label)
+	}
+
+	if txs[1].ID != 1 {
+		t.Errorf("second transaction should be id 1, got %d", txs[1].ID)
+	}
+	if txs[1].Amount != 100 {
+		t.Errorf("second transaction should be amount 100, got %d", txs[1].Amount)
+	}
+	if txs[1].Label != "base" {
+		t.Errorf("second transaction should be label 'base', got %s", txs[1].Label)
+	}
+}
+
+func TestGetTransactionsBadQuery(t *testing.T) {
+
+	setupDB(t)
+	router := setupRouter()
+
+	// get snapshot
+	url := "/ledger/general/transactions?limit=bad&offset=-1"
+	var response struct {
+		Error        api.APIError          `json:"error"`
+		Transactions []service.Transaction `json:"data"`
+	}
+	result := get(router, url, &response)
+
+	// verify result
+	err := expectStatus(http.StatusBadRequest, result)
+	if err != nil {
+		t.Fatalf("%v\n%v", err, response)
 	}
 }

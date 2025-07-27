@@ -92,7 +92,7 @@ func seedSubscriberData(t *testing.T) {
 	}
 }
 
-func seedSnapshotData(t *testing.T) {
+func seedTransactions(t *testing.T) {
 
 	t1 := util.MakeDate(2024, 1, 1)
 	err := service.AddTransaction(t1, "general", "base", 100)

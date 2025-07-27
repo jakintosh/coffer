@@ -94,6 +94,7 @@ func GetTransactions(
 	if limit <= 0 {
 		limit = 100
 	}
+	offset = max(offset, 0)
 
 	txs, err := ledgerStore.GetTransactions(
 		ledger,

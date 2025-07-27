@@ -80,8 +80,28 @@ func handleGetLedgerTransactions(
 ) {
 	vars := mux.Vars(r)
 	f := vars["ledger"]
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	limitQ := r.URL.Query().Get("limit")
+	offsetQ := r.URL.Query().Get("offset")
+
+	limit := 100
+	if limitQ != "" {
+		var err error
+		limit, err = strconv.Atoi(limitQ)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid 'limit' query")
+			return
+		}
+	}
+
+	offset := 0
+	if offsetQ != "" {
+		var err error
+		offset, err = strconv.Atoi(offsetQ)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid 'offset' query")
+			return
+		}
+	}
 
 	transactions, err := service.GetTransactions(f, limit, offset)
 	if err != nil {

@@ -36,6 +36,7 @@ func ListPatrons(
 	if limit <= 0 {
 		limit = 100
 	}
+	offset = max(offset, 0)
 
 	patrons, err := patronStore.GetCustomers(limit, offset)
 	if err != nil {
