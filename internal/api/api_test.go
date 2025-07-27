@@ -23,6 +23,8 @@ func setupDB(t *testing.T) {
 
 	database.Init("api-test.db")
 	service.SetLedgerStore(database.NewLedgerStore())
+	service.SetMetricsStore(database.NewMetricsStore())
+	service.SetPatronStore(database.NewPatronStore())
 
 	t.Cleanup(func() {
 		os.Remove("api-test.db")
@@ -140,8 +142,8 @@ func TestGetMetrics(t *testing.T) {
 
 	// get metrics
 	var resp struct {
-		Error   APIError `json:"error"`
-		Metrics Metrics  `json:"data"`
+		Error   APIError        `json:"error"`
+		Metrics service.Metrics `json:"data"`
 	}
 	if err := get(router, "/metrics", &resp); err != nil {
 		t.Fatalf("GET /metrics failed: %v", err)
@@ -263,8 +265,8 @@ func TestListPatrons(t *testing.T) {
 	seedCustomerData(t)
 
 	var res struct {
-		Error   APIError `json:"error"`
-		Patrons []Patron `json:"data"`
+		Error   APIError         `json:"error"`
+		Patrons []service.Patron `json:"data"`
 	}
 	if err := get(router, "/patrons?limit=2&offset=0", &res); err != nil {
 		t.Fatal(err)
