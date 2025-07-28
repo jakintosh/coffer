@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -10,18 +9,8 @@ import (
 )
 
 func setupDBMetrics(t *testing.T) {
-	os.Remove("metrics_test.db")
-	os.Remove("metrics_test.db-shm")
-	os.Remove("metrics_test.db-wal")
-
-	database.Init("metrics_test.db")
+	database.InitInMemory()
 	service.SetMetricsStore(database.NewMetricsStore())
-
-	t.Cleanup(func() {
-		os.Remove("metrics_test.db")
-		os.Remove("metrics_test.db-shm")
-		os.Remove("metrics_test.db-wal")
-	})
 }
 
 func seedSubscriptions(t *testing.T) {

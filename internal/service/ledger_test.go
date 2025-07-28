@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -12,18 +11,8 @@ import (
 
 func setupDB(t *testing.T) {
 
-	os.Remove("service_test.db")
-	os.Remove("service_test.db-shm")
-	os.Remove("service_test.db-wal")
-
-	database.Init("service_test.db")
+	database.InitInMemory()
 	service.SetLedgerStore(database.NewLedgerStore())
-
-	t.Cleanup(func() {
-		os.Remove("service_test.db")
-		os.Remove("service_test.db-shm")
-		os.Remove("service_test.db-wal")
-	})
 }
 
 func seedTransactions(

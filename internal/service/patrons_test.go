@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -10,18 +9,8 @@ import (
 )
 
 func setupDBPatrons(t *testing.T) {
-	os.Remove("patrons_test.db")
-	os.Remove("patrons_test.db-shm")
-	os.Remove("patrons_test.db-wal")
-
-	database.Init("patrons_test.db")
+	database.InitInMemory()
 	service.SetPatronsStore(database.NewPatronStore())
-
-	t.Cleanup(func() {
-		os.Remove("patrons_test.db")
-		os.Remove("patrons_test.db-shm")
-		os.Remove("patrons_test.db-wal")
-	})
 }
 
 func seedCustomers(t *testing.T) {

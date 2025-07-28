@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"errors"
-	"os"
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
@@ -11,18 +10,8 @@ import (
 
 func setupDBAlloc(t *testing.T) {
 
-	os.Remove("alloc_test.db")
-	os.Remove("alloc_test.db-shm")
-	os.Remove("alloc_test.db-wal")
-
-	database.Init("alloc_test.db")
+	database.InitInMemory()
 	service.SetAllocationsStore(database.NewAllocationsStore())
-
-	t.Cleanup(func() {
-		os.Remove("alloc_test.db")
-		os.Remove("alloc_test.db-shm")
-		os.Remove("alloc_test.db-wal")
-	})
 }
 
 func TestGetAllocationsDefault(t *testing.T) {
