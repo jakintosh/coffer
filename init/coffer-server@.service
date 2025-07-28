@@ -1,0 +1,9 @@
+[Unit]
+Description=Coffer Server - Public Patronage Backend
+
+[Service]
+ExecStart=/usr/local/bin/coffer-server
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

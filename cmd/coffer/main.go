@@ -1,66 +1,29 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"path/filepath"
+	cmd "git.sr.ht/~jakintosh/command-go"
+)
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
-	"git.sr.ht/~jakintosh/coffer/internal/database"
-	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/stripe"
-	"github.com/gorilla/mux"
+const (
+	BIN_NAME    = "coffer"
+	AUTHOR      = "jakintosh"
+	VERSION     = "0.1"
+	DEFAULT_CFG = "~/.config/coffer" + BIN_NAME
 )
 
 func main() {
-
-	// read all env vars
-	dbPath := readEnvVar("DB_FILE_PATH")
-	port := fmt.Sprintf(":%s", readEnvVar("PORT"))
-
-	// load credentials
-	credsDir := readEnvVar("CREDENTIALS_DIRECTORY")
-	stripeKey := loadCredential("stripe_key", credsDir)
-	endpointSecret := loadCredential("endpoint_secret", credsDir)
-
-	// init modules
-	database.Init(dbPath, true)
-	service.SetLedgerStore(database.NewLedgerStore())
-	service.SetMetricsStore(database.NewMetricsStore())
-	service.SetPatronsStore(database.NewPatronStore())
-	service.SetAllocationsStore(database.NewAllocationsStore())
-	stripe.Init(stripeKey, endpointSecret)
-
-	// config routing
-	r := mux.NewRouter()
-	api.BuildRouter(r.PathPrefix("/api/v1").Subrouter())
-	stripe.BuildRouter(r.PathPrefix("/api/v1/stripe").Subrouter())
-
-	// serve
-	log.Fatal(http.ListenAndServe(port, r))
+	root.Parse()
 }
 
-func loadCredential(
-	name string,
-	credsDir string,
-) string {
-	credPath := filepath.Join(credsDir, name)
-	cred, err := os.ReadFile(credPath)
-	if err != nil {
-		log.Fatalf("failed to load required credential '%s': %v\n", name, err)
-	}
-	return string(cred)
-}
-
-func readEnvVar(
-	name string,
-) string {
-	var present bool
-	str, present := os.LookupEnv(name)
-	if !present {
-		log.Fatalf("missing required env var '%s'\n", name)
-	}
-	return str
+var root = &cmd.Command{
+	Name:        BIN_NAME,
+	Author:      AUTHOR,
+	Version:     VERSION,
+	Help:        "manage your coffer from the command line",
+	Subcommands: []*cmd.Command{},
+	Operands:    []cmd.Operand{},
+	Options:     []cmd.Option{},
+	Handler: func(i *cmd.Input) error {
+		return nil
+	},
 }

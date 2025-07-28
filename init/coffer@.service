@@ -1,9 +1,0 @@
-[Unit]
-Description=Coffer - Stripe Subscription Integration
-
-[Service]
-ExecStart=/usr/local/bin/coffer
-Restart=always
-
-[Install]
-WantedBy=multi-user.target

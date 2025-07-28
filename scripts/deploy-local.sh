@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-name=coffer
+name=coffer-server
 domain=localhost
 dpl_src=./deployment
 
@@ -9,7 +9,7 @@ if [ ! -f ./init/$name@.service ]; then
 fi
 
 # build the executable
-./scripts/build.sh
+make
 
 # bundle up the deployment files
 ./scripts/package.sh $name $dpl_src
