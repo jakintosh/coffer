@@ -22,6 +22,7 @@ func BuildRouter(
 ) {
 	buildMetricsRouter(r.PathPrefix("/metrics").Subrouter())
 	buildLedgerRouter(r.PathPrefix("/ledger").Subrouter())
+	buildSettingsRouter(r.PathPrefix("/settings").Subrouter())
 	buildPatronsRouter(r.PathPrefix("/patrons").Subrouter())
 	buildHealthRouter(r.PathPrefix("/health").Subrouter())
 }

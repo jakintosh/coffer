@@ -30,6 +30,7 @@ func setupDB(t *testing.T) {
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronStore(database.NewPatronStore())
+	service.SetAllocationsStore(database.NewAllocationsStore())
 
 	t.Cleanup(func() {
 		os.Remove("api-test.db")
@@ -150,6 +151,28 @@ func post(
 	response any,
 ) HttpResult {
 	req := httptest.NewRequest("POST", url, strings.NewReader(body))
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+
+	if res.Body != nil {
+		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+			return HttpResult{
+				Code:  res.Code,
+				Error: fmt.Errorf("Failed to decode JSON body: %v", err),
+			}
+		}
+	}
+
+	return HttpResult{res.Code, nil}
+}
+
+func patch(
+	router *mux.Router,
+	url string,
+	body string,
+	response any,
+) HttpResult {
+	req := httptest.NewRequest("PATCH", url, strings.NewReader(body))
 	res := httptest.NewRecorder()
 	router.ServeHTTP(res, req)
 
