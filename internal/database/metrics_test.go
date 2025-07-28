@@ -9,7 +9,7 @@ import (
 
 func TestQuerySubscriptionSummary(t *testing.T) {
 
-	setupDb(t)
+	setupDb()
 	metricsStore := database.NewMetricsStore()
 
 	// no data → zero

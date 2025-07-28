@@ -9,7 +9,7 @@ import (
 
 func TestAllocationsStore(t *testing.T) {
 
-	setupDb(t)
+	setupDb()
 	store := database.NewAllocationsStore()
 
 	rules, err := store.GetAllocations()

@@ -9,7 +9,10 @@ import (
 
 var db *sql.DB
 
-func Init(path string) {
+func Init(
+	path string,
+	wal bool,
+) {
 	var err error
 	db, err = sql.Open("sqlite", path)
 	if err != nil {
@@ -23,17 +26,20 @@ func Init(path string) {
 		log.Fatalf("could not enable foreign keys: %v", err)
 	}
 
-	_, err = db.Exec("PRAGMA journal_mode = WAL;")
-	if err != nil {
-		log.Fatalf("could not enable WAL mode: %v", err)
+	// enable write ahead logging mode
+	if wal {
+		_, err = db.Exec("PRAGMA journal_mode = WAL;")
+		if err != nil {
+			log.Fatalf("could not enable WAL mode: %v", err)
+		}
+
+		_, err = db.Exec("PRAGMA busy_timeout = 5000;")
+		if err != nil {
+			log.Fatalf("could not set busy timeout: %v", err)
+		}
 	}
 
-	_, err = db.Exec("PRAGMA busy_timeout = 5000;")
-	if err != nil {
-		log.Fatalf("could not set busy timeout: %v", err)
-	}
-
-	_, err = db.Exec(`
+	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS customer (
 			id TEXT NOT NULL PRIMARY KEY,
 			created INTEGER,
@@ -67,22 +73,21 @@ func Init(path string) {
 			amount INTEGER,
 			currency TEXT
 		);
-                CREATE TABLE IF NOT EXISTS tx (
-                        id INTEGER NOT NULL PRIMARY KEY,
-                        created INTEGER NOT NULL,
-                        updated INTEGER,
-                        date INTEGER NOT NULL,
-                        ledger TEXT NOT NULL,
-                        label TEXT,
-                        amount INTEGER NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS allocation (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        ledger TEXT NOT NULL,
-                        percentage INTEGER NOT NULL
-                );
-        `)
-	if err != nil {
+		CREATE TABLE IF NOT EXISTS tx (
+			id INTEGER NOT NULL PRIMARY KEY,
+			created INTEGER NOT NULL,
+			updated INTEGER,
+			date INTEGER NOT NULL,
+			ledger TEXT NOT NULL,
+			label TEXT,
+			amount INTEGER NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS allocation (
+			id TEXT NOT NULL PRIMARY KEY,
+			ledger TEXT NOT NULL,
+			percentage INTEGER NOT NULL
+		);
+	`); err != nil {
 		log.Fatalf("could not initialize tables: %v", err)
 	}
 

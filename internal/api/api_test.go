@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -20,23 +19,13 @@ type HttpResult struct {
 	Error error
 }
 
-func setupDB(t *testing.T) {
+func setupDB() {
 
-	os.Remove("api-test.db")
-	os.Remove("api-test.db-shm")
-	os.Remove("api-test.db-wal")
-
-	database.Init("api-test.db")
+	database.Init(":memory:", false)
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetAllocationsStore(database.NewAllocationsStore())
-
-	t.Cleanup(func() {
-		os.Remove("api-test.db")
-		os.Remove("api-test.db-shm")
-		os.Remove("api-test.db-wal")
-	})
 }
 
 func setupRouter() *mux.Router {

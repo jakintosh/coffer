@@ -2,32 +2,14 @@ package service_test
 
 import (
 	"errors"
-	"os"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func setupDBAlloc(t *testing.T) {
-
-	os.Remove("alloc_test.db")
-	os.Remove("alloc_test.db-shm")
-	os.Remove("alloc_test.db-wal")
-
-	database.Init("alloc_test.db")
-	service.SetAllocationsStore(database.NewAllocationsStore())
-
-	t.Cleanup(func() {
-		os.Remove("alloc_test.db")
-		os.Remove("alloc_test.db-shm")
-		os.Remove("alloc_test.db-wal")
-	})
-}
-
 func TestGetAllocationsDefault(t *testing.T) {
 
-	setupDBAlloc(t)
+	setupDB()
 
 	// get allocations
 	rules, err := service.GetAllocations()
@@ -46,7 +28,7 @@ func TestGetAllocationsDefault(t *testing.T) {
 
 func TestSetAllocationsInvalid(t *testing.T) {
 
-	setupDBAlloc(t)
+	setupDB()
 
 	// set invalid new rules
 	err := service.SetAllocations([]service.AllocationRule{
@@ -63,7 +45,7 @@ func TestSetAllocationsInvalid(t *testing.T) {
 
 func TestSetAllocationsValid(t *testing.T) {
 
-	setupDBAlloc(t)
+	setupDB()
 
 	// set new rules
 	rules := []service.AllocationRule{

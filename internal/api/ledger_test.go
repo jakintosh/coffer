@@ -10,7 +10,7 @@ import (
 
 func TestCreateTransaction(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 
 	// post transaction
@@ -36,7 +36,7 @@ func TestCreateTransaction(t *testing.T) {
 
 func TestCreateTransactionBadInput(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 
 	// post transaction
@@ -62,7 +62,7 @@ func TestCreateTransactionBadInput(t *testing.T) {
 
 func TestGetSnapshot(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 	seedTransactions(t)
 
@@ -97,7 +97,7 @@ func TestGetSnapshot(t *testing.T) {
 
 func TestGetSnapshotWithParams(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 	seedTransactions(t)
 
@@ -132,7 +132,7 @@ func TestGetSnapshotWithParams(t *testing.T) {
 
 func TestGetSnapshotBadParams(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 
 	// get snapshot
@@ -148,7 +148,7 @@ func TestGetSnapshotBadParams(t *testing.T) {
 
 func TestGetTransactions(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 	seedTransactions(t)
 
@@ -175,7 +175,7 @@ func TestGetTransactions(t *testing.T) {
 
 func TestGetTransactionsPaginated(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 	seedTransactions(t)
 
@@ -222,7 +222,7 @@ func TestGetTransactionsPaginated(t *testing.T) {
 
 func TestGetTransactionsBadQuery(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 
 	// get snapshot

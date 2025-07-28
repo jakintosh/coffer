@@ -1,30 +1,12 @@
 package service_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
-
-func setupDB(t *testing.T) {
-
-	os.Remove("service_test.db")
-	os.Remove("service_test.db-shm")
-	os.Remove("service_test.db-wal")
-
-	database.Init("service_test.db")
-	service.SetLedgerStore(database.NewLedgerStore())
-
-	t.Cleanup(func() {
-		os.Remove("service_test.db")
-		os.Remove("service_test.db-shm")
-		os.Remove("service_test.db-wal")
-	})
-}
 
 func seedTransactions(
 	t *testing.T,
@@ -49,7 +31,7 @@ func seedTransactions(
 // TestAddTransactionSuccess verifies a valid transaction is inserted
 func TestAddTransactionSuccess(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	t1 := util.MakeDate(2025, 1, 1)
 
 	if err := service.AddTransaction(t1, "general", "test", 100); err != nil {
@@ -68,7 +50,7 @@ func TestAddTransactionSuccess(t *testing.T) {
 // TestGetSnapshotSuccess verifies snapshot calculations over a window
 func TestGetSnapshotSuccess(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	start := util.MakeDate(2025, 1, 1)
 	end := util.MakeDate(2025, 2, 1)
 	seedTransactions(t, start)
@@ -94,7 +76,7 @@ func TestGetSnapshotSuccess(t *testing.T) {
 // TestGetTransactionsSuccess verifies transaction listing
 func TestGetTransactionsSuccess(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	seedTransactions(t, util.MakeDate(2025, 1, 1))
 
 	txs, err := service.GetTransactions("general", 10, 0)

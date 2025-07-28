@@ -26,7 +26,7 @@ func main() {
 	endpointSecret := loadCredential("endpoint_secret", credsDir)
 
 	// init modules
-	database.Init(dbPath)
+	database.Init(dbPath, true)
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())

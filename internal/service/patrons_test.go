@@ -1,31 +1,16 @@
 package service_test
 
 import (
-	"os"
 	"testing"
-	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
-func setupDBPatrons(t *testing.T) {
-	os.Remove("patrons_test.db")
-	os.Remove("patrons_test.db-shm")
-	os.Remove("patrons_test.db-wal")
-
-	database.Init("patrons_test.db")
-	service.SetPatronsStore(database.NewPatronStore())
-
-	t.Cleanup(func() {
-		os.Remove("patrons_test.db")
-		os.Remove("patrons_test.db-shm")
-		os.Remove("patrons_test.db-wal")
-	})
-}
-
 func seedCustomers(t *testing.T) {
-	ts := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+
+	ts := util.MakeDateUnix(2025, 1, 1)
 	if err := database.InsertCustomer("c1", ts-60, "one@example.com", "One"); err != nil {
 		t.Fatal(err)
 	}
@@ -36,13 +21,14 @@ func seedCustomers(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// update c2
 	if err := database.InsertCustomer("c2", ts-40, "two@example.org", "Two"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestListPatrons(t *testing.T) {
-	setupDBPatrons(t)
+	setupDB()
 	seedCustomers(t)
 
 	patrons, err := service.ListPatrons(2, 0)
