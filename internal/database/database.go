@@ -67,18 +67,38 @@ func Init(path string) {
 			amount INTEGER,
 			currency TEXT
 		);
-		CREATE TABLE IF NOT EXISTS tx (
-			id INTEGER NOT NULL PRIMARY KEY,
-			created INTEGER NOT NULL,
-			updated INTEGER,
-			date INTEGER NOT NULL,
-			ledger TEXT NOT NULL,
-			label TEXT,
-			amount INTEGER NOT NULL
-		);
-	`)
+                CREATE TABLE IF NOT EXISTS tx (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        created INTEGER NOT NULL,
+                        updated INTEGER,
+                        date INTEGER NOT NULL,
+                        ledger TEXT NOT NULL,
+                        label TEXT,
+                        amount INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS allocation (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        ledger TEXT NOT NULL,
+                        percentage INTEGER NOT NULL
+                );
+        `)
 	if err != nil {
 		log.Fatalf("could not initialize tables: %v", err)
+	}
+
+	ensureDefaultAllocations()
+}
+
+func ensureDefaultAllocations() {
+	var count int
+	row := db.QueryRow(`SELECT COUNT(*) FROM allocation;`)
+	if err := row.Scan(&count); err != nil {
+		log.Fatalf("failed to check allocation table: %v", err)
+	}
+	if count == 0 {
+		if _, err := db.Exec(`INSERT INTO allocation (id, ledger, percentage) VALUES ('general', 'general', 100);`); err != nil {
+			log.Fatalf("failed to insert default allocation: %v", err)
+		}
 	}
 }
 
