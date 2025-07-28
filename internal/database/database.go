@@ -86,14 +86,17 @@ func Init(path string) {
 		log.Fatalf("could not initialize tables: %v", err)
 	}
 
+	ensureDefaultAllocations()
+}
+
+func ensureDefaultAllocations() {
 	var count int
 	row := db.QueryRow(`SELECT COUNT(*) FROM allocation;`)
 	if err := row.Scan(&count); err != nil {
 		log.Fatalf("failed to check allocation table: %v", err)
 	}
 	if count == 0 {
-		_, err = db.Exec(`INSERT INTO allocation (id, ledger, percentage) VALUES ('general', 'general', 100);`)
-		if err != nil {
+		if _, err := db.Exec(`INSERT INTO allocation (id, ledger, percentage) VALUES ('general', 'general', 100);`); err != nil {
 			log.Fatalf("failed to insert default allocation: %v", err)
 		}
 	}
