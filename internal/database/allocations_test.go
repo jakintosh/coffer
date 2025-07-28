@@ -8,6 +8,7 @@ import (
 )
 
 func TestAllocationsStore(t *testing.T) {
+
 	setupDb(t)
 	store := database.NewAllocationsStore()
 
@@ -19,22 +20,32 @@ func TestAllocationsStore(t *testing.T) {
 		t.Fatalf("unexpected default rules %+v", rules)
 	}
 
+	// insert new rules
 	newRules := []service.AllocationRule{
-		{ID: "g", LedgerName: "general", Percentage: 80},
-		{ID: "c", LedgerName: "community", Percentage: 20},
+		{
+			ID:         "g",
+			LedgerName: "general",
+			Percentage: 80,
+		},
+		{
+			ID:         "c",
+			LedgerName: "community",
+			Percentage: 20,
+		},
 	}
 	if err := store.SetAllocations(newRules); err != nil {
-		t.Fatalf("SetAllocations: %v", err)
+		t.Fatalf("failed to set allocations: %v", err)
 	}
 
-	got, err := store.GetAllocations()
+	// retrieve and check allocation rules
+	allocations, err := store.GetAllocations()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("expected 2 rules got %d", len(got))
+	if len(allocations) != 2 {
+		t.Fatalf("expected 2 rules got %d", len(allocations))
 	}
-	if got[0].ID != "g" || got[1].ID != "c" {
-		t.Errorf("unexpected rules %+v", got)
+	if allocations[0].ID != "g" || allocations[1].ID != "c" {
+		t.Errorf("unexpected rules %+v", allocations)
 	}
 }

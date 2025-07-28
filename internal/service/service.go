@@ -7,11 +7,11 @@ import (
 
 var (
 	ErrInvalidDate    = errors.New("invalid date format")
+	ErrInvalidAlloc   = errors.New("invalid allocation percentages")
 	ErrNoLedgerStore  = errors.New("ledger store not configured")
 	ErrNoMetricsStore = errors.New("metrics store not configured")
 	ErrNoPatronStore  = errors.New("patron store not configured")
 	ErrNoAllocStore   = errors.New("allocation store not configured")
-	ErrInvalidAlloc   = errors.New("invalid allocation percentages")
 )
 
 type DatabaseError struct{ Err error }

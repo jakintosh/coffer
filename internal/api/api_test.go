@@ -29,7 +29,7 @@ func setupDB(t *testing.T) {
 	database.Init("api-test.db")
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
-	service.SetPatronStore(database.NewPatronStore())
+	service.SetPatronsStore(database.NewPatronStore())
 	service.SetAllocationsStore(database.NewAllocationsStore())
 
 	t.Cleanup(func() {
@@ -166,13 +166,13 @@ func post(
 	return HttpResult{res.Code, nil}
 }
 
-func patch(
+func put(
 	router *mux.Router,
 	url string,
 	body string,
 	response any,
 ) HttpResult {
-	req := httptest.NewRequest("PATCH", url, strings.NewReader(body))
+	req := httptest.NewRequest("PUT", url, strings.NewReader(body))
 	res := httptest.NewRecorder()
 	router.ServeHTTP(res, req)
 

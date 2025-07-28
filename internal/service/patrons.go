@@ -10,7 +10,7 @@ type PatronStore interface {
 
 var patronStore PatronStore
 
-func SetPatronStore(store PatronStore) {
+func SetPatronsStore(store PatronStore) {
 	patronStore = store
 }
 

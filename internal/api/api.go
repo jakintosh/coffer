@@ -20,11 +20,11 @@ type APIError struct {
 func BuildRouter(
 	r *mux.Router,
 ) {
-	buildMetricsRouter(r.PathPrefix("/metrics").Subrouter())
-	buildLedgerRouter(r.PathPrefix("/ledger").Subrouter())
-	buildSettingsRouter(r.PathPrefix("/settings").Subrouter())
-	buildPatronsRouter(r.PathPrefix("/patrons").Subrouter())
 	buildHealthRouter(r.PathPrefix("/health").Subrouter())
+	buildLedgerRouter(r.PathPrefix("/ledger").Subrouter())
+	buildMetricsRouter(r.PathPrefix("/metrics").Subrouter())
+	buildPatronsRouter(r.PathPrefix("/patrons").Subrouter())
+	buildSettingsRouter(r.PathPrefix("/settings").Subrouter())
 }
 
 func writeError(

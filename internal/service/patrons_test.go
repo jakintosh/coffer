@@ -15,7 +15,7 @@ func setupDBPatrons(t *testing.T) {
 	os.Remove("patrons_test.db-wal")
 
 	database.Init("patrons_test.db")
-	service.SetPatronStore(database.NewPatronStore())
+	service.SetPatronsStore(database.NewPatronStore())
 
 	t.Cleanup(func() {
 		os.Remove("patrons_test.db")

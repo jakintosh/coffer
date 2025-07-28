@@ -89,19 +89,6 @@ func Init(path string) {
 	ensureDefaultAllocations()
 }
 
-func ensureDefaultAllocations() {
-	var count int
-	row := db.QueryRow(`SELECT COUNT(*) FROM allocation;`)
-	if err := row.Scan(&count); err != nil {
-		log.Fatalf("failed to check allocation table: %v", err)
-	}
-	if count == 0 {
-		if _, err := db.Exec(`INSERT INTO allocation (id, ledger, percentage) VALUES ('general', 'general', 100);`); err != nil {
-			log.Fatalf("failed to insert default allocation: %v", err)
-		}
-	}
-}
-
 func InsertCustomer(
 	id string,
 	created int64,

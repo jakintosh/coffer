@@ -9,54 +9,101 @@ import (
 )
 
 func TestGetAllocations(t *testing.T) {
+
 	setupDB(t)
 	router := setupRouter()
 
+	url := "/settings/allocations"
 	var response struct {
-		Error api.APIError             `json:"error"`
-		Data  []service.AllocationRule `json:"data"`
+		Error       api.APIError             `json:"error"`
+		Allocations []service.AllocationRule `json:"data"`
 	}
-	result := get(router, "/settings/allocations", &response)
+	result := get(router, url, &response)
 
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatal(err)
+	// validate result
+	err := expectStatus(http.StatusOK, result)
+	if err != nil {
+		t.Fatalf("%v\n%v", err, response)
 	}
-	if len(response.Data) != 1 || response.Data[0].Percentage != 100 {
-		t.Errorf("unexpected default allocations %+v", response.Data)
+
+	// validate response
+	allocations := response.Allocations
+	if len(allocations) != 1 || allocations[0].Percentage != 100 {
+		t.Errorf("unexpected default allocations %+v", allocations)
 	}
 }
 
-func TestPatchAllocations(t *testing.T) {
+func TestPutAllocations(t *testing.T) {
+
 	setupDB(t)
 	router := setupRouter()
 
+	// put allocations
+	url := "/settings/allocations"
 	body := `[
-        {"id":"g","ledger":"general","percentage":60},
-        {"id":"c","ledger":"community","percentage":40}
+		{
+			"id": "g",
+			"ledger": "general",
+			"percentage": 60
+		},
+		{
+			"id": "c",
+			"ledger": "community",
+			"percentage": 40
+		}
     ]`
-	result := patch(router, "/settings/allocations", body, nil)
-	if err := expectStatus(http.StatusNoContent, result); err != nil {
+	result := put(router, url, body, nil)
+
+	// validate result
+	err := expectStatus(http.StatusNoContent, result)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	var res struct {
-		Error api.APIError             `json:"error"`
-		Data  []service.AllocationRule `json:"data"`
+	// get allocations
+	var response struct {
+		Error       api.APIError             `json:"error"`
+		Allocations []service.AllocationRule `json:"data"`
 	}
-	get(router, "/settings/allocations", &res)
-	if len(res.Data) != 2 {
-		t.Fatalf("want 2 rules got %d", len(res.Data))
+	get(router, url, &response)
+
+	// validate response
+	allocations := response.Allocations
+	if len(allocations) != 2 {
+		t.Fatalf("want 2 rules got %d", len(allocations))
+	}
+
+	a1 := allocations[0]
+	if a1.ID != "g" || a1.LedgerName != "general" || a1.Percentage != 60 {
+		t.Errorf("unexpected allocations %+v", a1)
+	}
+
+	a2 := allocations[1]
+	if a2.ID != "c" || a2.LedgerName != "community" || a2.Percentage != 40 {
+		t.Errorf("unexpected allocations %+v", a2)
 	}
 }
 
-func TestPatchAllocationsBad(t *testing.T) {
+func TestPutAllocationsBad(t *testing.T) {
+
 	setupDB(t)
 	router := setupRouter()
 
-	body := `[{"id":"g","ledger":"general","percentage":10}]`
-	var response api.APIResponse
-	result := patch(router, "/settings/allocations", body, &response)
-	if err := expectStatus(http.StatusBadRequest, result); err != nil {
-		t.Fatal(err)
+	// put invalid allocations
+	body := `
+	[
+		{
+			"id": "g",
+			"ledger": "general",
+			"percentage": 10
+		}
+	]`
+	response := api.APIResponse{}
+	result := put(router, "/settings/allocations", body, &response)
+
+	// validate error result
+	err := expectStatus(http.StatusBadRequest, result)
+	if err != nil {
+		t.Fatalf("%v\n%v", err, response)
 	}
 }

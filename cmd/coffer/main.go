@@ -29,7 +29,8 @@ func main() {
 	database.Init(dbPath)
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
-	service.SetPatronStore(database.NewPatronStore())
+	service.SetPatronsStore(database.NewPatronStore())
+	service.SetAllocationsStore(database.NewAllocationsStore())
 	stripe.Init(stripeKey, endpointSecret)
 
 	// config routing

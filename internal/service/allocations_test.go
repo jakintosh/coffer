@@ -10,6 +10,7 @@ import (
 )
 
 func setupDBAlloc(t *testing.T) {
+
 	os.Remove("alloc_test.db")
 	os.Remove("alloc_test.db-shm")
 	os.Remove("alloc_test.db-wal")
@@ -25,12 +26,16 @@ func setupDBAlloc(t *testing.T) {
 }
 
 func TestGetAllocationsDefault(t *testing.T) {
+
 	setupDBAlloc(t)
 
+	// get allocations
 	rules, err := service.GetAllocations()
 	if err != nil {
-		t.Fatalf("GetAllocations: %v", err)
+		t.Fatalf("failed to get allocations: %v", err)
 	}
+
+	// validate defaults
 	if len(rules) != 1 {
 		t.Fatalf("expected 1 rule, got %d", len(rules))
 	}
@@ -40,10 +45,16 @@ func TestGetAllocationsDefault(t *testing.T) {
 }
 
 func TestSetAllocationsInvalid(t *testing.T) {
+
 	setupDBAlloc(t)
 
+	// set invalid new rules
 	err := service.SetAllocations([]service.AllocationRule{
-		{ID: "g", LedgerName: "general", Percentage: 50},
+		{
+			ID:         "g",
+			LedgerName: "general",
+			Percentage: 50,
+		},
 	})
 	if !errors.Is(err, service.ErrInvalidAlloc) {
 		t.Fatalf("expected ErrInvalidAlloc, got %v", err)
@@ -51,24 +62,37 @@ func TestSetAllocationsInvalid(t *testing.T) {
 }
 
 func TestSetAllocationsValid(t *testing.T) {
+
 	setupDBAlloc(t)
 
+	// set new rules
 	rules := []service.AllocationRule{
-		{ID: "g", LedgerName: "general", Percentage: 70},
-		{ID: "c", LedgerName: "community", Percentage: 30},
+		{
+			ID:         "g",
+			LedgerName: "general",
+			Percentage: 70,
+		},
+		{
+			ID:         "c",
+			LedgerName: "community",
+			Percentage: 30,
+		},
 	}
 	if err := service.SetAllocations(rules); err != nil {
-		t.Fatalf("SetAllocations: %v", err)
+		t.Fatalf("failed to set allocations: %v", err)
 	}
 
-	got, err := service.GetAllocations()
+	// get rules
+	allocations, err := service.GetAllocations()
 	if err != nil {
-		t.Fatalf("GetAllocations: %v", err)
+		t.Fatalf("failed to get allocations: %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("want 2 rules got %d", len(got))
+
+	// validate rules
+	if len(allocations) != 2 {
+		t.Fatalf("want 2 rules got %d", len(allocations))
 	}
-	if got[0].ID != "g" || got[1].ID != "c" {
-		t.Errorf("unexpected rules %+v", got)
+	if allocations[0].ID != "g" || allocations[1].ID != "c" {
+		t.Errorf("unexpected rules %+v", allocations)
 	}
 }
