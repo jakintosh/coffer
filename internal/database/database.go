@@ -9,7 +9,10 @@ import (
 
 var db *sql.DB
 
-func Init(path string) {
+func Init(
+	path string,
+	wal bool,
+) {
 	var err error
 	db, err = sql.Open("sqlite", path)
 	if err != nil {
@@ -23,22 +26,25 @@ func Init(path string) {
 		log.Fatalf("could not enable foreign keys: %v", err)
 	}
 
-	_, err = db.Exec("PRAGMA journal_mode = WAL;")
-	if err != nil {
-		log.Fatalf("could not enable WAL mode: %v", err)
+	// enable write ahead logging mode
+	if wal {
+		_, err = db.Exec("PRAGMA journal_mode = WAL;")
+		if err != nil {
+			log.Fatalf("could not enable WAL mode: %v", err)
+		}
+
+		_, err = db.Exec("PRAGMA busy_timeout = 5000;")
+		if err != nil {
+			log.Fatalf("could not set busy timeout: %v", err)
+		}
 	}
 
-	_, err = db.Exec("PRAGMA busy_timeout = 5000;")
-	if err != nil {
-		log.Fatalf("could not set busy timeout: %v", err)
-	}
-
-	_, err = db.Exec(`
-                CREATE TABLE IF NOT EXISTS customer (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        created INTEGER,
-                        updated INTEGER,
-                        email TEXT,
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS customer (
+			id TEXT NOT NULL PRIMARY KEY,
+			created INTEGER,
+			updated INTEGER,
+			email TEXT,
 			name TEXT
 		);
 		CREATE TABLE IF NOT EXISTS subscription (
@@ -67,94 +73,21 @@ func Init(path string) {
 			amount INTEGER,
 			currency TEXT
 		);
-                CREATE TABLE IF NOT EXISTS tx (
-                        id INTEGER NOT NULL PRIMARY KEY,
-                        created INTEGER NOT NULL,
-                        updated INTEGER,
-                        date INTEGER NOT NULL,
-                        ledger TEXT NOT NULL,
-                        label TEXT,
-                        amount INTEGER NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS allocation (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        ledger TEXT NOT NULL,
-                        percentage INTEGER NOT NULL
-                );
-        `)
-	if err != nil {
-		log.Fatalf("could not initialize tables: %v", err)
-	}
-
-	ensureDefaultAllocations()
-}
-
-// InitInMemory initializes the DB for testing using an in-memory database.
-// It skips WAL and busy timeout pragmas for faster test execution.
-func InitInMemory() {
-	var err error
-	db, err = sql.Open("sqlite", ":memory:")
-	if err != nil {
-		log.Fatalf("failed to connect to database: %v\n", err)
-	}
-
-	db.SetMaxOpenConns(1)
-
-	_, err = db.Exec("PRAGMA foreign_keys = ON;")
-	if err != nil {
-		log.Fatalf("could not enable foreign keys: %v", err)
-	}
-
-	_, err = db.Exec(`
-                CREATE TABLE IF NOT EXISTS customer (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        created INTEGER,
-                        updated INTEGER,
-                        email TEXT,
-                        name TEXT
-                );
-                CREATE TABLE IF NOT EXISTS subscription (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        created INTEGER,
-                        updated INTEGER,
-                        customer TEXT,
-                        status TEXT,
-                        amount INTEGER,
-                        currency TEXT
-                );
-                CREATE TABLE IF NOT EXISTS payment (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        created INTEGER,
-                        updated INTEGER,
-                        status TEXT,
-                        customer TEXT,
-                        amount INTEGER,
-                        currency TEXT
-                );
-                CREATE TABLE IF NOT EXISTS payout (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        created INTEGER,
-                        updated INTEGER,
-                        status TEXT,
-                        amount INTEGER,
-                        currency TEXT
-                );
-                CREATE TABLE IF NOT EXISTS tx (
-                        id INTEGER NOT NULL PRIMARY KEY,
-                        created INTEGER NOT NULL,
-                        updated INTEGER,
-                        date INTEGER NOT NULL,
-                        ledger TEXT NOT NULL,
-                        label TEXT,
-                        amount INTEGER NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS allocation (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        ledger TEXT NOT NULL,
-                        percentage INTEGER NOT NULL
-                );
-        `)
-	if err != nil {
+		CREATE TABLE IF NOT EXISTS tx (
+			id INTEGER NOT NULL PRIMARY KEY,
+			created INTEGER NOT NULL,
+			updated INTEGER,
+			date INTEGER NOT NULL,
+			ledger TEXT NOT NULL,
+			label TEXT,
+			amount INTEGER NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS allocation (
+			id TEXT NOT NULL PRIMARY KEY,
+			ledger TEXT NOT NULL,
+			percentage INTEGER NOT NULL
+		);
+	`); err != nil {
 		log.Fatalf("could not initialize tables: %v", err)
 	}
 

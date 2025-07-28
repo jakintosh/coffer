@@ -19,9 +19,9 @@ type HttpResult struct {
 	Error error
 }
 
-func setupDB(t *testing.T) {
+func setupDB() {
 
-	database.InitInMemory()
+	database.Init(":memory:", false)
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())

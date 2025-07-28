@@ -10,7 +10,7 @@ import (
 
 func TestGetAllocations(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 
 	url := "/settings/allocations"
@@ -35,7 +35,7 @@ func TestGetAllocations(t *testing.T) {
 
 func TestPutAllocations(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 
 	// put allocations
@@ -86,7 +86,7 @@ func TestPutAllocations(t *testing.T) {
 
 func TestPutAllocationsBad(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 
 	// put invalid allocations

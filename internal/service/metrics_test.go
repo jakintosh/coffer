@@ -2,34 +2,33 @@ package service_test
 
 import (
 	"testing"
-	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
-func setupDBMetrics(t *testing.T) {
-	database.InitInMemory()
-	service.SetMetricsStore(database.NewMetricsStore())
-}
-
 func seedSubscriptions(t *testing.T) {
-	t1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t2 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC).Unix()
-	t3 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC).Unix()
+
+	t1 := util.MakeDateUnix(2025, 1, 1)
 	if err := database.InsertSubscription("s1", t1, "c1", "active", 300, "usd"); err != nil {
 		t.Fatal(err)
 	}
+
+	t2 := util.MakeDateUnix(2025, 2, 1)
 	if err := database.InsertSubscription("s2", t2, "c2", "active", 800, "usd"); err != nil {
 		t.Fatal(err)
 	}
+
+	t3 := util.MakeDateUnix(2025, 3, 1)
 	if err := database.InsertSubscription("s3", t3, "c3", "active", 400, "usd"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestGetMetrics(t *testing.T) {
-	setupDBMetrics(t)
+
+	setupDB()
 	seedSubscriptions(t)
 
 	metrics, err := service.GetMetrics()

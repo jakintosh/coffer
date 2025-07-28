@@ -10,7 +10,7 @@ import (
 
 func TestGetMetrics(t *testing.T) {
 
-	setupDB(t)
+	setupDB()
 	router := setupRouter()
 	seedSubscriberData(t)
 
