@@ -199,9 +199,6 @@ func TestGetTransactionsPaginated(t *testing.T) {
 		t.Fatalf("want 2 transactions, got %d", len(txs))
 	}
 
-	if txs[0].ID != 2 {
-		t.Errorf("first transaction should be id 2, got %d", txs[0].ID)
-	}
 	if txs[0].Amount != 100 {
 		t.Errorf("first transaction should be amount 100, got %d", txs[0].Amount)
 	}
@@ -209,9 +206,6 @@ func TestGetTransactionsPaginated(t *testing.T) {
 		t.Errorf("first transaction should be label 'extra', got %s", txs[0].Label)
 	}
 
-	if txs[1].ID != 1 {
-		t.Errorf("second transaction should be id 1, got %d", txs[1].ID)
-	}
 	if txs[1].Amount != 100 {
 		t.Errorf("second transaction should be amount 100, got %d", txs[1].Amount)
 	}

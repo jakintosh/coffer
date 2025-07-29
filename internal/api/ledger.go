@@ -141,7 +141,7 @@ func handlePostLedgerTransaction(
 		writeError(w, http.StatusBadRequest, "Invalid date")
 	}
 
-	err = service.AddTransaction(date, ledger, req.Label, req.Amount)
+	err = service.AddTransaction(ledger, req.Amount, date, req.Label)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		switch {

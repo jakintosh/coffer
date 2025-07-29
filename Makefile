@@ -6,5 +6,8 @@ client:
 server:
 	go build -o ./bin/coffer-server ./cmd/coffer-server
 
+install: client
+	sudo cp ./bin/coffer /usr/local/bin/coffer
+
 run: build
 	./bin/coffer

@@ -85,19 +85,19 @@ func seedSubscriberData(t *testing.T) {
 func seedTransactions(t *testing.T) {
 
 	t1 := util.MakeDate(2024, 1, 1)
-	err := service.AddTransaction(t1, "general", "base", 100)
+	err := service.AddTransaction("general", 100, t1, "base")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t2 := util.MakeDate(2025, 1, 1)
-	err = service.AddTransaction(t2, "general", "extra", 100)
+	err = service.AddTransaction("general", 100, t2, "extra")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t3 := util.MakeDate(2025, 2, 1)
-	err = service.AddTransaction(t3, "general", "base", -50)
+	err = service.AddTransaction("general", -50, t3, "base")
 	if err != nil {
 		t.Fatal(err)
 	}

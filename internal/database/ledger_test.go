@@ -15,13 +15,13 @@ func seedTransactions(
 	ledgerStore database.DBLedgerStore,
 	start int64,
 ) {
-	if err := ledgerStore.InsertTransaction(start-hour, "general", "old", 100); err != nil {
+	if err := ledgerStore.InsertTransaction("general", 100, start-hour, "old"); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledgerStore.InsertTransaction(start+hour, "general", "in", 200); err != nil {
+	if err := ledgerStore.InsertTransaction("general", 200, start+hour, "in"); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledgerStore.InsertTransaction(start+(hour*2), "general", "out", -50); err != nil {
+	if err := ledgerStore.InsertTransaction("general", -50, start+(hour*2), "out"); err != nil {
 		t.Fatal(err)
 	}
 }
