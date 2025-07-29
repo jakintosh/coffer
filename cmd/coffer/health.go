@@ -7,10 +7,8 @@ import (
 )
 
 var healthCmd = &cmd.Command{
-	Name:     "health",
-	Help:     "check server health",
-	Options:  []cmd.Option{},
-	Operands: []cmd.Operand{},
+	Name: "health",
+	Help: "check server health",
 	Handler: func(i *cmd.Input) error {
 		return request(i, http.MethodGet, "/health", nil)
 	},

@@ -4,112 +4,169 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
+	"time"
 
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	cmd "git.sr.ht/~jakintosh/command-go"
 )
 
 var ledgerCmd = &cmd.Command{
-	Name:        "ledger",
-	Help:        "ledger actions",
-	Subcommands: []*cmd.Command{snapshotCmd, ledgerTxCmd},
+	Name: "ledger",
+	Help: "manage ledger resources",
+	Subcommands: []*cmd.Command{
+		ledgerSnapshotCmd,
+		ledgerTxCmd,
+	},
 }
 
-var snapshotCmd = &cmd.Command{
-	Name:     "snapshot",
-	Help:     "ledger snapshot",
-	Operands: []cmd.Operand{{Name: "ledger", Help: "ledger name"}},
+var ledgerSnapshotCmd = &cmd.Command{
+	Name: "snapshot",
+	Help: "get snapshot of ledger over date range",
+	Operands: []cmd.Operand{
+		{
+			Name: "ledger",
+			Help: "ledger name",
+		},
+	},
 	Options: []cmd.Option{
-		{Long: "since", Type: cmd.OptionTypeParameter, Help: "YYYY-MM-DD"},
-		{Long: "until", Type: cmd.OptionTypeParameter, Help: "YYYY-MM-DD"},
+		{
+			Long: "since",
+			Type: cmd.OptionTypeParameter,
+			Help: "YYYY-MM-DD, defaults to '0'",
+		},
+		{
+			Long: "until",
+			Type: cmd.OptionTypeParameter,
+			Help: "YYYY-MM-DD, defaults to 'now'",
+		},
 	},
 	Handler: func(i *cmd.Input) error {
+
 		ledger := i.GetOperand("ledger")
-		params := url.Values{}
-		if v := i.GetParameter("since"); v != nil {
-			params.Set("since", *v)
-		}
-		if v := i.GetParameter("until"); v != nil {
-			params.Set("until", *v)
-		}
 		path := fmt.Sprintf("/ledger/%s", ledger)
-		if q := params.Encode(); q != "" {
-			path += "?" + q
-		}
+		path = addParams(i, path, "since", "until")
 		return request(i, http.MethodGet, path, nil)
 	},
 }
 
 var ledgerTxCmd = &cmd.Command{
-	Name:        "transactions",
-	Help:        "transaction operations",
-	Subcommands: []*cmd.Command{ledgerTxListCmd, ledgerTxAddCmd},
+	Name: "transactions",
+	Help: "manage transaction resources",
+	Subcommands: []*cmd.Command{
+		ledgerTxListCmd,
+		ledgerTxAddCmd,
+	},
 }
 
 var ledgerTxListCmd = &cmd.Command{
-	Name:     "list",
-	Help:     "list transactions",
-	Operands: []cmd.Operand{{Name: "ledger", Help: "ledger name"}},
+	Name: "list",
+	Help: "list transactions",
+	Operands: []cmd.Operand{
+		{
+			Name: "ledger",
+			Help: "ledger name",
+		},
+	},
 	Options: []cmd.Option{
-		{Long: "limit", Type: cmd.OptionTypeParameter, Help: "limit"},
-		{Long: "offset", Type: cmd.OptionTypeParameter, Help: "offset"},
+		{
+			Long: "limit",
+			Type: cmd.OptionTypeParameter,
+			Help: "limit",
+		},
+		{
+			Long: "offset",
+			Type: cmd.OptionTypeParameter,
+			Help: "offset",
+		},
 	},
 	Handler: func(i *cmd.Input) error {
+
 		ledger := i.GetOperand("ledger")
-		params := url.Values{}
-		if v := i.GetParameter("limit"); v != nil {
-			params.Set("limit", *v)
-		}
-		if v := i.GetParameter("offset"); v != nil {
-			params.Set("offset", *v)
-		}
 		path := fmt.Sprintf("/ledger/%s/transactions", ledger)
-		if q := params.Encode(); q != "" {
-			path += "?" + q
-		}
+		path = addParams(i, path, "limit", "offset")
 		return request(i, http.MethodGet, path, nil)
 	},
 }
 
 var ledgerTxAddCmd = &cmd.Command{
-	Name:     "add",
-	Help:     "add transaction",
-	Operands: []cmd.Operand{{Name: "ledger", Help: "ledger name"}},
+	Name: "add",
+	Help: "create new transaction",
+	Operands: []cmd.Operand{
+		{
+			Name: "ledger",
+			Help: "target ledger",
+		},
+	},
 	Options: []cmd.Option{
-		{Long: "date", Type: cmd.OptionTypeParameter, Help: "RFC3339 date"},
-		{Long: "label", Type: cmd.OptionTypeParameter, Help: "label"},
-		{Long: "amount", Type: cmd.OptionTypeParameter, Help: "amount"},
-		{Long: "file", Type: cmd.OptionTypeParameter, Help: "json file"},
+		{
+			Long: "amount",
+			Type: cmd.OptionTypeParameter,
+			Help: "amount",
+		},
+		{
+			Long: "date",
+			Type: cmd.OptionTypeParameter,
+			Help: "RFC3339 date",
+		},
+		{
+			Long: "label",
+			Type: cmd.OptionTypeParameter,
+			Help: "transaction label",
+		},
+		{
+			Long: "file",
+			Type: cmd.OptionTypeParameter,
+			Help: "json file to send as body",
+		},
 	},
 	Handler: func(i *cmd.Input) error {
+
 		ledger := i.GetOperand("ledger")
-		var body []byte
-		if f := i.GetParameter("file"); f != nil {
-			b, err := os.ReadFile(*f)
-			if err != nil {
-				return err
-			}
-			body = b
-		} else {
-			date := i.GetParameter("date")
-			label := i.GetParameter("label")
-			amount := i.GetIntParameter("amount")
-			if date == nil || label == nil || amount == nil {
-				return fmt.Errorf("date, label and amount required")
-			}
-			obj := map[string]any{
-				"date":   *date,
-				"label":  *label,
-				"amount": *amount,
-			}
-			b, err := json.Marshal(obj)
-			if err != nil {
-				return err
-			}
-			body = b
-		}
 		path := fmt.Sprintf("/ledger/%s/transactions", ledger)
+
+		// file-based request
+		if f := i.GetParameter("file"); f != nil {
+			body, err := os.ReadFile(*f)
+			if err != nil {
+				return err
+			}
+			return request(i, http.MethodPost, path, body)
+		}
+
+		// option-based request
+		amount := i.GetIntParameter("amount")
+		dateStr := i.GetParameter("date")
+		label := i.GetParameter("label")
+
+		// validate options present
+		if amount == nil {
+			return fmt.Errorf("'amount' missing")
+		}
+		if dateStr == nil {
+			return fmt.Errorf("'date' missing")
+		}
+		if label == nil {
+			return fmt.Errorf("'label' missing")
+		}
+
+		// validate date
+		date, err := time.Parse(time.RFC3339, *dateStr)
+		if err != nil {
+			return fmt.Errorf("invalid date format: expected YYYY-MM-DDTHH-mm-ssZ")
+		}
+
+		// marshal body json
+		body, err := json.Marshal(service.Transaction{
+			Ledger: ledger,
+			Amount: *amount,
+			Date:   date,
+			Label:  *label,
+		})
+		if err != nil {
+			return err
+		}
+
 		return request(i, http.MethodPost, path, body)
 	},
 }

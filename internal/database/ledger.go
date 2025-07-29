@@ -23,10 +23,10 @@ type DBLedgerStore struct{}
 func NewLedgerStore() DBLedgerStore { return DBLedgerStore{} }
 
 func (DBLedgerStore) InsertTransaction(
-	date int64,
 	ledger string,
-	label string,
 	amount int,
+	date int64,
+	label string,
 ) error {
 	_, err := db.Exec(`
 		INSERT INTO tx (created, date, amount, ledger, label)
@@ -42,6 +42,7 @@ func (DBLedgerStore) InsertTransaction(
 		ledger,
 		label,
 	)
+
 	return err
 }
 
@@ -121,7 +122,7 @@ func (DBLedgerStore) GetTransactions(
 	error,
 ) {
 	rows, err := db.Query(`
-		SELECT id, date, label, amount
+		SELECT amount, date, label
 		FROM tx
 		WHERE ledger=?1
 		ORDER BY date DESC
@@ -137,22 +138,20 @@ func (DBLedgerStore) GetTransactions(
 
 	defer rows.Close()
 	var (
-		id     int64
+		amount int
 		date   int64
 		label  string
-		amount int
 	)
 	var txs []service.Transaction
 	for rows.Next() {
-		if err := rows.Scan(&id, &date, &label, &amount); err != nil {
+		if err := rows.Scan(&amount, &date, &label); err != nil {
 			return nil, err
 		}
 		tx := service.Transaction{
-			ID:     id,
-			Date:   time.Unix(date, 0),
 			Ledger: ledger,
-			Label:  label,
 			Amount: amount,
+			Date:   time.Unix(date, 0),
+			Label:  label,
 		}
 		txs = append(txs, tx)
 	}

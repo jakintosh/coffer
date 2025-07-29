@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -15,8 +16,8 @@ const (
 	BIN_NAME    = "coffer"
 	AUTHOR      = "jakintosh"
 	VERSION     = "0.1"
-	DEFAULT_CFG = "~/.config/coffer" + BIN_NAME
-	DEFAULT_URL = "http://localhost:8080/api/v1"
+	DEFAULT_CFG = "~/.config/coffer"
+	DEFAULT_URL = "http://localhost:9000"
 )
 
 func main() {
@@ -37,25 +38,56 @@ var root = &cmd.Command{
 	},
 	Operands: []cmd.Operand{},
 	Options: []cmd.Option{
-		{Short: 'u', Long: "url", Type: cmd.OptionTypeParameter,
-			Help: "coffer API base url"},
-	},
-	Handler: func(i *cmd.Input) error {
-		return fmt.Errorf("not callable, use subcommand")
+		{
+			Short: 'u',
+			Long:  "url",
+			Type:  cmd.OptionTypeParameter,
+			Help:  "coffer API base url",
+		},
 	},
 }
 
-func baseURL(i *cmd.Input) string {
-	if u := i.GetParameter("url"); u != nil && *u != "" {
-		return strings.TrimRight(*u, "/")
+func baseURL(
+	i *cmd.Input,
+) string {
+	u := i.GetParameter("url")
+	env := os.Getenv("COFFER_URL")
+
+	var url string
+	if u != nil && *u != "" {
+		url = strings.TrimRight(*u, "/")
+	} else if env != "" {
+		url = strings.TrimRight(env, "/")
+	} else {
+		url = DEFAULT_URL
 	}
-	if env := os.Getenv("COFFER_URL"); env != "" {
-		return strings.TrimRight(env, "/")
-	}
-	return DEFAULT_URL
+	return url + "/api/v1"
 }
 
-func request(i *cmd.Input, method, path string, body []byte) error {
+func addParams(
+	i *cmd.Input,
+	path string,
+	names ...string,
+) string {
+	params := url.Values{}
+	for _, name := range names {
+		if v := i.GetParameter(name); v != nil {
+			params.Set(name, *v)
+		}
+	}
+	if q := params.Encode(); q != "" {
+		return path + "?" + q
+	} else {
+		return path
+	}
+}
+
+func request(
+	i *cmd.Input,
+	method string,
+	path string,
+	body []byte,
+) error {
 	url := baseURL(i) + path
 
 	var reader io.Reader
@@ -90,5 +122,6 @@ func request(i *cmd.Input, method, path string, body []byte) error {
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("server returned %s", resp.Status)
 	}
+
 	return nil
 }

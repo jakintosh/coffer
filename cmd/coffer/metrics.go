@@ -7,10 +7,8 @@ import (
 )
 
 var metricsCmd = &cmd.Command{
-	Name:     "metrics",
-	Help:     "retrieve metrics",
-	Options:  []cmd.Option{},
-	Operands: []cmd.Operand{},
+	Name: "metrics",
+	Help: "manage metrics resources",
 	Handler: func(i *cmd.Input) error {
 		return request(i, http.MethodGet, "/metrics", nil)
 	},

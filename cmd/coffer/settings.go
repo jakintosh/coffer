@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	cmd "git.sr.ht/~jakintosh/command-go"
 )
 
@@ -17,7 +18,7 @@ var settingsCmd = &cmd.Command{
 
 var allocationsCmd = &cmd.Command{
 	Name:        "allocations",
-	Help:        "allocation rules",
+	Help:        "manage allocation rules",
 	Subcommands: []*cmd.Command{allocGetCmd, allocSetCmd},
 }
 
@@ -33,35 +34,64 @@ var allocSetCmd = &cmd.Command{
 	Name: "set",
 	Help: "set allocation rules",
 	Options: []cmd.Option{
-		{Long: "id", Type: cmd.OptionTypeParameter, Help: "rule id"},
-		{Long: "ledger", Type: cmd.OptionTypeParameter, Help: "ledger name"},
-		{Long: "percentage", Type: cmd.OptionTypeParameter, Help: "percentage"},
-		{Long: "file", Type: cmd.OptionTypeParameter, Help: "json file"},
+		{
+			Long: "id",
+			Type: cmd.OptionTypeArray,
+			Help: "allocation rule id",
+		},
+		{
+			Long: "ledger",
+			Type: cmd.OptionTypeArray,
+			Help: "ledger name for allocation rule",
+		},
+		{
+			Long: "percentage",
+			Type: cmd.OptionTypeArray,
+			Help: "percentage of allocation rule",
+		},
+		{
+			Long: "file",
+			Type: cmd.OptionTypeParameter,
+			Help: "json file to read allocation rules from",
+		},
 	},
 	Handler: func(i *cmd.Input) error {
-		if file := i.GetParameter("file"); file != nil {
-			data, err := os.ReadFile(*file)
+
+		// file-based path
+		if f := i.GetParameter("file"); f != nil {
+			body, err := os.ReadFile(*f)
 			if err != nil {
 				return err
 			}
-			return request(i, http.MethodPut, "/settings/allocations", data)
+			return request(i, http.MethodPut, "/settings/allocations", body)
 		}
 
-		perc := i.GetIntParameter("percentage")
-		id := i.GetParameter("id")
-		ledger := i.GetParameter("ledger")
-		if perc == nil || id == nil || ledger == nil {
+		// option-based path
+		id := i.GetArray("id")
+		ledger := i.GetArray("ledger")
+		percentage := i.GetIntArray("percentage")
+
+		if !(len(id) == len(ledger) && len(id) == len(percentage)) {
+			return fmt.Errorf("id, ledger and percentage must have same count")
+		}
+		if len(id) == 0 {
 			return fmt.Errorf("id, ledger and percentage required")
 		}
-		rule := []map[string]any{{
-			"id":         *id,
-			"ledger":     *ledger,
-			"percentage": *perc,
-		}}
+
+		var rule []service.AllocationRule
+		for i := range len(id) {
+			rule = append(rule, service.AllocationRule{
+				ID:         id[i],
+				LedgerName: ledger[i],
+				Percentage: percentage[i],
+			})
+		}
+
 		body, err := json.Marshal(rule)
 		if err != nil {
 			return err
 		}
+
 		return request(i, http.MethodPut, "/settings/allocations", body)
 	},
 }

@@ -1,5 +1,5 @@
-git.sr.ht/~jakintosh/command-go v0.0.2 h1:Wf+MmN9s1Tfjl48C5nnfq/W+/w8KLhbBdzMWIeWbDcE=
-git.sr.ht/~jakintosh/command-go v0.0.2/go.mod h1:Qp6RBvq43rwbWUnPNitASz6w18azPkUHSSrpub/slBk=
+git.sr.ht/~jakintosh/command-go v0.0.3 h1:QMrHhnWUi2QW+R2rNaFF4EUAiQBEcyIExaxA3pROpF4=
+git.sr.ht/~jakintosh/command-go v0.0.3/go.mod h1:Qp6RBvq43rwbWUnPNitASz6w18azPkUHSSrpub/slBk=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
