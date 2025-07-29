@@ -11,6 +11,7 @@ func TestQuerySubscriptionSummary(t *testing.T) {
 
 	setupDb()
 	metricsStore := database.NewMetricsStore()
+	stripeStore := database.NewStripeStore()
 
 	// no data → zero
 	sum, err := metricsStore.GetSubscriptionSummary()
@@ -22,7 +23,7 @@ func TestQuerySubscriptionSummary(t *testing.T) {
 	}
 
 	// insert one active USD subscription @ $5.00
-	if err := database.InsertSubscription("s1", time.Now().Unix(), "c1", "active", 500, "usd"); err != nil {
+	if err := stripeStore.InsertSubscription("s1", time.Now().Unix(), "c1", "active", 500, "usd"); err != nil {
 		t.Fatal(err)
 	}
 	sum, err = metricsStore.GetSubscriptionSummary()

@@ -10,19 +10,21 @@ import (
 
 func seedCustomers(t *testing.T) {
 
+	stripeStore := database.NewStripeStore()
+
 	ts := util.MakeDateUnix(2025, 1, 1)
-	if err := database.InsertCustomer("c1", ts-60, "one@example.com", "One"); err != nil {
+	if err := stripeStore.InsertCustomer("c1", ts-60, "one@example.com", "One"); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertCustomer("c2", ts-40, "two@example.com", "Two"); err != nil {
+	if err := stripeStore.InsertCustomer("c2", ts-40, "two@example.com", "Two"); err != nil {
 		t.Fatal(err)
 	}
-	if err := database.InsertCustomer("c3", ts-20, "three@example.com", "Three"); err != nil {
+	if err := stripeStore.InsertCustomer("c3", ts-20, "three@example.com", "Three"); err != nil {
 		t.Fatal(err)
 	}
 
 	// update c2
-	if err := database.InsertCustomer("c2", ts-40, "two@example.org", "Two"); err != nil {
+	if err := stripeStore.InsertCustomer("c2", ts-40, "two@example.org", "Two"); err != nil {
 		t.Fatal(err)
 	}
 }

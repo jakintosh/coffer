@@ -10,7 +10,6 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/stripe"
 	"github.com/gorilla/mux"
 )
 
@@ -31,12 +30,12 @@ func main() {
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetAllocationsStore(database.NewAllocationsStore())
-	stripe.Init(stripeKey, endpointSecret)
+	service.SetStripeStore(database.NewStripeStore())
+	service.InitStripe(stripeKey, endpointSecret, false)
 
 	// config routing
 	r := mux.NewRouter()
 	api.BuildRouter(r.PathPrefix("/api/v1").Subrouter())
-	stripe.BuildRouter(r.PathPrefix("/api/v1/stripe").Subrouter())
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, r))
