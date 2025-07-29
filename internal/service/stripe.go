@@ -13,41 +13,54 @@ import (
 	"github.com/stripe/stripe-go/v82/webhook"
 )
 
-// StripeStore defines methods for persisting Stripe resources.
 type StripeStore interface {
-	InsertCustomer(id string, created int64, email, name string) error
-	InsertSubscription(id string, created int64, customer, status string, amount int64, currency string) error
-	InsertPayment(id string, created int64, status, customer string, amount int64, currency string) error
+	InsertCustomer(id string, created int64, email string, name string) error
+	InsertSubscription(id string, created int64, customer string, status string, amount int64, currency string) error
+	InsertPayment(id string, created int64, status string, customer string, amount int64, currency string) error
 	InsertPayout(id string, created int64, status string, amount int64, currency string) error
 }
 
 var stripeStore StripeStore
 
-// SetStripeStore configures persistence for Stripe data.
 func SetStripeStore(s StripeStore) {
 	stripeStore = s
 }
 
 var endpointSecret string
 var updateRequests chan updateRequest
+var testMode bool
 
-// InitStripe configures the Stripe API and starts the update scheduler.
-func InitStripe(key, secret string) {
+func InitStripe(
+	key string,
+	secret string,
+	test bool,
+) {
 	stripe.Key = key
 	endpointSecret = secret
+	testMode = test
 
-	updateRequests = make(chan updateRequest, 32)
+	updateRequests = make(chan updateRequest, 8)
 	go scheduleResourceUpdates(updateRequests)
 }
 
-// ParseEvent verifies a webhook payload and returns the Stripe event.
-func ParseEvent(payload []byte, sig string) (stripe.Event, error) {
-	opts := webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true}
-	return webhook.ConstructEventWithOptions(payload, sig, endpointSecret, opts)
+func ParseEvent(
+	payload []byte,
+	sig string,
+) (
+	stripe.Event,
+	error,
+) {
+	if testMode {
+		opts := webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true}
+		return webhook.ConstructEventWithOptions(payload, sig, endpointSecret, opts)
+	} else {
+		return webhook.ConstructEvent(payload, sig, endpointSecret)
+	}
 }
 
-// ProcessEvent queues work for the received event.
-func ProcessEvent(event stripe.Event) {
+func ProcessStripeEvent(
+	event stripe.Event,
+) {
 	log.Printf("<-  event %s %s", event.ID, event.Type)
 	switch event.Type {
 	case "customer.created", "customer.updated":
@@ -57,6 +70,7 @@ func ProcessEvent(event stripe.Event) {
 			return
 		}
 		updateRequests <- updateRequest{"customer", c.ID}
+
 	case "customer.subscription.created", "customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.deleted", "customer.subscription.updated":
 		var s stripe.Subscription
 		if err := json.Unmarshal(event.Data.Raw, &s); err != nil {
@@ -64,6 +78,7 @@ func ProcessEvent(event stripe.Event) {
 			return
 		}
 		updateRequests <- updateRequest{"subscription", s.ID}
+
 	case "payment_intent.succeeded":
 		var p stripe.PaymentIntent
 		if err := json.Unmarshal(event.Data.Raw, &p); err != nil {
@@ -71,6 +86,7 @@ func ProcessEvent(event stripe.Event) {
 			return
 		}
 		updateRequests <- updateRequest{"payment", p.ID}
+
 	case "payout.paid", "payout.failed":
 		var p stripe.Payout
 		if err := json.Unmarshal(event.Data.Raw, &p); err != nil {
@@ -78,19 +94,20 @@ func ProcessEvent(event stripe.Event) {
 			return
 		}
 		updateRequests <- updateRequest{"payout", p.ID}
+
 	default:
 		// ignore
 	}
 }
-
-// --- internal logic ---
 
 type updateRequest struct {
 	Type string
 	ID   string
 }
 
-func scheduleResourceUpdates(requests <-chan updateRequest) {
+func scheduleResourceUpdates(
+	requests <-chan updateRequest,
+) {
 	resets := make(map[string]chan int)
 	ready := make(chan updateRequest)
 	for {
@@ -103,6 +120,7 @@ func scheduleResourceUpdates(requests <-chan updateRequest) {
 				resets[req.ID] = reset
 				go queueResourceUpdate(req, ready, reset)
 			}
+
 		case req := <-ready:
 			delete(resets, req.ID)
 			switch req.Type {
@@ -119,7 +137,11 @@ func scheduleResourceUpdates(requests <-chan updateRequest) {
 	}
 }
 
-func queueResourceUpdate(req updateRequest, ready chan<- updateRequest, reset <-chan int) {
+func queueResourceUpdate(
+	req updateRequest,
+	ready chan<- updateRequest,
+	reset <-chan int,
+) {
 	duration := time.Millisecond * 500
 	timer := time.NewTimer(duration)
 	for {
@@ -129,6 +151,7 @@ func queueResourceUpdate(req updateRequest, ready chan<- updateRequest, reset <-
 				<-timer.C
 			}
 			timer.Reset(duration)
+
 		case <-timer.C:
 			ready <- req
 			return
@@ -136,7 +159,9 @@ func queueResourceUpdate(req updateRequest, ready chan<- updateRequest, reset <-
 	}
 }
 
-func processCustomer(id string) error {
+func processCustomer(
+	id string,
+) error {
 	if stripeStore == nil {
 		return ErrNoStripeStore
 	}
@@ -154,7 +179,12 @@ func processCustomer(id string) error {
 	}
 	log.Printf("<-  customer %s", id)
 
-	if err = stripeStore.InsertCustomer(id, c.Created, c.Email, c.Name); err != nil {
+	if err = stripeStore.InsertCustomer(
+		id,
+		c.Created,
+		c.Email,
+		c.Name,
+	); err != nil {
 		log.Printf("DB ERROR customer %s: %v", id, err)
 		return err
 	}
@@ -162,7 +192,9 @@ func processCustomer(id string) error {
 	return nil
 }
 
-func processSubscription(id string) error {
+func processSubscription(
+	id string,
+) error {
 	if stripeStore == nil {
 		return ErrNoStripeStore
 	}
@@ -188,7 +220,14 @@ func processSubscription(id string) error {
 		currency = string(price.Currency)
 	}
 
-	if err = stripeStore.InsertSubscription(id, s.Created, s.Customer.ID, string(s.Status), amount, currency); err != nil {
+	if err = stripeStore.InsertSubscription(
+		id,
+		s.Created,
+		s.Customer.ID,
+		string(s.Status),
+		amount,
+		currency,
+	); err != nil {
 		log.Printf("DB ERROR subscription %s: %v", id, err)
 		return err
 	}
@@ -196,7 +235,9 @@ func processSubscription(id string) error {
 	return nil
 }
 
-func processPaymentIntent(id string) error {
+func processPaymentIntent(
+	id string,
+) error {
 	if stripeStore == nil {
 		return ErrNoStripeStore
 	}
@@ -219,7 +260,14 @@ func processPaymentIntent(id string) error {
 		cust = p.Customer.ID
 	}
 
-	if err = stripeStore.InsertPayment(id, p.Created, string(p.Status), cust, p.Amount, string(p.Currency)); err != nil {
+	if err = stripeStore.InsertPayment(
+		id,
+		p.Created,
+		string(p.Status),
+		cust,
+		p.Amount,
+		string(p.Currency),
+	); err != nil {
 		log.Printf("DB ERROR payment intent %s: %v", id, err)
 		return err
 	}
@@ -227,7 +275,9 @@ func processPaymentIntent(id string) error {
 	return nil
 }
 
-func processPayout(id string) error {
+func processPayout(
+	id string,
+) error {
 	if stripeStore == nil {
 		return ErrNoStripeStore
 	}
@@ -245,7 +295,13 @@ func processPayout(id string) error {
 	}
 	log.Printf("<-  payout %s", id)
 
-	if err = stripeStore.InsertPayout(id, p.Created, string(p.Status), p.Amount, string(p.Currency)); err != nil {
+	if err = stripeStore.InsertPayout(
+		id,
+		p.Created,
+		string(p.Status),
+		p.Amount,
+		string(p.Currency),
+	); err != nil {
 		log.Printf("DB ERROR payout %s: %v", id, err)
 		return err
 	}

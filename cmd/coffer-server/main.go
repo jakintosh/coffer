@@ -31,12 +31,11 @@ func main() {
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetAllocationsStore(database.NewAllocationsStore())
 	service.SetStripeStore(database.NewStripeStore())
-	service.InitStripe(stripeKey, endpointSecret)
+	service.InitStripe(stripeKey, endpointSecret, false)
 
 	// config routing
 	r := mux.NewRouter()
 	api.BuildRouter(r.PathPrefix("/api/v1").Subrouter())
-	api.BuildStripeRouter(r.PathPrefix("/api/v1/stripe").Subrouter())
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, r))

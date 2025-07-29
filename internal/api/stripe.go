@@ -9,12 +9,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// BuildStripeRouter configures routes for Stripe webhooks.
-func BuildStripeRouter(r *mux.Router) {
+func buildStripeRouter(
+	r *mux.Router,
+) {
 	r.HandleFunc("/webhook", handleStripeWebhook).Methods("POST")
 }
 
-func handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
+func handleStripeWebhook(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	const MaxBodyBytes = int64(65536)
 	r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes)
 	payload, err := io.ReadAll(r.Body)
@@ -32,6 +36,7 @@ func handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	service.ProcessEvent(event)
+	service.ProcessStripeEvent(event)
+
 	w.WriteHeader(http.StatusOK)
 }

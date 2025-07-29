@@ -25,6 +25,7 @@ func BuildRouter(
 	buildMetricsRouter(r.PathPrefix("/metrics").Subrouter())
 	buildPatronsRouter(r.PathPrefix("/patrons").Subrouter())
 	buildSettingsRouter(r.PathPrefix("/settings").Subrouter())
+	buildStripeRouter(r.PathPrefix("/stripe").Subrouter())
 }
 
 func writeError(
