@@ -8,12 +8,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func buildKeysRouter(r *mux.Router) {
+func buildKeysRouter(
+	r *mux.Router,
+) {
 	r.HandleFunc("", withAuth(handlePostKey)).Methods("POST")
 	r.HandleFunc("/{id}", withAuth(handleDeleteKey)).Methods("DELETE")
 }
 
-func handlePostKey(w http.ResponseWriter, r *http.Request) {
+func handlePostKey(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	token, err := service.CreateAPIKey()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -22,7 +27,10 @@ func handlePostKey(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusCreated, token)
 }
 
-func handleDeleteKey(w http.ResponseWriter, r *http.Request) {
+func handleDeleteKey(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	id := mux.Vars(r)["id"]
 	id = strings.TrimSpace(id)
 	if id == "" {
