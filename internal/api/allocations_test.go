@@ -37,11 +37,6 @@ func TestPutAllocations(t *testing.T) {
 
 	setupDB()
 	router := setupRouter()
-	token, err := service.CreateAPIKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	auth := header{"Authorization", "Bearer " + token}
 
 	// put allocations
 	url := "/settings/allocations"
@@ -57,10 +52,11 @@ func TestPutAllocations(t *testing.T) {
 			"percentage": 40
 		}
     ]`
+	auth := makeTestAuthHeader(t)
 	result := put(router, url, body, nil, auth)
 
 	// validate result
-	err = expectStatus(http.StatusNoContent, result)
+	err := expectStatus(http.StatusNoContent, result)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,11 +89,6 @@ func TestPutAllocationsBad(t *testing.T) {
 
 	setupDB()
 	router := setupRouter()
-	token, err := service.CreateAPIKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	auth := header{"Authorization", "Bearer " + token}
 
 	// put invalid allocations
 	body := `
@@ -108,11 +99,12 @@ func TestPutAllocationsBad(t *testing.T) {
 			"percentage": 10
 		}
 	]`
+	auth := makeTestAuthHeader(t)
 	response := api.APIResponse{}
 	result := put(router, "/settings/allocations", body, &response, auth)
 
 	// validate error result
-	err = expectStatus(http.StatusBadRequest, result)
+	err := expectStatus(http.StatusBadRequest, result)
 	if err != nil {
 		t.Fatalf("%v\n%v", err, response)
 	}

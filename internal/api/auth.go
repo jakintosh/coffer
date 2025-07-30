@@ -7,7 +7,9 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func withAuth(next http.HandlerFunc) http.HandlerFunc {
+func withAuth(
+	next http.HandlerFunc,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
 		if strings.HasPrefix(strings.ToLower(token), "bearer ") {

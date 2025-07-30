@@ -117,6 +117,16 @@ func seedTransactions(t *testing.T) {
 	}
 }
 
+func makeTestAuthHeader(t *testing.T) header {
+
+	token, err := service.CreateAPIKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := header{"Authorization", "Bearer " + token}
+	return auth
+}
+
 func expectStatus(
 	code int,
 	result httpResult,
@@ -131,9 +141,13 @@ func get(
 	router *mux.Router,
 	url string,
 	response any,
+	headers ...header,
 ) httpResult {
 	req := httptest.NewRequest("GET", url, nil)
 	res := httptest.NewRecorder()
+	for _, h := range headers {
+		req.Header.Set(h.key, h.value)
+	}
 	router.ServeHTTP(res, req)
 
 	// decode response

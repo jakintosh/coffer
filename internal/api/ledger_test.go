@@ -12,11 +12,6 @@ func TestCreateTransaction(t *testing.T) {
 
 	setupDB()
 	router := setupRouter()
-	token, err := service.CreateAPIKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	auth := header{"Authorization", "Bearer " + token}
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -26,6 +21,7 @@ func TestCreateTransaction(t *testing.T) {
 		"label": "base",
 		"amount": 50
 	}`
+	auth := makeTestAuthHeader(t)
 	var response struct {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
@@ -33,7 +29,7 @@ func TestCreateTransaction(t *testing.T) {
 	result := post(router, url, body, &response, auth)
 
 	// verify result
-	err = expectStatus(http.StatusCreated, result)
+	err := expectStatus(http.StatusCreated, result)
 	if err != nil {
 		t.Fatalf("%v\n%v", err, response)
 	}
@@ -43,11 +39,6 @@ func TestCreateTransactionBadInput(t *testing.T) {
 
 	setupDB()
 	router := setupRouter()
-	token, err := service.CreateAPIKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	auth := header{"Authorization", "Bearer " + token}
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -57,6 +48,7 @@ func TestCreateTransactionBadInput(t *testing.T) {
 		"label": "x",
 		"amount": "a lot"
 	}`
+	auth := makeTestAuthHeader(t)
 	var response struct {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
@@ -64,7 +56,7 @@ func TestCreateTransactionBadInput(t *testing.T) {
 	result := post(router, url, body, &response, auth)
 
 	// verify result
-	err = expectStatus(http.StatusBadRequest, result)
+	err := expectStatus(http.StatusBadRequest, result)
 	if err != nil {
 		t.Fatalf("%v\n%v", err, response)
 	}

@@ -19,7 +19,8 @@ func TestListPatrons(t *testing.T) {
 		Error   api.APIError     `json:"error"`
 		Patrons []service.Patron `json:"data"`
 	}
-	result := get(router, url, &response)
+	auth := makeTestAuthHeader(t)
+	result := get(router, url, &response, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -53,7 +54,8 @@ func TestListPatronsPagination(t *testing.T) {
 		Error   api.APIError     `json:"error"`
 		Patrons []service.Patron `json:"data"`
 	}
-	result := get(router, url, &response)
+	auth := makeTestAuthHeader(t)
+	result := get(router, url, &response, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -78,7 +80,8 @@ func TestListPatronsNegativeQuery(t *testing.T) {
 	router := setupRouter()
 
 	url := "/patrons?limit=-1&offset=-1"
-	result := get(router, url, nil)
+	auth := makeTestAuthHeader(t)
+	result := get(router, url, nil, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -92,7 +95,8 @@ func TestListPatronsInvalidQuery(t *testing.T) {
 	router := setupRouter()
 
 	url := "/patrons?limit=bad&offset=-1"
-	result := get(router, url, nil)
+	auth := makeTestAuthHeader(t)
+	result := get(router, url, nil, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusBadRequest, result); err != nil {
