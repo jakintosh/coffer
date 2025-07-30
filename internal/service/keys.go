@@ -7,19 +7,22 @@ import (
 	"strings"
 )
 
-// KeyStore provides persistence for API keys.
 type KeyStore interface {
-	InsertKey(id, salt, hash string) error
-	FetchKey(id string) (salt, hash string, err error)
+	InsertKey(id string, salt string, hash string) error
+	FetchKey(id string) (salt string, hash string, err error)
 	DeleteKey(id string) error
 }
 
 var keyStore KeyStore
 
-func SetKeyStore(s KeyStore) { keyStore = s }
+func SetKeyStore(s KeyStore) {
+	keyStore = s
+}
 
-// CreateAPIKey generates and stores a new API key, returning the token string.
-func CreateAPIKey() (string, error) {
+func CreateAPIKey() (
+	string,
+	error,
+) {
 	if keyStore == nil {
 		return "", ErrNoKeyStore
 	}
@@ -51,8 +54,12 @@ func CreateAPIKey() (string, error) {
 	return token, nil
 }
 
-// VerifyAPIKey checks that token is valid.
-func VerifyAPIKey(token string) (bool, error) {
+func VerifyAPIKey(
+	token string,
+) (
+	bool,
+	error,
+) {
 	if keyStore == nil {
 		return false, ErrNoKeyStore
 	}

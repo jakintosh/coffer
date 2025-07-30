@@ -8,6 +8,7 @@ import (
 )
 
 func TestCreateAndVerifyKey(t *testing.T) {
+
 	setupDB()
 	service.SetKeyStore(database.NewKeyStore())
 
