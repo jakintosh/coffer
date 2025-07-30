@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	cmd "git.sr.ht/~jakintosh/command-go"
@@ -35,6 +36,7 @@ var root = &cmd.Command{
 		metricsCmd,
 		patronsCmd,
 		settingsCmd,
+		authCmd,
 	},
 	Operands: []cmd.Operand{},
 	Options: []cmd.Option{
@@ -43,6 +45,11 @@ var root = &cmd.Command{
 			Long:  "url",
 			Type:  cmd.OptionTypeParameter,
 			Help:  "coffer API base url",
+		},
+		{
+			Long: "config-dir",
+			Type: cmd.OptionTypeParameter,
+			Help: "config directory",
 		},
 	},
 }
@@ -82,6 +89,45 @@ func addParams(
 	}
 }
 
+func cfgDir(i *cmd.Input) string {
+	dir := DEFAULT_CFG
+	if c := i.GetParameter("config-dir"); c != nil && *c != "" {
+		dir = *c
+	}
+	if strings.HasPrefix(dir, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			dir = filepath.Join(home, dir[2:])
+		}
+	}
+	return dir
+}
+
+func keyPath(i *cmd.Input) string {
+	return filepath.Join(cfgDir(i), "api_key")
+}
+
+func loadAPIKey(i *cmd.Input) (string, error) {
+	path := keyPath(i)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func saveAPIKey(i *cmd.Input, key string) error {
+	dir := cfgDir(i)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	path := keyPath(i)
+	return os.WriteFile(path, []byte(key), 0o600)
+}
+
+func deleteAPIKey(i *cmd.Input) error {
+	return os.Remove(keyPath(i))
+}
+
 func request(
 	i *cmd.Input,
 	method string,
@@ -102,6 +148,10 @@ func request(
 
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+
+	if key, err := loadAPIKey(i); err == nil && key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
