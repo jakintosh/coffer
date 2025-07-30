@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	cmd "git.sr.ht/~jakintosh/command-go"
@@ -35,6 +36,7 @@ var root = &cmd.Command{
 		metricsCmd,
 		patronsCmd,
 		settingsCmd,
+		authCmd,
 	},
 	Operands: []cmd.Operand{},
 	Options: []cmd.Option{
@@ -43,6 +45,11 @@ var root = &cmd.Command{
 			Long:  "url",
 			Type:  cmd.OptionTypeParameter,
 			Help:  "coffer API base url",
+		},
+		{
+			Long: "config-dir",
+			Type: cmd.OptionTypeParameter,
+			Help: "config directory",
 		},
 	},
 }
@@ -62,6 +69,27 @@ func baseURL(
 		url = DEFAULT_URL
 	}
 	return url + "/api/v1"
+}
+
+func cfgDir(
+	i *cmd.Input,
+) string {
+	dir := DEFAULT_CFG
+	if c := i.GetParameter("config-dir"); c != nil && *c != "" {
+		dir = *c
+	}
+	if strings.HasPrefix(dir, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			dir = filepath.Join(home, dir[2:])
+		}
+	}
+	return dir
+}
+
+func keyPath(
+	i *cmd.Input,
+) string {
+	return filepath.Join(cfgDir(i), "api_key")
 }
 
 func addParams(
@@ -102,6 +130,12 @@ func request(
 
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+
+	if key, err := loadAPIKey(i); err == nil && key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
+	} else {
+		return fmt.Errorf("failed to load api key")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
