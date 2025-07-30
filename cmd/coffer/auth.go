@@ -3,23 +3,31 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	cmd "git.sr.ht/~jakintosh/command-go"
 )
 
 var authCmd = &cmd.Command{
-	Name:        "auth",
-	Help:        "manage local api key",
-	Subcommands: []*cmd.Command{authSetCmd, authUnsetCmd},
+	Name: "auth",
+	Help: "manage local api key",
+	Subcommands: []*cmd.Command{
+		authSetCmd,
+		authUnsetCmd,
+	},
 }
 
 var authSetCmd = &cmd.Command{
-	Name: "set",
+	Name: "login",
 	Help: "set api key",
 	Operands: []cmd.Operand{
-		{Name: "key", Help: "api key token"},
+		{
+			Name: "key",
+			Help: "api key token",
+		},
 	},
 	Handler: func(i *cmd.Input) error {
+
 		key := i.GetOperand("key")
 		if key == "" {
 			return fmt.Errorf("missing key")
@@ -29,12 +37,46 @@ var authSetCmd = &cmd.Command{
 }
 
 var authUnsetCmd = &cmd.Command{
-	Name: "unset",
+	Name: "logout",
 	Help: "remove saved api key",
 	Handler: func(i *cmd.Input) error {
-		if err := deleteAPIKey(i); err != nil && !os.IsNotExist(err) {
+
+		err := deleteAPIKey(i)
+		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		return nil
 	},
+}
+
+func loadAPIKey(
+	i *cmd.Input,
+) (
+	string,
+	error,
+) {
+	path := keyPath(i)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func saveAPIKey(
+	i *cmd.Input,
+	key string,
+) error {
+	dir := cfgDir(i)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	path := keyPath(i)
+	return os.WriteFile(path, []byte(key), 0o600)
+}
+
+func deleteAPIKey(
+	i *cmd.Input,
+) error {
+	return os.Remove(keyPath(i))
 }

@@ -11,15 +11,21 @@ import (
 )
 
 var settingsCmd = &cmd.Command{
-	Name:        "settings",
-	Help:        "manage settings",
-	Subcommands: []*cmd.Command{allocationsCmd, keysCmd},
+	Name: "settings",
+	Help: "manage settings",
+	Subcommands: []*cmd.Command{
+		allocationsCmd,
+		keysCmd,
+	},
 }
 
 var allocationsCmd = &cmd.Command{
-	Name:        "allocations",
-	Help:        "manage allocation rules",
-	Subcommands: []*cmd.Command{allocGetCmd, allocSetCmd},
+	Name: "allocations",
+	Help: "manage allocation rules",
+	Subcommands: []*cmd.Command{
+		allocGetCmd,
+		allocSetCmd,
+	},
 }
 
 var allocGetCmd = &cmd.Command{
@@ -97,22 +103,30 @@ var allocSetCmd = &cmd.Command{
 }
 
 var keysCmd = &cmd.Command{
-	Name:        "keys",
-	Help:        "manage api keys",
-	Subcommands: []*cmd.Command{keysCreateCmd, keysDeleteCmd},
+	Name: "keys",
+	Help: "manage api keys",
+	Subcommands: []*cmd.Command{
+		keysCreateCmd,
+		keysDeleteCmd,
+	},
 }
 
 var keysCreateCmd = &cmd.Command{
-	Name:    "create",
-	Help:    "create new api key",
-	Handler: func(i *cmd.Input) error { return request(i, http.MethodPost, "/settings/keys", nil) },
+	Name: "create",
+	Help: "create new api key",
+	Handler: func(i *cmd.Input) error {
+		return request(i, http.MethodPost, "/settings/keys", nil)
+	},
 }
 
 var keysDeleteCmd = &cmd.Command{
 	Name: "delete",
 	Help: "delete api key",
 	Operands: []cmd.Operand{
-		{Name: "id", Help: "api key id"},
+		{
+			Name: "id",
+			Help: "api key id",
+		},
 	},
 	Handler: func(i *cmd.Input) error {
 		id := i.GetOperand("id")
