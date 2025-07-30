@@ -100,6 +100,65 @@ func ProcessStripeEvent(
 	}
 }
 
+func CreatePayment(
+	id string,
+	created int64,
+	status string,
+	customer string,
+	amount int64,
+	currency string,
+) error {
+
+	if stripeStore == nil {
+		return ErrNoStripeStore
+	}
+
+	if err := stripeStore.InsertPayment(
+		id,
+		created,
+		status,
+		customer,
+		amount,
+		currency,
+	); err != nil {
+		return err
+	}
+
+	rules, err := GetAllocations()
+	if err != nil {
+		return err
+	}
+
+	payment := int(amount)
+	allocated := 0
+	date := time.Unix(created, 0)
+
+	for i, r := range rules {
+
+		share := 0
+		if i == len(rules)-1 {
+			// if last rule, use remaining payment amount
+			share = payment - allocated
+		} else {
+			// otherwise, calculate share
+			share = int((amount * int64(r.Percentage)) / 100)
+			allocated += share
+		}
+
+		// do not commit an empty transaction
+		if share == 0 {
+			continue
+		}
+
+		err := AddTransaction(r.LedgerName, share, date, "patron")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type updateRequest struct {
 	Type string
 	ID   string
@@ -307,59 +366,5 @@ func processPayout(
 		return err
 	}
 	log.Printf("OK payout %s", id)
-	return nil
-}
-
-// CreatePayment records a payment and allocates the amount across ledgers
-// based on the currently configured allocation rules.
-func CreatePayment(
-	id string,
-	created int64,
-	status string,
-	customer string,
-	amount int64,
-	currency string,
-) error {
-
-	if stripeStore == nil {
-		return ErrNoStripeStore
-	}
-
-	if err := stripeStore.InsertPayment(
-		id,
-		created,
-		status,
-		customer,
-		amount,
-		currency,
-	); err != nil {
-		return err
-	}
-
-	rules, err := GetAllocations()
-	if err != nil {
-		return err
-	}
-
-	payment := int(amount)
-	allocated := 0
-	date := time.Unix(created, 0)
-
-	for i, r := range rules {
-		share := 0
-		if i == len(rules)-1 {
-			share = payment - allocated
-		} else {
-			share = int((amount * int64(r.Percentage)) / 100)
-			allocated += share
-		}
-		if share == 0 {
-			continue
-		}
-		if err := AddTransaction(r.LedgerName, share, date, id); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }

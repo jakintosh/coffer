@@ -9,12 +9,20 @@ import (
 )
 
 func TestCreatePaymentDefault(t *testing.T) {
+
 	setupDB()
 	service.SetStripeStore(database.NewStripeStore())
 
 	ts := util.MakeDateUnix(2025, 1, 1)
-	if err := service.CreatePayment("pi_def", ts, "succeeded", "cus_1", 1000, "usd"); err != nil {
-		t.Fatalf("CreatePayment: %v", err)
+	if err := service.CreatePayment(
+		"pi_def",
+		ts,
+		"succeeded",
+		"cus_1",
+		1000,
+		"usd",
+	); err != nil {
+		t.Fatalf("failed to create payment: %v", err)
 	}
 
 	txs, err := service.GetTransactions("general", 10, 0)
@@ -30,33 +38,49 @@ func TestCreatePaymentDefault(t *testing.T) {
 }
 
 func TestCreatePaymentAllocated(t *testing.T) {
+
 	setupDB()
 	service.SetStripeStore(database.NewStripeStore())
 
 	rules := []service.AllocationRule{
-		{ID: "g", LedgerName: "general", Percentage: 25},
-		{ID: "c", LedgerName: "community", Percentage: 75},
+		{
+			ID:         "g",
+			LedgerName: "general",
+			Percentage: 25,
+		},
+		{
+			ID:         "c",
+			LedgerName: "community",
+			Percentage: 75,
+		},
 	}
 	if err := service.SetAllocations(rules); err != nil {
-		t.Fatalf("set allocations: %v", err)
+		t.Fatalf("failed to set allocations: %v", err)
 	}
 
 	amount := int64(777)
 	ts := util.MakeDateUnix(2025, 1, 1)
-	if err := service.CreatePayment("pi_alloc", ts, "succeeded", "cus_2", amount, "usd"); err != nil {
+	if err := service.CreatePayment(
+		"pi_alloc",
+		ts,
+		"succeeded",
+		"cus_2",
+		amount,
+		"usd",
+	); err != nil {
 		t.Fatalf("CreatePayment: %v", err)
 	}
 
 	gTx, err := service.GetTransactions("general", 10, 0)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to get transactions for 'general': %v", err)
 	}
 	cTx, err := service.GetTransactions("community", 10, 0)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to get transactions for 'community': %v", err)
 	}
 	if len(gTx) != 1 || len(cTx) != 1 {
-		t.Fatalf("expected 1 tx each got %d and %d", len(gTx), len(cTx))
+		t.Fatalf("expected 1 tx for each ledger, got %d and %d", len(gTx), len(cTx))
 	}
 	if gTx[0].Amount != 194 {
 		t.Errorf("general want 194 got %d", gTx[0].Amount)
