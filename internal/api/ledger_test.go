@@ -21,11 +21,12 @@ func TestCreateTransaction(t *testing.T) {
 		"label": "base",
 		"amount": 50
 	}`
+	auth := makeTestAuthHeader(t)
 	var response struct {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
 	}
-	result := post(router, url, body, &response)
+	result := post(router, url, body, &response, auth)
 
 	// verify result
 	err := expectStatus(http.StatusCreated, result)
@@ -47,11 +48,12 @@ func TestCreateTransactionBadInput(t *testing.T) {
 		"label": "x",
 		"amount": "a lot"
 	}`
+	auth := makeTestAuthHeader(t)
 	var response struct {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
 	}
-	result := post(router, url, body, &response)
+	result := post(router, url, body, &response, auth)
 
 	// verify result
 	err := expectStatus(http.StatusBadRequest, result)

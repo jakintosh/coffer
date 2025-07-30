@@ -31,6 +31,7 @@ func setupDB() {
 	database.Init(":memory:", false)
 	service.InitStripe("", STRIPE_TEST_KEY, true)
 	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
@@ -116,6 +117,16 @@ func seedTransactions(t *testing.T) {
 	}
 }
 
+func makeTestAuthHeader(t *testing.T) header {
+
+	token, err := service.CreateAPIKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := header{"Authorization", "Bearer " + token}
+	return auth
+}
+
 func expectStatus(
 	code int,
 	result httpResult,
@@ -130,9 +141,13 @@ func get(
 	router *mux.Router,
 	url string,
 	response any,
+	headers ...header,
 ) httpResult {
 	req := httptest.NewRequest("GET", url, nil)
 	res := httptest.NewRecorder()
+	for _, h := range headers {
+		req.Header.Set(h.key, h.value)
+	}
 	router.ServeHTTP(res, req)
 
 	// decode response
@@ -177,9 +192,13 @@ func put(
 	url string,
 	body string,
 	response any,
+	headers ...header,
 ) httpResult {
 	req := httptest.NewRequest("PUT", url, strings.NewReader(body))
 	res := httptest.NewRecorder()
+	for _, h := range headers {
+		req.Header.Set(h.key, h.value)
+	}
 	router.ServeHTTP(res, req)
 
 	if res.Body != nil {

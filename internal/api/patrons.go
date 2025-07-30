@@ -11,7 +11,7 @@ import (
 func buildPatronsRouter(
 	r *mux.Router,
 ) {
-	r.HandleFunc("", handleListPatrons).Methods("GET")
+	r.HandleFunc("", withAuth(handleListPatrons)).Methods("GET")
 }
 
 func handleListPatrons(
