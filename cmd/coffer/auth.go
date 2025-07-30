@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -12,8 +14,26 @@ var authCmd = &cmd.Command{
 	Name: "auth",
 	Help: "manage local api key",
 	Subcommands: []*cmd.Command{
+		authBootstrapCmd,
 		authSetCmd,
 		authUnsetCmd,
+	},
+}
+
+var authBootstrapCmd = &cmd.Command{
+	Name: "bootstrap",
+	Help: "generate api key",
+	Handler: func(i *cmd.Input) error {
+
+		keyBytes := make([]byte, 32)
+		if _, err := rand.Read(keyBytes); err != nil {
+			return err
+		}
+
+		key := "default." + hex.EncodeToString(keyBytes)
+		fmt.Print(key)
+
+		return saveAPIKey(i, key)
 	},
 }
 

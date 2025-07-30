@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strings"
 )
 
@@ -35,16 +36,25 @@ func InitKeys(
 		return nil
 	}
 
+	// generate a salt
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return err
 	}
-	secret, err := hex.DecodeString(apiKey)
+
+	// extract id and secret from apiKey
+	parts := strings.Split(apiKey, ".")
+	if len(parts) != 2 {
+		return fmt.Errorf("incorrectly formatted apiKey")
+	}
+	id := parts[0]
+	secretHex := parts[1]
+	secret, err := hex.DecodeString(secretHex)
 	if err != nil {
 		return err
 	}
 
-	if err := registerKey("default", salt, secret); err != nil {
+	if err := registerKey(id, salt, secret); err != nil {
 		return err
 	}
 

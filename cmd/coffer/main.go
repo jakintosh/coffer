@@ -134,6 +134,8 @@ func request(
 
 	if key, err := loadAPIKey(i); err == nil && key != "" {
 		req.Header.Set("Authorization", "Bearer "+key)
+	} else {
+		return fmt.Errorf("failed to load api key")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
