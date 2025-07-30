@@ -1,0 +1,37 @@
+package api
+
+import (
+	"net/http"
+	"strings"
+
+	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"github.com/gorilla/mux"
+)
+
+func buildKeysRouter(r *mux.Router) {
+	r.HandleFunc("", withAuth(handlePostKey)).Methods("POST")
+	r.HandleFunc("/{id}", withAuth(handleDeleteKey)).Methods("DELETE")
+}
+
+func handlePostKey(w http.ResponseWriter, r *http.Request) {
+	token, err := service.CreateAPIKey()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeData(w, http.StatusCreated, token)
+}
+
+func handleDeleteKey(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	id = strings.TrimSpace(id)
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "missing key id")
+		return
+	}
+	if err := service.DeleteAPIKey(id); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

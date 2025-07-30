@@ -212,3 +212,28 @@ func put(
 
 	return httpResult{res.Code, nil}
 }
+
+func del(
+	router *mux.Router,
+	url string,
+	response any,
+	headers ...header,
+) httpResult {
+	req := httptest.NewRequest("DELETE", url, nil)
+	res := httptest.NewRecorder()
+	for _, h := range headers {
+		req.Header.Set(h.key, h.value)
+	}
+	router.ServeHTTP(res, req)
+
+	if res.Body != nil {
+		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+			return httpResult{
+				Code:  res.Code,
+				Error: fmt.Errorf("Failed to decode JSON body: %v", err),
+			}
+		}
+	}
+
+	return httpResult{res.Code, nil}
+}
