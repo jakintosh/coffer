@@ -8,15 +8,47 @@ import (
 )
 
 type KeyStore interface {
-	InsertKey(id string, salt string, hash string) error
-	FetchKey(id string) (salt string, hash string, err error)
+	CountKeys() (int, error)
 	DeleteKey(id string) error
+	FetchKey(id string) (salt string, hash string, err error)
+	InsertKey(id string, salt string, hash string) error
 }
 
 var keyStore KeyStore
 
 func SetKeyStore(s KeyStore) {
 	keyStore = s
+}
+
+func InitKeys(
+	apiKey string,
+) error {
+	if keyStore == nil {
+		return ErrNoKeyStore
+	}
+
+	count, err := keyStore.CountKeys()
+	if err != nil {
+		return DatabaseError{err}
+	}
+	if count > 0 {
+		return nil
+	}
+
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return err
+	}
+	secret, err := hex.DecodeString(apiKey)
+	if err != nil {
+		return err
+	}
+
+	if err := registerKey("default", salt, secret); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func CreateAPIKey() (
@@ -31,26 +63,22 @@ func CreateAPIKey() (
 	if _, err := rand.Read(idBytes); err != nil {
 		return "", err
 	}
-	secretBytes := make([]byte, 32)
-	if _, err := rand.Read(secretBytes); err != nil {
-		return "", err
-	}
 	saltBytes := make([]byte, 16)
 	if _, err := rand.Read(saltBytes); err != nil {
 		return "", err
 	}
-
-	h := sha256.Sum256(append(saltBytes, secretBytes...))
-
-	id := hex.EncodeToString(idBytes)
-	salt := hex.EncodeToString(saltBytes)
-	hash := hex.EncodeToString(h[:])
-
-	if err := keyStore.InsertKey(id, salt, hash); err != nil {
-		return "", DatabaseError{err}
+	secretBytes := make([]byte, 32)
+	if _, err := rand.Read(secretBytes); err != nil {
+		return "", err
 	}
 
-	token := id + "." + hex.EncodeToString(secretBytes)
+	id := hex.EncodeToString(idBytes)
+	secret := hex.EncodeToString(secretBytes)
+	if err := registerKey(id, saltBytes, secretBytes); err != nil {
+		return "", err
+	}
+
+	token := id + "." + secret
 	return token, nil
 }
 
@@ -90,4 +118,24 @@ func VerifyAPIKey(
 		return true, nil
 	}
 	return false, nil
+}
+
+func registerKey(
+	id string,
+	saltBytes []byte,
+	secretBytes []byte,
+) error {
+	hashBytes := sha256.Sum256(append(saltBytes, secretBytes...))
+
+	salt := hex.EncodeToString(saltBytes)
+	hash := hex.EncodeToString(hashBytes[:])
+
+	if err := keyStore.InsertKey(
+		id,
+		salt,
+		hash,
+	); err != nil {
+		return DatabaseError{err}
+	}
+	return nil
 }

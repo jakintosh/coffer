@@ -27,7 +27,8 @@ func (DBKeyStore) FetchKey(
 	err error,
 ) {
 	row := db.QueryRow(`
-		SELECT salt, hash FROM api_key
+		SELECT salt, hash
+		FROM api_key
 		WHERE id=?1;`,
 		id,
 	)
@@ -56,4 +57,16 @@ func (DBKeyStore) DeleteKey(
 		id,
 	)
 	return err
+}
+
+func (DBKeyStore) CountKeys() (int, error) {
+	row := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM api_key;
+	`)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
