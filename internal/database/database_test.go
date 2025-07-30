@@ -12,4 +12,5 @@ func setupDb() {
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetKeyStore(database.NewKeyStore())
 }

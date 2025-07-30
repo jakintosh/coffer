@@ -13,6 +13,7 @@ var (
 	ErrNoPatronStore  = errors.New("patron store not configured")
 	ErrNoAllocStore   = errors.New("allocation store not configured")
 	ErrNoStripeStore  = errors.New("stripe store not configured")
+	ErrNoKeyStore     = errors.New("key store not configured")
 )
 
 type DatabaseError struct{ Err error }
