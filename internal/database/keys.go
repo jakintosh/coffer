@@ -51,9 +51,20 @@ func (DBKeyStore) DeleteKey(
 	id string,
 ) error {
 	_, err := db.Exec(`
-		DELETE FROM api_key
-		WHERE id=?1;`,
+                DELETE FROM api_key
+                WHERE id=?1;`,
 		id,
 	)
 	return err
+}
+
+func (DBKeyStore) CountKeys() (int, error) {
+	row := db.QueryRow(`
+                SELECT COUNT(*) FROM api_key;
+        `)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }

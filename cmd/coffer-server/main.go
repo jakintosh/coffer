@@ -23,6 +23,7 @@ func main() {
 	credsDir := readEnvVar("CREDENTIALS_DIRECTORY")
 	stripeKey := loadCredential("stripe_key", credsDir)
 	endpointSecret := loadCredential("endpoint_secret", credsDir)
+	apiKey := loadCredential("api_key", credsDir)
 
 	// init modules
 	database.Init(dbPath, true)
@@ -30,8 +31,12 @@ func main() {
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetKeyStore(database.NewKeyStore())
 	service.SetStripeStore(database.NewStripeStore())
 	service.InitStripe(stripeKey, endpointSecret, false)
+	if err := service.InitKeys(apiKey); err != nil {
+		log.Fatalf("key init: %v", err)
+	}
 
 	// config routing
 	r := mux.NewRouter()

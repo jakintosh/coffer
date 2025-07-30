@@ -11,12 +11,44 @@ type KeyStore interface {
 	InsertKey(id string, salt string, hash string) error
 	FetchKey(id string) (salt string, hash string, err error)
 	DeleteKey(id string) error
+	CountKeys() (int, error)
 }
 
 var keyStore KeyStore
 
 func SetKeyStore(s KeyStore) {
 	keyStore = s
+}
+
+func InitKeys(apiKey string) error {
+	if keyStore == nil {
+		return ErrNoKeyStore
+	}
+
+	count, err := keyStore.CountKeys()
+	if err != nil {
+		return DatabaseError{err}
+	}
+	if count > 0 {
+		return nil
+	}
+
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return err
+	}
+
+	h := sha256.Sum256(append(salt, []byte(apiKey)...))
+
+	if err := keyStore.InsertKey(
+		"default",
+		hex.EncodeToString(salt),
+		hex.EncodeToString(h[:]),
+	); err != nil {
+		return DatabaseError{err}
+	}
+
+	return nil
 }
 
 func CreateAPIKey() (
