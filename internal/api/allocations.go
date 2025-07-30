@@ -13,7 +13,7 @@ func buildAllocationsRouter(
 	r *mux.Router,
 ) {
 	r.HandleFunc("", handleGetAllocations).Methods("GET")
-	r.HandleFunc("", handlePutAllocations).Methods("PUT")
+	r.HandleFunc("", withAuth(handlePutAllocations)).Methods("PUT")
 }
 
 func handleGetAllocations(

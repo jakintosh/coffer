@@ -31,6 +31,7 @@ func setupDB() {
 	database.Init(":memory:", false)
 	service.InitStripe("", STRIPE_TEST_KEY, true)
 	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
@@ -177,9 +178,13 @@ func put(
 	url string,
 	body string,
 	response any,
+	headers ...header,
 ) httpResult {
 	req := httptest.NewRequest("PUT", url, strings.NewReader(body))
 	res := httptest.NewRecorder()
+	for _, h := range headers {
+		req.Header.Set(h.key, h.value)
+	}
 	router.ServeHTTP(res, req)
 
 	if res.Body != nil {

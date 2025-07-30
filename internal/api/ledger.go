@@ -23,7 +23,7 @@ func buildLedgerRouter(
 ) {
 	r.HandleFunc("/{ledger}", handleGetLedger).Methods("GET")
 	r.HandleFunc("/{ledger}/transactions", handleGetLedgerTransactions).Methods("GET")
-	r.HandleFunc("/{ledger}/transactions", handlePostLedgerTransaction).Methods("POST")
+	r.HandleFunc("/{ledger}/transactions", withAuth(handlePostLedgerTransaction)).Methods("POST")
 }
 
 func handleGetLedger(
