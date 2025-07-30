@@ -27,14 +27,17 @@ func main() {
 
 	// init modules
 	database.Init(dbPath, true)
+
+	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
-	service.SetAllocationsStore(database.NewAllocationsStore())
-	service.SetKeyStore(database.NewKeyStore())
 	service.SetStripeStore(database.NewStripeStore())
+
 	service.InitStripe(stripeKey, endpointSecret, false)
-	if err := service.InitKeys(apiKey); err != nil {
+	err := service.InitKeys(apiKey)
+	if err != nil {
 		log.Fatalf("key init: %v", err)
 	}
 
