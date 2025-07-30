@@ -87,6 +87,13 @@ func Init(
 			ledger TEXT NOT NULL,
 			percentage INTEGER NOT NULL
 		);
+		CREATE TABLE IF NOT EXISTS api_key (
+			id TEXT NOT NULL PRIMARY KEY,
+			salt TEXT NOT NULL,
+			hash TEXT NOT NULL,
+			created INTEGER,
+			last_used INTEGER
+		);
 	`); err != nil {
 		log.Fatalf("could not initialize tables: %v", err)
 	}
