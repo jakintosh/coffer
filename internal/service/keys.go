@@ -82,6 +82,18 @@ func CreateAPIKey() (
 	return token, nil
 }
 
+func DeleteAPIKey(
+	id string,
+) error {
+	if keyStore == nil {
+		return ErrNoKeyStore
+	}
+	if err := keyStore.DeleteKey(id); err != nil {
+		return DatabaseError{err}
+	}
+	return nil
+}
+
 func VerifyAPIKey(
 	token string,
 ) (
