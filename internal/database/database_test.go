@@ -9,6 +9,7 @@ func setupDb() {
 
 	database.Init(":memory:", false)
 	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetCORSStore(database.NewCORSStore())
 	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())

@@ -6,10 +6,11 @@ Coffer is a small Go service that stores information about paying patrons and le
 
 ## Important Design Elements
 
-- **Environment driven configuration** - Paths to the database file and listen port are taken from environment variables (`DB_FILE_PATH` and `PORT`). Additional credentials such as the Stripe key, webhook secret and bootstrap API key are loaded from files under a directory specified by `CREDENTIALS_DIRECTORY`. This conforms with the way `systemd` exposes credentials to services. `systemd` unit files are provided out of the box in the `init` folder. Optional Cross-Origin Resource Sharing origins can be configured via `CORS_ALLOWED_ORIGINS` as a comma separated list.
+- **Environment driven configuration** - Paths to the database file and listen port are taken from environment variables (`DB_FILE_PATH` and `PORT`). Additional credentials such as the Stripe key, webhook secret and bootstrap API key are loaded from files under a directory specified by `CREDENTIALS_DIRECTORY`. This conforms with the way `systemd` exposes credentials to services. `systemd` unit files are provided out of the box in the `init` folder.
 - **Pluggable storage via interfaces** - The `service` package exposes interfaces for the ledger, patrons, allocation rules, metrics and Stripe events. Actual persistence uses the `internal/database` package, but the design allows other storage layers.
 - **SQLite schema initialization** - On startup the server opens the database and creates tables for customers, subscriptions, payments, payouts, transactions, allocation rules and API keys if they do not already exist. Default allocation rules are inserted when none are present.
 - **API key management** - API tokens are salted and hashed in the database. A bootstrap key can be provided for first run. New keys are created and revoked through the `/settings/keys` endpoints.
+- **CORS whitelist managment** - Cross-Origin Resource Sharing origins are stored in the database and managed via the `/settings/cors` API. The `CORS_ALLOWED_ORIGINS` environment variable seeds the table when empty.
 - **Stripe integration** - Webhook payloads are validated using the Stripe signature secret. Events update the customer, subscription, payment and payout tables and post ledger entries for successful payments.
 - **Allocation based ledger posting** - Each payment is split across one or more ledgers using configurable percentage rules. The rules must sum to 100 percent.
 - **Authentication middleware** - Mutating endpoints require the `Authorization: Bearer` header. Tokens are verified against the stored API keys before the request is forwarded.
@@ -49,6 +50,10 @@ All responses use the form:
 `POST` - Create a new API key. Returns the token once. Requires a Bearer token.
 `DELETE /settings/keys/{id}` - Delete an API key. Requires a Bearer token.
 
+### `/settings/cors`
+`GET` - List allowed origins. Requires a Bearer token.
+`PUT` - Replace all origins with an array of `{"url": "https://example.com"}`. Requires a Bearer token.
+ 
 ### `/stripe/webhook`
 `POST` - Stripe webhook endpoint. The signature header is validated and the event is queued for processing. Returns `200 OK` if accepted.
 

@@ -95,6 +95,9 @@ func Init(
 			created INTEGER,
 			last_used INTEGER
 		);
+		CREATE TABLE IF NOT EXISTS allowed_origin (
+			url TEXT NOT NULL PRIMARY KEY
+		);
 	`); err != nil {
 		log.Fatalf("could not initialize tables: %v", err)
 	}
