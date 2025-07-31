@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"github.com/gorilla/mux"
 )
 
@@ -21,9 +22,18 @@ func handleGetHealth(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	w.WriteHeader(http.StatusOK)
-	writeJSON(w, HealthResponse{
-		Status: "unimplemented",
-		DB:     "unimplemented",
+	dbStatus := "ok"
+	if err := database.HealthCheck(); err != nil {
+		dbStatus = "unreachable"
+	}
+
+	status := http.StatusOK
+	if dbStatus != "ok" {
+		status = http.StatusServiceUnavailable
+	}
+
+	writeData(w, status, HealthResponse{
+		Status: "ok",
+		DB:     dbStatus,
 	})
 }
