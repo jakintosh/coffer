@@ -15,6 +15,7 @@ var settingsCmd = &cmd.Command{
 	Help: "manage settings",
 	Subcommands: []*cmd.Command{
 		allocationsCmd,
+		corsCmd,
 		keysCmd,
 	},
 }
@@ -132,5 +133,35 @@ var keysDeleteCmd = &cmd.Command{
 		id := i.GetOperand("id")
 		path := fmt.Sprintf("/settings/keys/%s", id)
 		return request(i, http.MethodDelete, path, nil)
+	},
+}
+
+var corsCmd = &cmd.Command{
+	Name: "cors",
+	Help: "manage cors whitelist",
+	Options: []cmd.Option{
+		{
+			Long: "set",
+			Type: cmd.OptionTypeArray,
+			Help: "allowed origin url",
+		},
+	},
+	Handler: func(i *cmd.Input) error {
+		urls := i.GetArray("set")
+		if len(urls) == 0 {
+			return request(i, http.MethodGet, "/settings/cors", nil)
+		}
+
+		var list []service.AllowedOrigin
+		for _, u := range urls {
+			list = append(list, service.AllowedOrigin{URL: u})
+		}
+
+		body, err := json.Marshal(list)
+		if err != nil {
+			return err
+		}
+
+		return request(i, http.MethodPut, "/settings/cors", body)
 	},
 }
