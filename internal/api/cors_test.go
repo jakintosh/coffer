@@ -1,7 +1,6 @@
 package api_test
 
 import (
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"net/http"
 	"testing"
 
@@ -10,11 +9,12 @@ import (
 )
 
 func TestGetCORS(t *testing.T) {
+
 	setupDB()
-	service.SetCORSStore(database.NewCORSStore())
-	service.SetAllowedOrigins([]service.AllowedOrigin{{URL: "http://one"}})
+	setupCORS()
 	router := setupRouter()
 
+	// get cors domains
 	var response struct {
 		Error   api.APIError            `json:"error"`
 		Origins []service.AllowedOrigin `json:"data"`
@@ -22,46 +22,71 @@ func TestGetCORS(t *testing.T) {
 	auth := makeTestAuthHeader(t)
 	result := get(router, "/settings/cors", &response, auth)
 
+	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
 		t.Fatalf("%v\n%v", err, response)
 	}
-	if len(response.Origins) != 1 || response.Origins[0].URL != "http://one" {
+
+	// validate response
+	if len(response.Origins) != 1 || response.Origins[0].URL != "http://test-default" {
 		t.Fatalf("unexpected response %+v", response)
 	}
 }
 
 func TestPutCORS(t *testing.T) {
+
 	setupDB()
-	service.SetCORSStore(database.NewCORSStore())
+	setupCORS()
 	router := setupRouter()
-	body := `[{"url":"http://one"},{"url":"https://two"}]`
+
+	// put cors domains
+	body := `
+	[
+		{ "url": "http://test-default" },
+		{ "url":"https://test-second" }
+	]`
 	auth := makeTestAuthHeader(t)
 	result := put(router, "/settings/cors", body, nil, auth)
 
+	// validate result
 	if err := expectStatus(http.StatusNoContent, result); err != nil {
 		t.Fatal(err)
 	}
 
+	// get cors domains
 	var response struct {
 		Error   api.APIError            `json:"error"`
 		Origins []service.AllowedOrigin `json:"data"`
 	}
-	get(router, "/settings/cors", &response, auth)
+	result = get(router, "/settings/cors", &response, auth)
+
+	// validate result
+	if err := expectStatus(http.StatusOK, result); err != nil {
+		t.Fatal(err)
+	}
+
+	// validate response
 	if len(response.Origins) != 2 {
 		t.Fatalf("expected 2 origins got %d", len(response.Origins))
 	}
 }
 
 func TestPutCORSBad(t *testing.T) {
-	setupDB()
-	service.SetCORSStore(database.NewCORSStore())
-	router := setupRouter()
-	body := `[{"url":"ftp://bad"}]`
-	auth := makeTestAuthHeader(t)
-	resp := api.APIResponse{}
-	result := put(router, "/settings/cors", body, &resp, auth)
 
+	setupDB()
+	setupCORS()
+	router := setupRouter()
+
+	// put bad cors domain
+	body := `
+	[
+		{"url":"ftp://bad"}
+	]`
+	auth := makeTestAuthHeader(t)
+	result := put(router, "/settings/cors", body, nil, auth)
+
+	// validate result
 	if err := expectStatus(http.StatusBadRequest, result); err != nil {
-		t.Fatalf("%v\n%v", err, resp)
+		t.Fatalf("%v", err)
 	}
 }

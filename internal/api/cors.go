@@ -9,12 +9,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func buildCORSRouter(r *mux.Router) {
+func buildCORSRouter(
+	r *mux.Router,
+) {
 	r.HandleFunc("", withAuth(handleGetCORS)).Methods("GET")
 	r.HandleFunc("", withAuth(handlePutCORS)).Methods("PUT")
 }
 
-func handleGetCORS(w http.ResponseWriter, r *http.Request) {
+func handleGetCORS(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	origins, err := service.GetAllowedOrigins()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -23,12 +28,16 @@ func handleGetCORS(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, origins)
 }
 
-func handlePutCORS(w http.ResponseWriter, r *http.Request) {
+func handlePutCORS(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	var origins []service.AllowedOrigin
 	if err := json.NewDecoder(r.Body).Decode(&origins); err != nil {
 		writeError(w, http.StatusBadRequest, "Malformed JSON")
 		return
 	}
+
 	if err := service.SetAllowedOrigins(origins); err != nil {
 		if errors.Is(err, service.ErrInvalidOrigin) {
 			writeError(w, http.StatusBadRequest, err.Error())

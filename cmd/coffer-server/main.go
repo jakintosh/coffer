@@ -31,20 +31,20 @@ func main() {
 	database.Init(dbPath, true)
 
 	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetCORSStore(database.NewCORSStore())
 	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetStripeStore(database.NewStripeStore())
-	service.SetCORSStore(database.NewCORSStore())
 
 	service.InitStripe(stripeKey, endpointSecret, false)
 	if err := service.InitKeys(apiKey); err != nil {
-		log.Fatalf("key init: %v", err)
+		log.Fatalf("failed to init keys: %v", err)
 	}
 
 	if err := service.InitCORS(origins); err != nil {
-		log.Fatalf("cors init: %v", err)
+		log.Fatalf("failed to init cors: %v", err)
 	}
 
 	// config routing

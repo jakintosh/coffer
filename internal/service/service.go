@@ -6,16 +6,17 @@ import (
 )
 
 var (
-	ErrInvalidAlloc   = errors.New("invalid allocation percentages")
-	ErrInvalidDate    = errors.New("invalid date format")
+	ErrInvalidAlloc  = errors.New("invalid allocation percentages")
+	ErrInvalidDate   = errors.New("invalid date format")
+	ErrInvalidOrigin = errors.New("invalid allowed origin")
+
 	ErrNoAllocStore   = errors.New("allocation store not configured")
+	ErrNoCORSStore    = errors.New("cors store not configured")
 	ErrNoKeyStore     = errors.New("key store not configured")
 	ErrNoLedgerStore  = errors.New("ledger store not configured")
 	ErrNoMetricsStore = errors.New("metrics store not configured")
 	ErrNoPatronStore  = errors.New("patron store not configured")
 	ErrNoStripeStore  = errors.New("stripe store not configured")
-	ErrNoCORSStore    = errors.New("cors store not configured")
-	ErrInvalidOrigin  = errors.New("invalid allowed origin")
 )
 
 type DatabaseError struct{ Err error }

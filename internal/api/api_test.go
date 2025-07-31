@@ -31,12 +31,16 @@ func setupDB() {
 	database.Init(":memory:", false)
 	service.InitStripe("", STRIPE_TEST_KEY, true)
 	service.SetAllocationsStore(database.NewAllocationsStore())
+	service.SetCORSStore(database.NewCORSStore())
 	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
-	service.SetCORSStore(database.NewCORSStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetStripeStore(database.NewStripeStore())
+}
+
+func setupCORS() {
+	service.SetAllowedOrigins([]service.AllowedOrigin{{URL: "http://test-default"}})
 }
 
 func setupRouter() *mux.Router {

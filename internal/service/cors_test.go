@@ -8,10 +8,14 @@ import (
 )
 
 func TestSetAndGetAllowedOrigins(t *testing.T) {
+
 	setupDB()
 	service.SetCORSStore(database.NewCORSStore())
 
-	origins := []service.AllowedOrigin{{URL: "http://one"}, {URL: "https://two"}}
+	origins := []service.AllowedOrigin{
+		{URL: "http://one"},
+		{URL: "https://two"},
+	}
 	if err := service.SetAllowedOrigins(origins); err != nil {
 		t.Fatal(err)
 	}
@@ -26,10 +30,14 @@ func TestSetAndGetAllowedOrigins(t *testing.T) {
 }
 
 func TestSetAllowedOriginsInvalid(t *testing.T) {
+
 	setupDB()
 	service.SetCORSStore(database.NewCORSStore())
 
-	err := service.SetAllowedOrigins([]service.AllowedOrigin{{URL: "ftp://bad"}})
+	origins := []service.AllowedOrigin{
+		{URL: "ftp://bad"},
+	}
+	err := service.SetAllowedOrigins(origins)
 	if err == nil {
 		t.Fatalf("expected validation error")
 	}
