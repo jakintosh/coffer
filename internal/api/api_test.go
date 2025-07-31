@@ -34,6 +34,7 @@ func setupDB() {
 	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
+	service.SetCORSStore(database.NewCORSStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetStripeStore(database.NewStripeStore())
 }

@@ -14,6 +14,8 @@ var (
 	ErrNoMetricsStore = errors.New("metrics store not configured")
 	ErrNoPatronStore  = errors.New("patron store not configured")
 	ErrNoStripeStore  = errors.New("stripe store not configured")
+	ErrNoCORSStore    = errors.New("cors store not configured")
+	ErrInvalidOrigin  = errors.New("invalid allowed origin")
 )
 
 type DatabaseError struct{ Err error }

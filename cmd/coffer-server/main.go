@@ -36,14 +36,16 @@ func main() {
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
 	service.SetStripeStore(database.NewStripeStore())
+	service.SetCORSStore(database.NewCORSStore())
 
 	service.InitStripe(stripeKey, endpointSecret, false)
 	if err := service.InitKeys(apiKey); err != nil {
 		log.Fatalf("key init: %v", err)
 	}
 
-	// configure CORS
-	api.InitCORS(origins)
+	if err := service.InitCORS(origins); err != nil {
+		log.Fatalf("cors init: %v", err)
+	}
 
 	// config routing
 	r := mux.NewRouter()

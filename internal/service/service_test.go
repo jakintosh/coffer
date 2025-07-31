@@ -8,6 +8,7 @@ import (
 func setupDB() {
 
 	database.Init(":memory:", false)
+	service.SetCORSStore(database.NewCORSStore())
 	service.SetAllocationsStore(database.NewAllocationsStore())
 	service.SetKeyStore(database.NewKeyStore())
 	service.SetLedgerStore(database.NewLedgerStore())
