@@ -102,10 +102,8 @@ func Init(
 	ensureDefaultAllocations()
 }
 
-// HealthCheck verifies that the database connection is reachable and
-// can perform basic read and write operations. It returns an error if
-// any step fails.
 func HealthCheck() error {
+
 	if db == nil {
 		return fmt.Errorf("db not initialized")
 	}

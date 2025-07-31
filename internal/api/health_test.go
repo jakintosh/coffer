@@ -8,9 +8,11 @@ import (
 )
 
 func TestHealthOK(t *testing.T) {
+
 	setupDB()
 	router := setupRouter()
 
+	// get health
 	url := "/health"
 	var response struct {
 		Error  api.APIError       `json:"error"`
@@ -18,10 +20,12 @@ func TestHealthOK(t *testing.T) {
 	}
 	result := get(router, url, &response)
 
+	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
 		t.Fatalf("%v\n%v", err, response)
 	}
 
+	// validate response
 	if response.Health.Status != "ok" {
 		t.Errorf("status want ok got %s", response.Health.Status)
 	}
