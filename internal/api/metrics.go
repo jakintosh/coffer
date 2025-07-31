@@ -10,7 +10,7 @@ import (
 func buildMetricsRouter(
 	r *mux.Router,
 ) {
-	r.HandleFunc("", handleGetMetrics).Methods("GET")
+	r.HandleFunc("", withCORS(handleGetMetrics)).Methods("GET", "OPTIONS")
 }
 
 func handleGetMetrics(

@@ -21,8 +21,8 @@ type CreateTransactionRequest struct {
 func buildLedgerRouter(
 	r *mux.Router,
 ) {
-	r.HandleFunc("/{ledger}", handleGetLedger).Methods("GET")
-	r.HandleFunc("/{ledger}/transactions", handleGetLedgerTransactions).Methods("GET")
+	r.HandleFunc("/{ledger}", withCORS(handleGetLedger)).Methods("GET", "OPTIONS")
+	r.HandleFunc("/{ledger}/transactions", withCORS(handleGetLedgerTransactions)).Methods("GET", "OPTIONS")
 	r.HandleFunc("/{ledger}/transactions", withAuth(handlePostLedgerTransaction)).Methods("POST")
 }
 

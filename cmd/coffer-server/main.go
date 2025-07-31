@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
@@ -40,6 +41,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("key init: %v", err)
 	}
+
+	// configure CORS
+	corsEnv := os.Getenv("CORS_ALLOWED_ORIGINS")
+	var origins []string
+	if corsEnv != "" {
+		origins = strings.Split(corsEnv, ",")
+	}
+	api.InitCORS(origins)
 
 	// config routing
 	r := mux.NewRouter()
