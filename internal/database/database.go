@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	_ "modernc.org/sqlite"
@@ -99,4 +100,40 @@ func Init(
 	}
 
 	ensureDefaultAllocations()
+}
+
+func HealthCheck() error {
+
+	if db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec("CREATE TEMP TABLE IF NOT EXISTS hc(id INTEGER)"); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec("INSERT INTO hc(id) VALUES (1)"); err != nil {
+		return err
+	}
+
+	var out int
+	if err := tx.QueryRow("SELECT id FROM hc LIMIT 1").Scan(&out); err != nil {
+		return err
+	}
+
+	if out != 1 {
+		return fmt.Errorf("unexpected read result")
+	}
+
+	if _, err := tx.Exec("DROP TABLE hc"); err != nil {
+		return err
+	}
+
+	return nil
 }
