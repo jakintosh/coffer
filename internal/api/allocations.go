@@ -12,7 +12,7 @@ import (
 func buildAllocationsRouter(
 	r *mux.Router,
 ) {
-	r.HandleFunc("", handleGetAllocations).Methods("GET")
+	r.HandleFunc("", withCORS(handleGetAllocations)).Methods("GET", "OPTIONS")
 	r.HandleFunc("", withAuth(handlePutAllocations)).Methods("PUT")
 }
 

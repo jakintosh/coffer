@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
@@ -18,6 +19,7 @@ func main() {
 	// read all env vars
 	dbPath := readEnvVar("DB_FILE_PATH")
 	port := fmt.Sprintf(":%s", readEnvVar("PORT"))
+	origins := readEnvVarList("CORS_ALLOWED_ORIGINS")
 
 	// load credentials
 	credsDir := readEnvVar("CREDENTIALS_DIRECTORY")
@@ -36,10 +38,12 @@ func main() {
 	service.SetStripeStore(database.NewStripeStore())
 
 	service.InitStripe(stripeKey, endpointSecret, false)
-	err := service.InitKeys(apiKey)
-	if err != nil {
+	if err := service.InitKeys(apiKey); err != nil {
 		log.Fatalf("key init: %v", err)
 	}
+
+	// configure CORS
+	api.InitCORS(origins)
 
 	// config routing
 	r := mux.NewRouter()
@@ -47,6 +51,17 @@ func main() {
 
 	// serve
 	log.Fatal(http.ListenAndServe(port, r))
+}
+
+func readEnvVarList(
+	name string,
+) []string {
+	listStr := os.Getenv(name)
+	var list []string
+	if listStr != "" {
+		list = strings.Split(listStr, ",")
+	}
+	return list
 }
 
 func loadCredential(
