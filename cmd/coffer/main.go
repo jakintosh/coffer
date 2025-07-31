@@ -59,12 +59,15 @@ func baseURL(
 ) string {
 	u := i.GetParameter("url")
 	env := os.Getenv("COFFER_URL")
+	cfg, _ := loadBaseURL(i)
 
 	var url string
 	if u != nil && *u != "" {
 		url = strings.TrimRight(*u, "/")
 	} else if env != "" {
 		url = strings.TrimRight(env, "/")
+	} else if cfg != "" {
+		url = strings.TrimRight(cfg, "/")
 	} else {
 		url = DEFAULT_URL
 	}
@@ -90,6 +93,41 @@ func keyPath(
 	i *cmd.Input,
 ) string {
 	return filepath.Join(cfgDir(i), "api_key")
+}
+
+func urlPath(
+	i *cmd.Input,
+) string {
+	return filepath.Join(cfgDir(i), "base_url")
+}
+
+func loadBaseURL(
+	i *cmd.Input,
+) (
+	string,
+	error,
+) {
+	path := urlPath(i)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func saveBaseURL(
+	i *cmd.Input,
+	url string,
+) error {
+	dir := cfgDir(i)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	path := urlPath(i)
+	return os.WriteFile(path, []byte(url), 0o600)
 }
 
 func addParams(

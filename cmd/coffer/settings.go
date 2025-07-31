@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	cmd "git.sr.ht/~jakintosh/command-go"
@@ -14,6 +15,7 @@ var settingsCmd = &cmd.Command{
 	Name: "settings",
 	Help: "manage settings",
 	Subcommands: []*cmd.Command{
+		urlCmd,
 		allocationsCmd,
 		keysCmd,
 	},
@@ -132,5 +134,34 @@ var keysDeleteCmd = &cmd.Command{
 		id := i.GetOperand("id")
 		path := fmt.Sprintf("/settings/keys/%s", id)
 		return request(i, http.MethodDelete, path, nil)
+	},
+}
+
+var urlCmd = &cmd.Command{
+	Name: "url",
+	Help: "manage api base url",
+	Options: []cmd.Option{
+		{
+			Long: "set",
+			Type: cmd.OptionTypeParameter,
+			Help: "set base url",
+		},
+	},
+	Handler: func(i *cmd.Input) error {
+
+		if u := i.GetParameter("set"); u != nil && *u != "" {
+			return saveBaseURL(i, strings.TrimRight(*u, "/"))
+		}
+
+		url, err := loadBaseURL(i)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if url == "" {
+			fmt.Print("none set")
+		} else {
+			fmt.Print(url)
+		}
+		return nil
 	},
 }
