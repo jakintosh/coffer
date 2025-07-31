@@ -15,7 +15,7 @@ type HealthResponse struct {
 func buildHealthRouter(
 	r *mux.Router,
 ) {
-	r.HandleFunc("", withCORS(handleGetHealth)).Methods("GET", "OPTIONS")
+	r.HandleFunc("", handleGetHealth).Methods("GET")
 }
 
 func handleGetHealth(

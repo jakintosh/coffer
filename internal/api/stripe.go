@@ -12,7 +12,7 @@ import (
 func buildStripeRouter(
 	r *mux.Router,
 ) {
-	r.HandleFunc("/webhook", withCORS(handleStripeWebhook)).Methods("POST", "OPTIONS")
+	r.HandleFunc("/webhook", handleStripeWebhook).Methods("POST")
 }
 
 func handleStripeWebhook(

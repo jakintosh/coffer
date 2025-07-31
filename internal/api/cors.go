@@ -2,13 +2,15 @@ package api
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 )
 
 var allowedOrigins []string
 
-// InitCORS stores the list of allowed origins for CORS requests.
-func InitCORS(origins []string) {
+func InitCORS(
+	origins []string,
+) {
 	allowedOrigins = allowedOrigins[:0]
 	for _, o := range origins {
 		if trimmed := strings.TrimSpace(o); trimmed != "" {
@@ -17,15 +19,16 @@ func InitCORS(origins []string) {
 	}
 }
 
-// withCORS adds CORS headers for whitelisted origins and handles OPTIONS requests.
-func withCORS(next http.HandlerFunc) http.HandlerFunc {
+func withCORS(
+	next http.HandlerFunc,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		allowed := origin != "" && isAllowedOrigin(origin)
 		if allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Stripe-Signature")
+			w.Header().Set("Access-Control-Allow-Methods", "GET,OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Vary", "Origin")
 		}
 
@@ -43,10 +46,5 @@ func withCORS(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func isAllowedOrigin(origin string) bool {
-	for _, o := range allowedOrigins {
-		if o == origin {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowedOrigins, origin)
 }
