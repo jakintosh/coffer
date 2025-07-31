@@ -14,9 +14,53 @@ var authCmd = &cmd.Command{
 	Name: "auth",
 	Help: "manage local api key",
 	Subcommands: []*cmd.Command{
+		urlCmd,
 		authBootstrapCmd,
 		authSetCmd,
 		authUnsetCmd,
+	},
+}
+
+var urlCmd = &cmd.Command{
+	Name: "url",
+	Help: "manage api base url",
+	Options: []cmd.Option{
+		{
+			Long: "set",
+			Type: cmd.OptionTypeParameter,
+			Help: "set base url",
+		},
+		{
+			Long: "unset",
+			Type: cmd.OptionTypeFlag,
+			Help: "unset base url",
+		},
+	},
+	Handler: func(i *cmd.Input) error {
+
+		if i.GetFlag("unset") {
+			err := deleteBaseURL(i)
+			if err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			return nil
+		}
+
+		u := i.GetParameter("set")
+		if u != nil && *u != "" {
+			return saveBaseURL(i, strings.TrimRight(*u, "/"))
+		}
+
+		url, err := loadBaseURL(i)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if url == "" {
+			fmt.Println("none set")
+		} else {
+			fmt.Println(url)
+		}
+		return nil
 	},
 }
 
@@ -67,36 +111,4 @@ var authUnsetCmd = &cmd.Command{
 		}
 		return nil
 	},
-}
-
-func loadAPIKey(
-	i *cmd.Input,
-) (
-	string,
-	error,
-) {
-	path := keyPath(i)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
-}
-
-func saveAPIKey(
-	i *cmd.Input,
-	key string,
-) error {
-	dir := cfgDir(i)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	path := keyPath(i)
-	return os.WriteFile(path, []byte(key), 0o600)
-}
-
-func deleteAPIKey(
-	i *cmd.Input,
-) error {
-	return os.Remove(keyPath(i))
 }

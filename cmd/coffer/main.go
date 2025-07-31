@@ -74,7 +74,7 @@ func baseURL(
 	return url + "/api/v1"
 }
 
-func cfgDir(
+func configDir(
 	i *cmd.Input,
 ) string {
 	dir := DEFAULT_CFG
@@ -92,13 +92,45 @@ func cfgDir(
 func keyPath(
 	i *cmd.Input,
 ) string {
-	return filepath.Join(cfgDir(i), "api_key")
+	return filepath.Join(configDir(i), "api_key")
 }
 
 func urlPath(
 	i *cmd.Input,
 ) string {
-	return filepath.Join(cfgDir(i), "base_url")
+	return filepath.Join(configDir(i), "base_url")
+}
+
+func loadAPIKey(
+	i *cmd.Input,
+) (
+	string,
+	error,
+) {
+	path := keyPath(i)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func saveAPIKey(
+	i *cmd.Input,
+	key string,
+) error {
+	dir := configDir(i)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	path := keyPath(i)
+	return os.WriteFile(path, []byte(key), 0o600)
+}
+
+func deleteAPIKey(
+	i *cmd.Input,
+) error {
+	return os.Remove(keyPath(i))
 }
 
 func loadBaseURL(
@@ -122,12 +154,18 @@ func saveBaseURL(
 	i *cmd.Input,
 	url string,
 ) error {
-	dir := cfgDir(i)
+	dir := configDir(i)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
 	path := urlPath(i)
 	return os.WriteFile(path, []byte(url), 0o600)
+}
+
+func deleteBaseURL(
+	i *cmd.Input,
+) error {
+	return os.Remove(urlPath(i))
 }
 
 func addParams(
