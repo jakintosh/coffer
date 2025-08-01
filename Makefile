@@ -1,10 +1,5 @@
-build: client server
-
-client:
+build:
 	go build -o ./bin/coffer ./cmd/coffer
 
-server:
-	go build -o ./bin/coffer-server ./cmd/coffer-server
-
-install: client
+install: build
 	sudo cp ./bin/coffer /usr/local/bin/coffer

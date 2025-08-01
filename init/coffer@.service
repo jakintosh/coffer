@@ -2,7 +2,7 @@
 Description=Coffer Server - Public Patronage Backend
 
 [Service]
-ExecStart=/usr/local/bin/coffer-server
+ExecStart=/usr/local/bin/coffer serve
 Restart=always
 
 [Install]

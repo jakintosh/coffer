@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-name=coffer-server
+name=coffer
 domain=localhost
 
 sudo systemctl stop $name@$domain

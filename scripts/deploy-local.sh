@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-name=coffer-server
+name=coffer
 domain=localhost
 dpl_src=./deployment
 

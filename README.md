@@ -2,7 +2,7 @@
 
 ## General Overview
 
-Coffer is a small Go service that stores information about paying patrons and ledger balances in a local SQLite database. A command line client (`coffer`) communicates with the HTTP server (`coffer-server`) to post ledger transactions, manage API keys and allocation rules, and to fetch summary metrics. The server also processes Stripe webhooks to keep patron records and payments in sync. All operations that modify state require an API key.
+Coffer is a small Go service that stores information about paying patrons and ledger balances in a local SQLite database. The command line tool (`coffer`) communicates with the HTTP server (started with `coffer serve`) to post ledger transactions, manage API keys and allocation rules, and to fetch summary metrics. The server also processes Stripe webhooks to keep patron records and payments in sync. All operations that modify state require an API key.
 
 ## Important Design Elements
 
@@ -14,6 +14,7 @@ Coffer is a small Go service that stores information about paying patrons and le
 - **Stripe integration** - Webhook payloads are validated using the Stripe signature secret. Events update the customer, subscription, payment and payout tables and post ledger entries for successful payments.
 - **Allocation based ledger posting** - Each payment is split across one or more ledgers using configurable percentage rules. The rules must sum to 100 percent.
 - **Authentication middleware** - Mutating endpoints require the `Authorization: Bearer` header. Tokens are verified against the stored API keys before the request is forwarded.
+
 
 ## HTTP API Overview
 
@@ -59,6 +60,7 @@ All responses use the form:
 
 Authentication for modifying routes uses `Authorization: Bearer <token>` issued by `/settings/keys`.
 
+
 ## Running Tests
 
 Run all unit tests with:
@@ -68,6 +70,7 @@ go test ./...
 ```
 
 All current tests should pass.
+
 
 ## CLI Environments
 
