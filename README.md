@@ -71,8 +71,10 @@ All current tests should pass.
 
 ## CLI Environments
 
-The `coffer` CLI can store multiple sets of credentials and URLs under
-named environments. Use `coffer auth env` to manage them:
+The `coffer` CLI stores all of its settings in a single `config.json`
+file under the configuration directory (default `~/.config/coffer`).
+This file tracks the active environment and, for each environment, the
+API key and base URL. Use `coffer auth env` to manage the entries:
 
 ```sh
 # list configured environments ("*" marks the active one)

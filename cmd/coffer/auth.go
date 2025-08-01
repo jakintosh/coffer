@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	cmd "git.sr.ht/~jakintosh/command-go"
@@ -49,23 +47,13 @@ var authEnvListCmd = &cmd.Command{
 	Name: "list",
 	Help: "list environments",
 	Handler: func(i *cmd.Input) error {
-
-		base := baseConfigDir(i)
-		envsPath := filepath.Join(base, "envs")
-		entries, err := os.ReadDir(envsPath)
-		if err != nil && !os.IsNotExist(err) {
+		cfg, err := loadConfig(i)
+		if err != nil {
 			return err
 		}
 
-		active := DEFAULT_ENV
-		if n, err := loadActiveEnv(i); err == nil && n != "" {
-			active = n
-		}
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			name := e.Name()
+		active := cfg.ActiveEnv
+		for name := range cfg.Envs {
 			marker := " "
 			if name == active {
 				marker = "*"
@@ -104,43 +92,39 @@ var authEnvCreateCmd = &cmd.Command{
 	},
 	Handler: func(i *cmd.Input) error {
 
-		// get name
 		name := i.GetOperand("name")
 		if name == "" {
 			return fmt.Errorf("missing name")
 		}
 
-		// make directory
-		dir := envDir(i, name)
-		if err := os.MkdirAll(dir, 0o700); err != nil {
+		cfg, err := loadConfig(i)
+		if err != nil {
 			return err
 		}
 
-		// write base url, if provided
+		envCfg := cfg.Envs[name]
+
 		if url := i.GetParameter("base-url"); url != nil && *url != "" {
-			urlPath := filepath.Join(dir, "base_url")
-			baseUrl := []byte(strings.TrimRight(*url, "/"))
-			if err := os.WriteFile(urlPath, baseUrl, 0o600); err != nil {
-				return err
-			}
+			envCfg.BaseURL = strings.TrimRight(*url, "/")
 		}
 
-		// write api key, if provided
 		if i.GetFlag("bootstrap") {
 			key, err := generateAPIKey()
 			if err != nil {
 				return err
 			}
 			fmt.Print(key)
-			if err := os.WriteFile(filepath.Join(dir, "api_key"), []byte(key), 0o600); err != nil {
-				return err
-			}
+			envCfg.APIKey = key
 		} else if key := i.GetParameter("api-key"); key != nil && *key != "" {
-			if err := os.WriteFile(filepath.Join(dir, "api_key"), []byte(*key), 0o600); err != nil {
-				return err
-			}
+			envCfg.APIKey = *key
 		}
-		return nil
+
+		if cfg.Envs == nil {
+			cfg.Envs = map[string]EnvConfig{}
+		}
+		cfg.Envs[name] = envCfg
+
+		return saveConfig(i, cfg)
 	},
 }
 
@@ -150,20 +134,21 @@ var authEnvUseCmd = &cmd.Command{
 	Operands: []cmd.Operand{{Name: "name", Help: "environment name"}},
 	Handler: func(i *cmd.Input) error {
 
-		// get name
 		name := i.GetOperand("name")
 		if name == "" {
 			return fmt.Errorf("missing name")
 		}
 
-		// ensure dir exists
-		dir := envDir(i, name)
-		if st, err := os.Stat(dir); err != nil || !st.IsDir() {
+		cfg, err := loadConfig(i)
+		if err != nil {
+			return err
+		}
+		if _, ok := cfg.Envs[name]; !ok {
 			return fmt.Errorf("environment '%s' does not exist", name)
 		}
 
-		// save it
-		return saveActiveEnv(i, name)
+		cfg.ActiveEnv = name
+		return saveConfig(i, cfg)
 	},
 }
 
@@ -173,23 +158,22 @@ var authEnvDeleteCmd = &cmd.Command{
 	Operands: []cmd.Operand{{Name: "name", Help: "environment name"}},
 	Handler: func(i *cmd.Input) error {
 
-		// get name
 		name := i.GetOperand("name")
 		if name == "" {
 			return fmt.Errorf("missing name")
 		}
 
-		// remove env directory
-		dir := envDir(i, name)
-		if err := os.RemoveAll(dir); err != nil {
+		cfg, err := loadConfig(i)
+		if err != nil {
 			return err
 		}
 
-		// if it was active, remove that flag
-		if active, _ := loadActiveEnv(i); active == name {
-			_ = os.Remove(filepath.Join(baseConfigDir(i), "active_env"))
+		delete(cfg.Envs, name)
+		if cfg.ActiveEnv == name {
+			cfg.ActiveEnv = DEFAULT_ENV
 		}
-		return nil
+
+		return saveConfig(i, cfg)
 	},
 }
 
@@ -216,12 +200,7 @@ var authLogoutCmd = &cmd.Command{
 	Name: "logout",
 	Help: "remove saved api key",
 	Handler: func(i *cmd.Input) error {
-
-		err := deleteAPIKey(i)
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		return nil
+		return deleteAPIKey(i)
 	},
 }
 
@@ -243,11 +222,7 @@ var authUrlCmd = &cmd.Command{
 	Handler: func(i *cmd.Input) error {
 
 		if i.GetFlag("unset") {
-			err := deleteBaseURL(i)
-			if err != nil && !os.IsNotExist(err) {
-				return err
-			}
-			return nil
+			return deleteBaseURL(i)
 		}
 
 		u := i.GetParameter("set")
@@ -256,7 +231,7 @@ var authUrlCmd = &cmd.Command{
 		}
 
 		url, err := loadBaseURL(i)
-		if err != nil && !os.IsNotExist(err) {
+		if err != nil {
 			return err
 		}
 		if url == "" {

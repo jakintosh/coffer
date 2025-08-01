@@ -63,21 +63,20 @@ var root = &cmd.Command{
 	},
 }
 
-func baseURL(
-	i *cmd.Input,
-) string {
+func baseURL(i *cmd.Input) string {
 	u := i.GetParameter("url")
-	env := os.Getenv("COFFER_URL")
-	cfg, _ := loadBaseURL(i)
+	envVar := os.Getenv("COFFER_URL")
+	cfgURL, _ := loadBaseURL(i)
 
 	var url string
-	if u != nil && *u != "" {
+	switch {
+	case u != nil && *u != "":
 		url = strings.TrimRight(*u, "/")
-	} else if env != "" {
-		url = strings.TrimRight(env, "/")
-	} else if cfg != "" {
-		url = strings.TrimRight(cfg, "/")
-	} else {
+	case envVar != "":
+		url = strings.TrimRight(envVar, "/")
+	case cfgURL != "":
+		url = strings.TrimRight(cfgURL, "/")
+	default:
 		url = DEFAULT_URL
 	}
 	return url + "/api/v1"
@@ -98,46 +97,24 @@ func baseConfigDir(
 	return dir
 }
 
-func loadActiveEnv(
-	i *cmd.Input,
-) (
-	string,
-	error,
-) {
-	path := filepath.Join(baseConfigDir(i), "active_env")
-	data, err := os.ReadFile(path)
+func loadActiveEnv(i *cmd.Input) (string, error) {
+	cfg, err := loadConfig(i)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil
-		}
 		return "", err
 	}
-	activeEnv := strings.TrimSpace(string(data))
-	return activeEnv, nil
+	return cfg.ActiveEnv, nil
 }
 
-func saveActiveEnv(
-	i *cmd.Input,
-	name string,
-) error {
-	dir := baseConfigDir(i)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+func saveActiveEnv(i *cmd.Input, name string) error {
+	cfg, err := loadConfig(i)
+	if err != nil {
 		return err
 	}
-	path := filepath.Join(dir, "active_env")
-	return os.WriteFile(path, []byte(name), 0o600)
+	cfg.ActiveEnv = name
+	return saveConfig(i, cfg)
 }
 
-func envDir(
-	i *cmd.Input,
-	env string,
-) string {
-	return filepath.Join(baseConfigDir(i), "envs", env)
-}
-
-func activeEnv(
-	i *cmd.Input,
-) string {
+func activeEnv(i *cmd.Input) string {
 	if e := i.GetParameter("env"); e != nil && *e != "" {
 		return *e
 	}
@@ -150,89 +127,78 @@ func activeEnv(
 	return DEFAULT_ENV
 }
 
-func activeEnvDir(
-	i *cmd.Input,
-) string {
-	return envDir(i, activeEnv(i))
-}
-
-func keyPath(
-	i *cmd.Input,
-) string {
-	return filepath.Join(activeEnvDir(i), "api_key")
-}
-
-func urlPath(
-	i *cmd.Input,
-) string {
-	return filepath.Join(activeEnvDir(i), "base_url")
-}
-
-func loadAPIKey(
-	i *cmd.Input,
-) (
-	string,
-	error,
-) {
-	path := keyPath(i)
-	data, err := os.ReadFile(path)
+func loadAPIKey(i *cmd.Input) (string, error) {
+	cfg, err := loadConfig(i)
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(data)), nil
+	env := activeEnv(i)
+	if e, ok := cfg.Envs[env]; ok {
+		return strings.TrimSpace(e.APIKey), nil
+	}
+	return "", nil
 }
 
-func saveAPIKey(
-	i *cmd.Input,
-	key string,
-) error {
-	dir := activeEnvDir(i)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+func saveAPIKey(i *cmd.Input, key string) error {
+	cfg, err := loadConfig(i)
+	if err != nil {
 		return err
 	}
-	path := keyPath(i)
-	return os.WriteFile(path, []byte(key), 0o600)
+	env := activeEnv(i)
+	ec := cfg.Envs[env]
+	ec.APIKey = key
+	cfg.Envs[env] = ec
+	return saveConfig(i, cfg)
 }
 
-func deleteAPIKey(
-	i *cmd.Input,
-) error {
-	return os.Remove(keyPath(i))
-}
-
-func loadBaseURL(
-	i *cmd.Input,
-) (
-	string,
-	error,
-) {
-	path := urlPath(i)
-	data, err := os.ReadFile(path)
+func deleteAPIKey(i *cmd.Input) error {
+	cfg, err := loadConfig(i)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil
-		}
+		return err
+	}
+	env := activeEnv(i)
+	if ec, ok := cfg.Envs[env]; ok {
+		ec.APIKey = ""
+		cfg.Envs[env] = ec
+	}
+	return saveConfig(i, cfg)
+}
+
+func loadBaseURL(i *cmd.Input) (string, error) {
+	cfg, err := loadConfig(i)
+	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(data)), nil
+	env := activeEnv(i)
+	if e, ok := cfg.Envs[env]; ok {
+		return strings.TrimSpace(e.BaseURL), nil
+	}
+	return "", nil
 }
 
-func saveBaseURL(
-	i *cmd.Input,
-	url string,
-) error {
-	dir := activeEnvDir(i)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+func saveBaseURL(i *cmd.Input, url string) error {
+	cfg, err := loadConfig(i)
+	if err != nil {
 		return err
 	}
-	path := urlPath(i)
-	return os.WriteFile(path, []byte(url), 0o600)
+	env := activeEnv(i)
+	ec := cfg.Envs[env]
+	ec.BaseURL = url
+	cfg.Envs[env] = ec
+	return saveConfig(i, cfg)
 }
 
-func deleteBaseURL(
-	i *cmd.Input,
-) error {
-	return os.Remove(urlPath(i))
+func deleteBaseURL(i *cmd.Input) error {
+	cfg, err := loadConfig(i)
+	if err != nil {
+		return err
+	}
+	env := activeEnv(i)
+	if ec, ok := cfg.Envs[env]; ok {
+		ec.BaseURL = ""
+		cfg.Envs[env] = ec
+	}
+	return saveConfig(i, cfg)
 }
 
 func generateAPIKey() (
