@@ -252,4 +252,4 @@ Stripe webhook endpoint. Payload is validated using the `Stripe-Signature` heade
 Body content is ignored; no data returned.
 
 ## Authentication
-Endpoints that modify server state require an API key. Provide it via the `Authorization` header. Either `Bearer <token>` or just the raw token are accepted by the middleware implemented in [`auth.go`](internal/api/auth.go).
+Endpoints that modify server state require an API key. Provide it via the `Authorization` header. Either `Bearer <token>` or just the raw token are accepted by the middleware implemented in [`middleware.go`](internal/api/middleware.go).
