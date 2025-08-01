@@ -83,9 +83,9 @@ func baseURL(
 	return url + "/api/v1"
 }
 
-// baseConfigDir returns the root configuration directory without
-// appending the environment name.
-func baseConfigDir(i *cmd.Input) string {
+func baseConfigDir(
+	i *cmd.Input,
+) string {
 	dir := DEFAULT_CFG
 	if c := i.GetParameter("config-dir"); c != nil && *c != "" {
 		dir = *c
@@ -98,8 +98,12 @@ func baseConfigDir(i *cmd.Input) string {
 	return dir
 }
 
-// loadActiveEnv reads the saved active environment name.
-func loadActiveEnv(i *cmd.Input) (string, error) {
+func loadActiveEnv(
+	i *cmd.Input,
+) (
+	string,
+	error,
+) {
 	path := filepath.Join(baseConfigDir(i), "active_env")
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -108,11 +112,14 @@ func loadActiveEnv(i *cmd.Input) (string, error) {
 		}
 		return "", err
 	}
-	return strings.TrimSpace(string(data)), nil
+	activeEnv := strings.TrimSpace(string(data))
+	return activeEnv, nil
 }
 
-// saveActiveEnv writes the active environment name.
-func saveActiveEnv(i *cmd.Input, name string) error {
+func saveActiveEnv(
+	i *cmd.Input,
+	name string,
+) error {
 	dir := baseConfigDir(i)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
@@ -121,15 +128,16 @@ func saveActiveEnv(i *cmd.Input, name string) error {
 	return os.WriteFile(path, []byte(name), 0o600)
 }
 
-// envDir returns the path to a specific environment directory under the
-// config base.
-func envDir(i *cmd.Input, env string) string {
+func envDir(
+	i *cmd.Input,
+	env string,
+) string {
 	return filepath.Join(baseConfigDir(i), "envs", env)
 }
 
-// activeEnv resolves the environment to use based on the option, the
-// COFFER_ENV variable, the saved active environment file, or the default.
-func activeEnv(i *cmd.Input) string {
+func activeEnv(
+	i *cmd.Input,
+) string {
 	if e := i.GetParameter("env"); e != nil && *e != "" {
 		return *e
 	}
@@ -142,15 +150,7 @@ func activeEnv(i *cmd.Input) string {
 	return DEFAULT_ENV
 }
 
-func generateAPIKey() (string, error) {
-	keyBytes := make([]byte, 32)
-	if _, err := rand.Read(keyBytes); err != nil {
-		return "", err
-	}
-	return "default." + hex.EncodeToString(keyBytes), nil
-}
-
-func configDir(
+func activeEnvDir(
 	i *cmd.Input,
 ) string {
 	return envDir(i, activeEnv(i))
@@ -159,13 +159,13 @@ func configDir(
 func keyPath(
 	i *cmd.Input,
 ) string {
-	return filepath.Join(configDir(i), "api_key")
+	return filepath.Join(activeEnvDir(i), "api_key")
 }
 
 func urlPath(
 	i *cmd.Input,
 ) string {
-	return filepath.Join(configDir(i), "base_url")
+	return filepath.Join(activeEnvDir(i), "base_url")
 }
 
 func loadAPIKey(
@@ -186,7 +186,7 @@ func saveAPIKey(
 	i *cmd.Input,
 	key string,
 ) error {
-	dir := configDir(i)
+	dir := activeEnvDir(i)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func saveBaseURL(
 	i *cmd.Input,
 	url string,
 ) error {
-	dir := configDir(i)
+	dir := activeEnvDir(i)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
@@ -233,6 +233,17 @@ func deleteBaseURL(
 	i *cmd.Input,
 ) error {
 	return os.Remove(urlPath(i))
+}
+
+func generateAPIKey() (
+	string,
+	error,
+) {
+	keyBytes := make([]byte, 32)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return "", err
+	}
+	return "default." + hex.EncodeToString(keyBytes), nil
 }
 
 func addParams(
