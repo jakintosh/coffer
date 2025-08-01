@@ -5,13 +5,13 @@ name=coffer
 dpl_src=./deployment
 dpl_dst=deployments
 
-if [ ! -f ./init/$name.service ]; then
-  echo "missing ./init/$name.service file"
+if [ ! -f ./init/$name@.service ]; then
+  echo "missing ./init/$name@.service file"
   exit 1
 fi
 
 # build the executable
-./scripts/build.sh
+make
 
 # bundle up the deployment files
 ./scripts/package.sh $name $dpl_src

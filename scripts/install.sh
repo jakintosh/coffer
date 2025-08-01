@@ -7,7 +7,11 @@ DEPLOY_DIR=${3:?"Deployment directory required."} || exit 1
 # check if was running for later, stop service
 sudo systemctl is-active --quiet $NAME@$DOMAIN
 IS_RUNNING=$?
-sudo systemctl stop $NAME@$DOMAIN
+
+# if service was running, stop it
+if [ $IS_RUNNING -eq 0 ]; then
+  sudo systemctl stop $NAME@$DOMAIN
+fi
 
 sudo mkdir -p /etc/$NAME/$DOMAIN
 sudo mkdir -p /var/lib/$NAME/$DOMAIN # for database
