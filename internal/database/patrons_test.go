@@ -30,7 +30,7 @@ func seedCustomerData(t *testing.T) {
 
 func TestGetCustomers(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	seedCustomerData(t)
 
 	store := database.NewPatronStore()

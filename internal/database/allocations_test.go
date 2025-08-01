@@ -10,7 +10,7 @@ import (
 
 func TestAllocationsStore(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	store := database.NewAllocationsStore()
 
 	rules, err := store.GetAllocations()

@@ -10,7 +10,7 @@ import (
 
 func TestGetAllocationsDefault(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 
 	// get allocations
 	rules, err := service.GetAllocations()
@@ -29,7 +29,7 @@ func TestGetAllocationsDefault(t *testing.T) {
 
 func TestSetAllocationsInvalid(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 
 	// set invalid new rules
 	err := service.SetAllocations([]service.AllocationRule{
@@ -46,7 +46,7 @@ func TestSetAllocationsInvalid(t *testing.T) {
 
 func TestSetAllocationsValid(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 
 	// set new rules
 	rules := []service.AllocationRule{

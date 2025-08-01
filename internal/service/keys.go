@@ -114,6 +114,7 @@ func VerifyAPIKey(
 		return false, ErrNoKeyStore
 	}
 
+	// get parts of key
 	parts := strings.Split(token, ".")
 	if len(parts) != 2 {
 		return false, nil
@@ -121,21 +122,31 @@ func VerifyAPIKey(
 	id := parts[0]
 	secretHex := parts[1]
 
+	// get salt and hash
 	saltHex, hashHex, err := keyStore.FetchKey(id)
 	if err != nil {
+		// couldn't fetch the key for some reason
 		return false, DatabaseError{err}
 	}
 
+	// decode the hex
 	salt, err := hex.DecodeString(saltHex)
 	if err != nil {
+		// invalid hex, this should be unreachable
 		return false, err
 	}
+
+	// decode the secret
 	secret, err := hex.DecodeString(secretHex)
 	if err != nil {
-		return false, nil
+		// invalid secret, this should be unreachable
+		return false, err
 	}
 
+	// rebuild the hashed secret
 	h := sha256.Sum256(append(salt, secret...))
+
+	// verify hashed secrets match
 	if hex.EncodeToString(h[:]) == hashHex {
 		return true, nil
 	}

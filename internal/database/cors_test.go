@@ -10,7 +10,7 @@ import (
 
 func TestCORSStore(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	store := database.NewCORSStore()
 
 	count, err := store.CountOrigins()

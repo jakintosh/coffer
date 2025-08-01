@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -22,11 +24,16 @@ func withAuth(
 
 		ok, err := service.VerifyAPIKey(token)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			if errors.Is(err, service.ErrNoKeyStore) {
+				log.Printf("missing key store")
+				writeError(w, http.StatusInternalServerError, "Internal Server Error")
+			} else {
+				writeError(w, http.StatusUnauthorized, "Unauthorized")
+			}
 			return
 		}
 		if !ok {
-			writeError(w, http.StatusUnauthorized, "invalid api key")
+			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 
