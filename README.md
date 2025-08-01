@@ -16,49 +16,9 @@ Coffer is a small Go service that stores information about paying patrons and le
 - **Authentication middleware** - Mutating endpoints require the `Authorization: Bearer` header. Tokens are verified against the stored API keys before the request is forwarded.
 
 
-## HTTP API Overview
+## HTTP API
 
-All responses use the form:
-
-```json
-{
-  "error": {"code": <int>, "message": <string>},
-  "data": <payload or null>
-}
-```
-
-### `/health`
-`GET` - Returns both the general `status` of the program (`ok`, if reachable), and a separate check on the status of the database (`ok` or `unreachable`).
-
-### `/ledger/{ledger}`
-`GET` - Returns a ledger snapshot. Optional query parameters `since` and `until` accept dates in `YYYY-MM-DD` format.
-
-### `/ledger/{ledger}/transactions`
-`GET` - List transactions with optional `limit` and `offset` query parameters.
-`POST` - Create a transaction. Body fields: `date` (RFC3339), `amount`, `label`. Requires a Bearer token.
-
-### `/metrics`
-`GET` - Returns summary metrics about active patrons and revenue.
-
-### `/patrons`
-`GET` - Lists patrons. Supports `limit` and `offset` parameters. Requires a Bearer token.
-
-### `/settings/allocations`
-`GET` - Retrieve allocation rules.
-`PUT` - Replace all allocation rules with an array of `{id, ledger, percentage}`. Percentages must total 100. Requires a Bearer token.
-
-### `/settings/keys`
-`POST` - Create a new API key. Returns the token once. Requires a Bearer token.
-`DELETE /settings/keys/{id}` - Delete an API key. Requires a Bearer token.
-
-### `/settings/cors`
-`GET` - List allowed origins. Requires a Bearer token.
-`PUT` - Replace all origins with an array of `{"url": "https://example.com"}`. Requires a Bearer token.
- 
-### `/stripe/webhook`
-`POST` - Stripe webhook endpoint. The signature header is validated and the event is queued for processing. Returns `200 OK` if accepted.
-
-Authentication for modifying routes uses `Authorization: Bearer <token>` issued by `/settings/keys`.
+See [API](./API.md)
 
 
 ## Running Tests
