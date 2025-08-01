@@ -5,11 +5,12 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestAllocationsStore(t *testing.T) {
 
-	setupDb()
+	util.SetupTestDB()
 	store := database.NewAllocationsStore()
 
 	rules, err := store.GetAllocations()

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func seedCustomerData(t *testing.T) {
@@ -29,7 +30,7 @@ func seedCustomerData(t *testing.T) {
 
 func TestGetCustomers(t *testing.T) {
 
-	setupDb()
+	util.SetupTestDB()
 	seedCustomerData(t)
 
 	store := database.NewPatronStore()

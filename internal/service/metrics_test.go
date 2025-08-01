@@ -30,7 +30,7 @@ func seedSubscriptions(t *testing.T) {
 
 func TestGetMetrics(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	seedSubscriptions(t)
 
 	metrics, err := service.GetMetrics()

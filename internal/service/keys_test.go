@@ -6,11 +6,12 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestCreateAndVerifyKey(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	service.SetKeyStore(database.NewKeyStore())
 
 	token, err := service.CreateAPIKey()
@@ -37,7 +38,7 @@ func TestCreateAndVerifyKey(t *testing.T) {
 
 func TestDeleteAPIKey(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	service.SetKeyStore(database.NewKeyStore())
 
 	token, err := service.CreateAPIKey()

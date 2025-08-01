@@ -5,11 +5,12 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestSetAndGetAllowedOrigins(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	service.SetCORSStore(database.NewCORSStore())
 
 	origins := []service.AllowedOrigin{
@@ -31,7 +32,7 @@ func TestSetAndGetAllowedOrigins(t *testing.T) {
 
 func TestSetAllowedOriginsInvalid(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	service.SetCORSStore(database.NewCORSStore())
 
 	origins := []service.AllowedOrigin{

@@ -31,7 +31,7 @@ func seedTransactions(
 // TestAddTransactionSuccess verifies a valid transaction is inserted
 func TestAddTransactionSuccess(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	t1 := util.MakeDate(2025, 1, 1)
 
 	if err := service.AddTransaction("general", 100, t1, "test"); err != nil {
@@ -50,7 +50,7 @@ func TestAddTransactionSuccess(t *testing.T) {
 // TestGetSnapshotSuccess verifies snapshot calculations over a window
 func TestGetSnapshotSuccess(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	start := util.MakeDate(2025, 1, 1)
 	end := util.MakeDate(2025, 2, 1)
 	seedTransactions(t, start)
@@ -76,7 +76,7 @@ func TestGetSnapshotSuccess(t *testing.T) {
 // TestGetTransactionsSuccess verifies transaction listing
 func TestGetTransactionsSuccess(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	seedTransactions(t, util.MakeDate(2025, 1, 1))
 
 	txs, err := service.GetTransactions("general", 10, 0)

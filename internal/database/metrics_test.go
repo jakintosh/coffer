@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestQuerySubscriptionSummary(t *testing.T) {
 
-	setupDb()
+	util.SetupTestDB()
 	metricsStore := database.NewMetricsStore()
 	stripeStore := database.NewStripeStore()
 

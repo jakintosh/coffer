@@ -10,7 +10,7 @@ import (
 
 func TestCreatePaymentDefault(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	service.SetStripeStore(database.NewStripeStore())
 
 	ts := util.MakeDateUnix(2025, 1, 1)
@@ -39,7 +39,7 @@ func TestCreatePaymentDefault(t *testing.T) {
 
 func TestCreatePaymentAllocated(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 	service.SetStripeStore(database.NewStripeStore())
 
 	rules := []service.AllocationRule{

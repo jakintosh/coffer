@@ -28,7 +28,7 @@ func seedTransactions(
 
 func TestLedgerSnapshotAndTransactions(t *testing.T) {
 
-	setupDb()
+	util.SetupTestDB()
 	ledgerStore := database.NewLedgerStore()
 
 	start := util.MakeDateUnix(2025, 7, 1)

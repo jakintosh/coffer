@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestGetAllocationsDefault(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 
 	// get allocations
 	rules, err := service.GetAllocations()
@@ -28,7 +29,7 @@ func TestGetAllocationsDefault(t *testing.T) {
 
 func TestSetAllocationsInvalid(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 
 	// set invalid new rules
 	err := service.SetAllocations([]service.AllocationRule{
@@ -45,7 +46,7 @@ func TestSetAllocationsInvalid(t *testing.T) {
 
 func TestSetAllocationsValid(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB()
 
 	// set new rules
 	rules := []service.AllocationRule{

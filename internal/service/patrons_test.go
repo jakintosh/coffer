@@ -30,7 +30,8 @@ func seedCustomers(t *testing.T) {
 }
 
 func TestListPatrons(t *testing.T) {
-	setupDB()
+
+	util.SetupTestDB()
 	seedCustomers(t)
 
 	patrons, err := service.ListPatrons(2, 0)
