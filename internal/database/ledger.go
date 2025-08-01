@@ -9,7 +9,7 @@ import (
 )
 
 type DBTransaction struct {
-	ID      int64
+	ID      string
 	Created int64
 	Updated sql.NullInt64
 	Date    int64
@@ -27,16 +27,18 @@ func (DBLedgerStore) InsertTransaction(
 	amount int,
 	date int64,
 	label string,
+	id string,
 ) error {
 	_, err := db.Exec(`
-		INSERT INTO tx (created, date, amount, ledger, label)
-		VALUES(unixepoch(), ?1, ?2, ?3, ?4)
-		ON CONFLICT(id) DO UPDATE
-			SET updated=unixepoch(),
-				amount=excluded.amount,
-				date=excluded.date,
-				ledger=excluded.ledger,
-				label=excluded.label;`,
+                INSERT INTO tx (id, created, date, amount, ledger, label)
+                VALUES(?1, unixepoch(), ?2, ?3, ?4, ?5)
+                ON CONFLICT(id) DO UPDATE
+                        SET updated=unixepoch(),
+                                amount=excluded.amount,
+                                date=excluded.date,
+                                ledger=excluded.ledger,
+                                label=excluded.label;`,
+		id,
 		date,
 		amount,
 		ledger,
@@ -122,12 +124,12 @@ func (DBLedgerStore) GetTransactions(
 	error,
 ) {
 	rows, err := db.Query(`
-		SELECT amount, date, label
-		FROM tx
-		WHERE ledger=?1
-		ORDER BY date DESC
-		LIMIT ?2 OFFSET ?3;
-		`,
+                SELECT id, amount, date, label
+                FROM tx
+                WHERE ledger=?1
+                ORDER BY date DESC
+                LIMIT ?2 OFFSET ?3;
+                `,
 		ledger,
 		limit,
 		offset,
@@ -138,16 +140,18 @@ func (DBLedgerStore) GetTransactions(
 
 	defer rows.Close()
 	var (
+		id     string
 		amount int
 		date   int64
 		label  string
 	)
 	var txs []service.Transaction
 	for rows.Next() {
-		if err := rows.Scan(&amount, &date, &label); err != nil {
+		if err := rows.Scan(&id, &amount, &date, &label); err != nil {
 			return nil, err
 		}
 		tx := service.Transaction{
+			ID:     id,
 			Ledger: ledger,
 			Amount: amount,
 			Date:   time.Unix(date, 0),

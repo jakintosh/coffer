@@ -12,6 +12,7 @@ import (
 )
 
 type CreateTransactionRequest struct {
+	ID     string `json:"id"`
 	Date   string `json:"date"`
 	Amount int    `json:"amount"`
 	Label  string `json:"label"`
@@ -123,7 +124,7 @@ func handlePostLedgerTransaction(
 		writeError(w, http.StatusBadRequest, "Invalid date")
 	}
 
-	err = service.AddTransaction(ledger, req.Amount, date, req.Label)
+	err = service.AddTransaction(ledger, req.Amount, date, req.Label, req.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		switch {

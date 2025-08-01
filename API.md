@@ -71,6 +71,7 @@ Non‑integer values return `400 Bad Request`.
 ```json
 [
   {
+    "id": string,
     "ledger": string,
     "amount": int,
     "date": "RFC3339 timestamp",
@@ -85,6 +86,7 @@ Create a new transaction.
 **Request Body** ([`CreateTransactionRequest`](internal/api/ledger.go))
 ```json
 {
+  "id": string?,
   "date": "RFC3339",
   "amount": int,
   "label": string

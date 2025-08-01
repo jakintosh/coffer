@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -150,7 +151,8 @@ func CreatePayment(
 			continue
 		}
 
-		err := AddTransaction(r.LedgerName, share, date, "patron")
+		txID := fmt.Sprintf("%s:%s", id, r.LedgerName)
+		err := AddTransaction(r.LedgerName, share, date, "patron", txID)
 		if err != nil {
 			return err
 		}
