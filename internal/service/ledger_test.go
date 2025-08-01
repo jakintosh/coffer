@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func seedTransactions(
 // TestAddTransactionSuccess verifies a valid transaction is inserted
 func TestAddTransactionSuccess(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	t1 := util.MakeDate(2025, 1, 1)
 
 	if err := service.AddTransaction("", "general", 100, t1, "test"); err != nil {
@@ -50,7 +51,7 @@ func TestAddTransactionSuccess(t *testing.T) {
 // TestGetSnapshotSuccess verifies snapshot calculations over a window
 func TestGetSnapshotSuccess(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	start := util.MakeDate(2025, 1, 1)
 	end := util.MakeDate(2025, 2, 1)
 	seedTransactions(t, start)
@@ -76,7 +77,7 @@ func TestGetSnapshotSuccess(t *testing.T) {
 // TestGetTransactionsSuccess verifies transaction listing
 func TestGetTransactionsSuccess(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	seedTransactions(t, util.MakeDate(2025, 1, 1))
 
 	txs, err := service.GetTransactions("general", 10, 0)
@@ -88,5 +89,33 @@ func TestGetTransactionsSuccess(t *testing.T) {
 	}
 	if !txs[0].Date.After(txs[1].Date) {
 		t.Errorf("transactions not sorted by date desc")
+	}
+}
+
+func TestAddTransactionNoStore(t *testing.T) {
+
+	// no db/store setup — fail to run service
+
+	t1 := util.MakeDate(2025, 1, 1)
+	err := service.AddTransaction("", "gen", 1, t1, "")
+	if !errors.Is(err, service.ErrNoLedgerStore) {
+		t.Fatalf("expected ErrNoLedgerStore, got %v", err)
+	}
+}
+
+func TestGetTransactionsNegativePagination(t *testing.T) {
+
+	util.SetupTestDB(t)
+	seedTransactions(t, util.MakeDate(2025, 1, 1))
+
+	// pass negative pagination values
+	txs, err := service.GetTransactions("general", -5, -3)
+	if err != nil {
+		t.Fatalf("GetTransactions: %v", err)
+	}
+
+	// validate pagination was default anyway
+	if len(txs) != 3 {
+		t.Fatalf("expected 3 tx got %d", len(txs))
 	}
 }

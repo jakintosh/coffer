@@ -28,7 +28,7 @@ func seedTransactions(
 
 func TestLedgerSnapshotAndTransactions(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	ledgerStore := database.NewLedgerStore()
 
 	start := util.MakeDateUnix(2025, 7, 1)
@@ -58,5 +58,32 @@ func TestLedgerSnapshotAndTransactions(t *testing.T) {
 	}
 	if len(rows) != 3 {
 		t.Errorf("expected 3 rows, got %d", len(rows))
+	}
+}
+
+func TestLedgerTransactionsLimitOffset(t *testing.T) {
+
+	util.SetupTestDB(t)
+	ledgerStore := database.NewLedgerStore()
+
+	start := util.MakeDateUnix(2025, 7, 1)
+	seedTransactions(t, ledgerStore, start)
+
+	txs, err := ledgerStore.GetTransactions("general", 1, 1)
+	if err != nil {
+		t.Fatalf("GetTransactions: %v", err)
+	}
+
+	// expect the second transaction
+	if len(txs) != 1 || txs[0].ID != "t2" || txs[0].Amount != 200 {
+		t.Fatalf("unexpected txs %+v", txs)
+	}
+
+	empty, err := ledgerStore.GetTransactions("general", 10, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(empty) != 0 {
+		t.Fatalf("expected empty slice")
 	}
 }

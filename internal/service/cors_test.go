@@ -10,7 +10,7 @@ import (
 
 func TestSetAndGetAllowedOrigins(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	service.SetCORSStore(database.NewCORSStore())
 
 	origins := []service.AllowedOrigin{
@@ -32,7 +32,7 @@ func TestSetAndGetAllowedOrigins(t *testing.T) {
 
 func TestSetAllowedOriginsInvalid(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	service.SetCORSStore(database.NewCORSStore())
 
 	origins := []service.AllowedOrigin{

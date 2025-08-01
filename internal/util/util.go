@@ -1,6 +1,7 @@
 package util
 
 import (
+	"testing"
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
@@ -31,7 +32,7 @@ func MakeDate3339(
 	return MakeDate(year, month, day).Format(time.RFC3339)
 }
 
-func SetupTestDB() {
+func SetupTestDB(t *testing.T) {
 
 	database.Init(":memory:", false)
 	service.SetAllocationsStore(database.NewAllocationsStore())
@@ -40,4 +41,13 @@ func SetupTestDB() {
 	service.SetLedgerStore(database.NewLedgerStore())
 	service.SetMetricsStore(database.NewMetricsStore())
 	service.SetPatronsStore(database.NewPatronStore())
+
+	t.Cleanup(func() {
+		service.SetAllocationsStore(nil)
+		service.SetCORSStore(nil)
+		service.SetKeyStore(nil)
+		service.SetLedgerStore(nil)
+		service.SetMetricsStore(nil)
+		service.SetPatronsStore(nil)
+	})
 }

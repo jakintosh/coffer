@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"errors"
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
@@ -30,7 +31,7 @@ func seedSubscriptions(t *testing.T) {
 
 func TestGetMetrics(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	seedSubscriptions(t)
 
 	metrics, err := service.GetMetrics()
@@ -42,5 +43,15 @@ func TestGetMetrics(t *testing.T) {
 	}
 	if metrics.MRRCents != 1500 {
 		t.Errorf("want mrr=1500 got %d", metrics.MRRCents)
+	}
+}
+
+func TestGetMetricsNoStore(t *testing.T) {
+
+	// no db/store set — service call should fail
+
+	_, err := service.GetMetrics()
+	if !errors.Is(err, service.ErrNoMetricsStore) {
+		t.Fatalf("expected ErrNoMetricsStore, got %v", err)
 	}
 }

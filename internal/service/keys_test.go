@@ -11,7 +11,7 @@ import (
 
 func TestCreateAndVerifyKey(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	service.SetKeyStore(database.NewKeyStore())
 
 	token, err := service.CreateAPIKey()
@@ -27,7 +27,7 @@ func TestCreateAndVerifyKey(t *testing.T) {
 		t.Fatalf("expected key to verify")
 	}
 
-	ok, err = service.VerifyAPIKey(token + "bad")
+	ok, err = service.VerifyAPIKey(token + "deadbeef")
 	if err != nil {
 		t.Fatalf("failed to verify API key: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestCreateAndVerifyKey(t *testing.T) {
 
 func TestDeleteAPIKey(t *testing.T) {
 
-	util.SetupTestDB()
+	util.SetupTestDB(t)
 	service.SetKeyStore(database.NewKeyStore())
 
 	token, err := service.CreateAPIKey()
