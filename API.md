@@ -173,6 +173,35 @@ Replace all allocation rules.
 - `401 Unauthorized` for missing/invalid token
 - `500 Internal Server Error` on storage error
 
+## `/settings/cors`
+### GET *(requires `Authorization` header)*
+Retrieve the list of allowed CORS origins.
+
+**Response Codes**
+- `200 OK` with origins
+- `401 Unauthorized` if token missing/invalid
+- `500 Internal Server Error` on retrieval error
+
+**Response Body** – array of [`AllowedOrigin`](internal/service/cors.go)
+```json
+[
+  {
+    "url": string
+  }
+]
+```
+
+### PUT *(requires `Authorization` header)*
+Replace all allowed origins.
+
+**Request Body** – array of `AllowedOrigin` objects. URLs must start with `http://` or `https://`.
+
+**Response Codes**
+- `204 No Content` on success
+- `400 Bad Request` for malformed JSON or invalid origins
+- `401 Unauthorized` for missing/invalid token
+- `500 Internal Server Error` on storage error
+
 ## `/settings/keys`
 ### POST *(requires `Authorization` header)*
 Create a new API key.
