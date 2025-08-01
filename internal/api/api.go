@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -26,6 +28,36 @@ func BuildRouter(
 	buildPatronsRouter(r.PathPrefix("/patrons").Subrouter())
 	buildSettingsRouter(r.PathPrefix("/settings").Subrouter())
 	buildStripeRouter(r.PathPrefix("/stripe").Subrouter())
+}
+
+func parsePaginationQueries(
+	r *http.Request,
+) (
+	int,
+	int,
+	error,
+) {
+	limitQ := r.URL.Query().Get("limit")
+	offsetQ := r.URL.Query().Get("offset")
+
+	limit := 100
+	if limitQ != "" {
+		var err error
+		limit, err = strconv.Atoi(limitQ)
+		if err != nil {
+			return 0, 0, fmt.Errorf("Invalid 'limit' query")
+		}
+	}
+
+	offset := 0
+	if offsetQ != "" {
+		var err error
+		offset, err = strconv.Atoi(offsetQ)
+		if err != nil {
+			return 0, 0, fmt.Errorf("Invalid 'offset' query")
+		}
+	}
+	return limit, offset, nil
 }
 
 func writeError(

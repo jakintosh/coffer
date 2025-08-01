@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
@@ -80,27 +79,10 @@ func handleGetLedgerTransactions(
 ) {
 	vars := mux.Vars(r)
 	f := vars["ledger"]
-	limitQ := r.URL.Query().Get("limit")
-	offsetQ := r.URL.Query().Get("offset")
-
-	limit := 100
-	if limitQ != "" {
-		var err error
-		limit, err = strconv.Atoi(limitQ)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "Invalid 'limit' query")
-			return
-		}
-	}
-
-	offset := 0
-	if offsetQ != "" {
-		var err error
-		offset, err = strconv.Atoi(offsetQ)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "Invalid 'offset' query")
-			return
-		}
+	limit, offset, err := parsePaginationQueries(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprint(err))
+		return
 	}
 
 	transactions, err := service.GetTransactions(f, limit, offset)
