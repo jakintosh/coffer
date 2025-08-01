@@ -12,7 +12,7 @@ sudo systemctl stop $NAME@$DOMAIN
 sudo mkdir -p /etc/$NAME/$DOMAIN
 sudo mkdir -p /var/lib/$NAME/$DOMAIN # for database
 
-sudo cp    $DEPLOY_DIR/usr/local/bin/$NAME  /usr/local/bin/
+sudo cp    $DEPLOY_DIR/usr/local/bin/coffer  /usr/local/bin/
 sudo cp -r $DEPLOY_DIR/etc/systemd/system/. /etc/systemd/system/
 sudo cp -r $DEPLOY_DIR/etc/$NAME/.          /etc/$NAME/$DOMAIN
 

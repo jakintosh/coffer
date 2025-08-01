@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,6 +35,7 @@ var root = &cmd.Command{
 	Version: VERSION,
 	Help:    "manage your coffer from the command line",
 	Subcommands: []*cmd.Command{
+		serveCmd,
 		healthCmd,
 		ledgerCmd,
 		metricsCmd,
@@ -190,4 +192,38 @@ func request(
 	}
 
 	return nil
+}
+
+func readEnvVarList(
+	name string,
+) []string {
+	listStr := os.Getenv(name)
+	var list []string
+	if listStr != "" {
+		list = strings.Split(listStr, ",")
+	}
+	return list
+}
+
+func loadCredential(
+	name string,
+	credsDir string,
+) string {
+	credPath := filepath.Join(credsDir, name)
+	cred, err := os.ReadFile(credPath)
+	if err != nil {
+		log.Fatalf("failed to load required credential '%s': %v\n", name, err)
+	}
+	return string(cred)
+}
+
+func readEnvVar(
+	name string,
+) string {
+	var present bool
+	str, present := os.LookupEnv(name)
+	if !present {
+		log.Fatalf("missing required env var '%s'\n", name)
+	}
+	return str
 }

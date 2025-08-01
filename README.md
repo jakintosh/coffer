@@ -2,7 +2,7 @@
 
 ## General Overview
 
-Coffer is a small Go service that stores information about paying patrons and ledger balances in a local SQLite database. A command line client (`coffer`) communicates with the HTTP server (`coffer-server`) to post ledger transactions, manage API keys and allocation rules, and to fetch summary metrics. The server also processes Stripe webhooks to keep patron records and payments in sync. All operations that modify state require an API key.
+Coffer is a small Go service that stores information about paying patrons and ledger balances in a local SQLite database. The command line tool (`coffer`) communicates with the HTTP server (started with `coffer serve`) to post ledger transactions, manage API keys and allocation rules, and to fetch summary metrics. The server also processes Stripe webhooks to keep patron records and payments in sync. All operations that modify state require an API key.
 
 ## Important Design Elements
 
