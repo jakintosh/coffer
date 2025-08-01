@@ -115,6 +115,11 @@ var ledgerTxAddCmd = &cmd.Command{
 			Help: "transaction label",
 		},
 		{
+			Long: "id",
+			Type: cmd.OptionTypeParameter,
+			Help: "transaction id (optional)",
+		},
+		{
 			Long: "file",
 			Type: cmd.OptionTypeParameter,
 			Help: "json file to send as body",
@@ -138,6 +143,7 @@ var ledgerTxAddCmd = &cmd.Command{
 		amount := i.GetIntParameter("amount")
 		dateStr := i.GetParameter("date")
 		label := i.GetParameter("label")
+		idOpt := i.GetParameter("id")
 
 		// validate options present
 		if amount == nil {
@@ -149,6 +155,10 @@ var ledgerTxAddCmd = &cmd.Command{
 		if label == nil {
 			return fmt.Errorf("'label' missing")
 		}
+		id := ""
+		if idOpt != nil {
+			id = *idOpt
+		}
 
 		// validate date
 		date, err := time.Parse(time.RFC3339, *dateStr)
@@ -157,12 +167,15 @@ var ledgerTxAddCmd = &cmd.Command{
 		}
 
 		// marshal body json
-		body, err := json.Marshal(service.Transaction{
-			Ledger: ledger,
-			Amount: *amount,
-			Date:   date,
-			Label:  *label,
-		})
+		body, err := json.Marshal(
+			service.Transaction{
+				ID:     id,
+				Ledger: ledger,
+				Amount: *amount,
+				Date:   date,
+				Label:  *label,
+			},
+		)
 		if err != nil {
 			return err
 		}

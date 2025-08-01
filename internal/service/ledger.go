@@ -2,10 +2,12 @@ package service
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type LedgerStore interface {
-	InsertTransaction(ledger string, amount int, date int64, label string) error
+	InsertTransaction(id string, ledger string, amount int, date int64, label string) error
 	GetLedgerSnapshot(ledger string, since, until int64) (*LedgerSnapshot, error)
 	GetTransactions(ledger string, limit, offset int) ([]Transaction, error)
 }
@@ -24,6 +26,7 @@ type LedgerSnapshot struct {
 }
 
 type Transaction struct {
+	ID     string    `json:"id"`
 	Ledger string    `json:"ledger"`
 	Amount int       `json:"amount"`
 	Date   time.Time `json:"date"`
@@ -31,6 +34,7 @@ type Transaction struct {
 }
 
 func AddTransaction(
+	id string,
 	ledger string,
 	amount int,
 	date time.Time,
@@ -41,7 +45,12 @@ func AddTransaction(
 		return ErrNoLedgerStore
 	}
 
+	if id == "" {
+		id = uuid.NewString()
+	}
+
 	err := ledgerStore.InsertTransaction(
+		id,
 		ledger,
 		amount,
 		date.Unix(),

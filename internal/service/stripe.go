@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -150,8 +151,16 @@ func CreatePayment(
 			continue
 		}
 
-		err := AddTransaction(r.LedgerName, share, date, "patron")
-		if err != nil {
+		// create unique transaction id from payment id + ledger name
+		txID := fmt.Sprintf("%s:%s", id, r.LedgerName)
+
+		if err := AddTransaction(
+			txID,
+			r.LedgerName,
+			share,
+			date,
+			"patron",
+		); err != nil {
 			return err
 		}
 	}

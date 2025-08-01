@@ -12,6 +12,7 @@ import (
 )
 
 type CreateTransactionRequest struct {
+	ID     string `json:"id"`
 	Date   string `json:"date"`
 	Amount int    `json:"amount"`
 	Label  string `json:"label"`
@@ -104,8 +105,6 @@ func handlePostLedgerTransaction(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	// TODO: validate Authorization header
-
 	vars := mux.Vars(r)
 	ledger := vars["ledger"]
 
@@ -123,7 +122,7 @@ func handlePostLedgerTransaction(
 		writeError(w, http.StatusBadRequest, "Invalid date")
 	}
 
-	err = service.AddTransaction(ledger, req.Amount, date, req.Label)
+	err = service.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		switch {

@@ -75,7 +75,7 @@ func Init(
 			currency TEXT
 		);
 		CREATE TABLE IF NOT EXISTS tx (
-			id INTEGER NOT NULL PRIMARY KEY,
+			id TEXT NOT NULL PRIMARY KEY,
 			created INTEGER NOT NULL,
 			updated INTEGER,
 			date INTEGER NOT NULL,

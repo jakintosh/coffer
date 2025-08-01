@@ -13,17 +13,17 @@ func seedTransactions(
 	start time.Time,
 ) {
 	t1 := start.Add(time.Hour * -1)
-	if err := service.AddTransaction("general", 100, t1, "old"); err != nil {
+	if err := service.AddTransaction("", "general", 100, t1, "old"); err != nil {
 		t.Fatal(err)
 	}
 
 	t2 := start.Add(time.Hour * 1)
-	if err := service.AddTransaction("general", 200, t2, "in"); err != nil {
+	if err := service.AddTransaction("", "general", 200, t2, "in"); err != nil {
 		t.Fatal(err)
 	}
 
 	t3 := start.Add(time.Hour * 2)
-	if err := service.AddTransaction("general", -50, t3, "out"); err != nil {
+	if err := service.AddTransaction("", "general", -50, t3, "out"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -34,7 +34,7 @@ func TestAddTransactionSuccess(t *testing.T) {
 	util.SetupTestDB()
 	t1 := util.MakeDate(2025, 1, 1)
 
-	if err := service.AddTransaction("general", 100, t1, "test"); err != nil {
+	if err := service.AddTransaction("", "general", 100, t1, "test"); err != nil {
 		t.Fatalf("add transaction: %v", err)
 	}
 
