@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +20,7 @@ const (
 	AUTHOR      = "jakintosh"
 	VERSION     = "0.1"
 	DEFAULT_CFG = "~/.config/coffer"
+	DEFAULT_ENV = "default"
 	DEFAULT_URL = "http://localhost:9000"
 )
 
@@ -47,6 +50,12 @@ var root = &cmd.Command{
 			Help:  "coffer API base url",
 		},
 		{
+			Short: 'e',
+			Long:  "env",
+			Type:  cmd.OptionTypeParameter,
+			Help:  "environment name",
+		},
+		{
 			Long: "config-dir",
 			Type: cmd.OptionTypeParameter,
 			Help: "config directory",
@@ -74,7 +83,7 @@ func baseURL(
 	return url + "/api/v1"
 }
 
-func configDir(
+func baseConfigDir(
 	i *cmd.Input,
 ) string {
 	dir := DEFAULT_CFG
@@ -89,16 +98,74 @@ func configDir(
 	return dir
 }
 
+func loadActiveEnv(
+	i *cmd.Input,
+) (
+	string,
+	error,
+) {
+	path := filepath.Join(baseConfigDir(i), "active_env")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	activeEnv := strings.TrimSpace(string(data))
+	return activeEnv, nil
+}
+
+func saveActiveEnv(
+	i *cmd.Input,
+	name string,
+) error {
+	dir := baseConfigDir(i)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	path := filepath.Join(dir, "active_env")
+	return os.WriteFile(path, []byte(name), 0o600)
+}
+
+func envDir(
+	i *cmd.Input,
+	env string,
+) string {
+	return filepath.Join(baseConfigDir(i), "envs", env)
+}
+
+func activeEnv(
+	i *cmd.Input,
+) string {
+	if e := i.GetParameter("env"); e != nil && *e != "" {
+		return *e
+	}
+	if env := os.Getenv("COFFER_ENV"); env != "" {
+		return env
+	}
+	if n, err := loadActiveEnv(i); err == nil && n != "" {
+		return n
+	}
+	return DEFAULT_ENV
+}
+
+func activeEnvDir(
+	i *cmd.Input,
+) string {
+	return envDir(i, activeEnv(i))
+}
+
 func keyPath(
 	i *cmd.Input,
 ) string {
-	return filepath.Join(configDir(i), "api_key")
+	return filepath.Join(activeEnvDir(i), "api_key")
 }
 
 func urlPath(
 	i *cmd.Input,
 ) string {
-	return filepath.Join(configDir(i), "base_url")
+	return filepath.Join(activeEnvDir(i), "base_url")
 }
 
 func loadAPIKey(
@@ -119,7 +186,7 @@ func saveAPIKey(
 	i *cmd.Input,
 	key string,
 ) error {
-	dir := configDir(i)
+	dir := activeEnvDir(i)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
@@ -154,7 +221,7 @@ func saveBaseURL(
 	i *cmd.Input,
 	url string,
 ) error {
-	dir := configDir(i)
+	dir := activeEnvDir(i)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
@@ -166,6 +233,17 @@ func deleteBaseURL(
 	i *cmd.Input,
 ) error {
 	return os.Remove(urlPath(i))
+}
+
+func generateAPIKey() (
+	string,
+	error,
+) {
+	keyBytes := make([]byte, 32)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return "", err
+	}
+	return "default." + hex.EncodeToString(keyBytes), nil
 }
 
 func addParams(
