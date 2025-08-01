@@ -15,6 +15,7 @@ Coffer is a small Go service that stores information about paying patrons and le
 - **Allocation based ledger posting** - Each payment is split across one or more ledgers using configurable percentage rules. The rules must sum to 100 percent.
 - **Authentication middleware** - Mutating endpoints require the `Authorization: Bearer` header. Tokens are verified against the stored API keys before the request is forwarded.
 
+
 ## HTTP API Overview
 
 All responses use the form:
@@ -59,6 +60,7 @@ All responses use the form:
 
 Authentication for modifying routes uses `Authorization: Bearer <token>` issued by `/settings/keys`.
 
+
 ## Running Tests
 
 Run all unit tests with:
@@ -68,6 +70,7 @@ go test ./...
 ```
 
 All current tests should pass.
+
 
 ## CLI Environments
 

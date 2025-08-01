@@ -16,6 +16,7 @@ var serveCmd = &cmd.Command{
 	Name: "serve",
 	Help: "run the coffer server",
 	Handler: func(i *cmd.Input) error {
+
 		dbPath := readEnvVar("DB_FILE_PATH")
 		port := fmt.Sprintf(":%s", readEnvVar("PORT"))
 		origins := readEnvVarList("CORS_ALLOWED_ORIGINS")
@@ -47,7 +48,6 @@ var serveCmd = &cmd.Command{
 		r := mux.NewRouter()
 		api.BuildRouter(r.PathPrefix("/api/v1").Subrouter())
 
-		log.Fatal(http.ListenAndServe(port, r))
-		return nil
+		return http.ListenAndServe(port, r)
 	},
 }

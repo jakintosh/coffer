@@ -45,16 +45,14 @@ var root = &cmd.Command{
 	},
 	Options: []cmd.Option{
 		{
-			Short: 'u',
-			Long:  "url",
-			Type:  cmd.OptionTypeParameter,
-			Help:  "coffer API base url",
+			Long: "url",
+			Type: cmd.OptionTypeParameter,
+			Help: "coffer API base url",
 		},
 		{
-			Short: 'e',
-			Long:  "env",
-			Type:  cmd.OptionTypeParameter,
-			Help:  "environment name",
+			Long: "env",
+			Type: cmd.OptionTypeParameter,
+			Help: "environment name",
 		},
 		{
 			Long: "config-dir",
@@ -62,6 +60,40 @@ var root = &cmd.Command{
 			Help: "config directory",
 		},
 	},
+}
+
+func loadCredential(
+	name string,
+	credsDir string,
+) string {
+	credPath := filepath.Join(credsDir, name)
+	cred, err := os.ReadFile(credPath)
+	if err != nil {
+		log.Fatalf("failed to load required credential '%s': %v\n", name, err)
+	}
+	return string(cred)
+}
+
+func readEnvVar(
+	name string,
+) string {
+	var present bool
+	str, present := os.LookupEnv(name)
+	if !present {
+		log.Fatalf("missing required env var '%s'\n", name)
+	}
+	return str
+}
+
+func readEnvVarList(
+	name string,
+) []string {
+	listStr := os.Getenv(name)
+	var list []string
+	if listStr != "" {
+		list = strings.Split(listStr, ",")
+	}
+	return list
 }
 
 func baseURL(
@@ -192,38 +224,4 @@ func request(
 	}
 
 	return nil
-}
-
-func readEnvVarList(
-	name string,
-) []string {
-	listStr := os.Getenv(name)
-	var list []string
-	if listStr != "" {
-		list = strings.Split(listStr, ",")
-	}
-	return list
-}
-
-func loadCredential(
-	name string,
-	credsDir string,
-) string {
-	credPath := filepath.Join(credsDir, name)
-	cred, err := os.ReadFile(credPath)
-	if err != nil {
-		log.Fatalf("failed to load required credential '%s': %v\n", name, err)
-	}
-	return string(cred)
-}
-
-func readEnvVar(
-	name string,
-) string {
-	var present bool
-	str, present := os.LookupEnv(name)
-	if !present {
-		log.Fatalf("missing required env var '%s'\n", name)
-	}
-	return str
 }
