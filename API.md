@@ -166,6 +166,15 @@ Retrieve ledger allocation rules.
 Replace all allocation rules.
 
 **Request Body** – array of the same `AllocationRule` objects. Percentages must sum to 100.
+```json
+[
+  {
+    "id": string,
+    "ledger": string,
+    "percentage": int
+  }
+]
+```
 
 **Response Codes**
 - `204 No Content` on success
@@ -195,6 +204,13 @@ Retrieve the list of allowed CORS origins.
 Replace all allowed origins.
 
 **Request Body** – array of `AllowedOrigin` objects. URLs must start with `http://` or `https://`.
+```json
+[
+  {
+    "url": string
+  }
+]
+```
 
 **Response Codes**
 - `204 No Content` on success
