@@ -15,13 +15,13 @@ func seedTransactions(
 	ledgerStore database.DBLedgerStore,
 	start int64,
 ) {
-	if err := ledgerStore.InsertTransaction("general", 100, start-hour, "old", "t1"); err != nil {
+	if err := ledgerStore.InsertTransaction("t1", "general", 100, start-hour, "old"); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledgerStore.InsertTransaction("general", 200, start+hour, "in", "t2"); err != nil {
+	if err := ledgerStore.InsertTransaction("t2", "general", 200, start+hour, "in"); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledgerStore.InsertTransaction("general", -50, start+(hour*2), "out", "t3"); err != nil {
+	if err := ledgerStore.InsertTransaction("t3", "general", -50, start+(hour*2), "out"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -36,7 +36,7 @@ func TestLedgerSnapshotAndTransactions(t *testing.T) {
 
 	seedTransactions(t, ledgerStore, start)
 
-	// snapshot frrom start to end
+	// snapshot from start to end
 	snapshot, err := ledgerStore.GetLedgerSnapshot("general", start, end)
 	if err != nil {
 		t.Fatal(err)

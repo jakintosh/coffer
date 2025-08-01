@@ -7,7 +7,7 @@ import (
 )
 
 type LedgerStore interface {
-	InsertTransaction(ledger string, amount int, date int64, label string, id string) error
+	InsertTransaction(id string, ledger string, amount int, date int64, label string) error
 	GetLedgerSnapshot(ledger string, since, until int64) (*LedgerSnapshot, error)
 	GetTransactions(ledger string, limit, offset int) ([]Transaction, error)
 }
@@ -34,11 +34,11 @@ type Transaction struct {
 }
 
 func AddTransaction(
+	id string,
 	ledger string,
 	amount int,
 	date time.Time,
 	label string,
-	id string,
 ) error {
 
 	if ledgerStore == nil {
@@ -50,11 +50,11 @@ func AddTransaction(
 	}
 
 	err := ledgerStore.InsertTransaction(
+		id,
 		ledger,
 		amount,
 		date.Unix(),
 		label,
-		id,
 	)
 	if err != nil {
 		return DatabaseError{err}

@@ -74,13 +74,13 @@ func Init(
 			amount INTEGER,
 			currency TEXT
 		);
-                CREATE TABLE IF NOT EXISTS tx (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        created INTEGER NOT NULL,
-                        updated INTEGER,
-                        date INTEGER NOT NULL,
-                        ledger TEXT NOT NULL,
-                        label TEXT,
+		CREATE TABLE IF NOT EXISTS tx (
+			id TEXT NOT NULL PRIMARY KEY,
+			created INTEGER NOT NULL,
+			updated INTEGER,
+			date INTEGER NOT NULL,
+			ledger TEXT NOT NULL,
+			label TEXT,
 			amount INTEGER NOT NULL
 		);
 		CREATE TABLE IF NOT EXISTS allocation (

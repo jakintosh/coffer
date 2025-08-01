@@ -23,21 +23,21 @@ type DBLedgerStore struct{}
 func NewLedgerStore() DBLedgerStore { return DBLedgerStore{} }
 
 func (DBLedgerStore) InsertTransaction(
+	id string,
 	ledger string,
 	amount int,
 	date int64,
 	label string,
-	id string,
 ) error {
 	_, err := db.Exec(`
-                INSERT INTO tx (id, created, date, amount, ledger, label)
-                VALUES(?1, unixepoch(), ?2, ?3, ?4, ?5)
-                ON CONFLICT(id) DO UPDATE
-                        SET updated=unixepoch(),
-                                amount=excluded.amount,
-                                date=excluded.date,
-                                ledger=excluded.ledger,
-                                label=excluded.label;`,
+		INSERT INTO tx (id, created, date, amount, ledger, label)
+		VALUES(?1, unixepoch(), ?2, ?3, ?4, ?5)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=unixepoch(),
+			amount=excluded.amount,
+			date=excluded.date,
+			ledger=excluded.ledger,
+			label=excluded.label;`,
 		id,
 		date,
 		amount,
@@ -124,12 +124,12 @@ func (DBLedgerStore) GetTransactions(
 	error,
 ) {
 	rows, err := db.Query(`
-                SELECT id, amount, date, label
-                FROM tx
-                WHERE ledger=?1
-                ORDER BY date DESC
-                LIMIT ?2 OFFSET ?3;
-                `,
+		SELECT id, amount, date, label
+		FROM tx
+		WHERE ledger=?1
+		ORDER BY date DESC
+		LIMIT ?2 OFFSET ?3;
+		`,
 		ledger,
 		limit,
 		offset,

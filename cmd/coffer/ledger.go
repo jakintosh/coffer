@@ -143,7 +143,7 @@ var ledgerTxAddCmd = &cmd.Command{
 		amount := i.GetIntParameter("amount")
 		dateStr := i.GetParameter("date")
 		label := i.GetParameter("label")
-		id := i.GetParameter("id")
+		idOpt := i.GetParameter("id")
 
 		// validate options present
 		if amount == nil {
@@ -155,6 +155,10 @@ var ledgerTxAddCmd = &cmd.Command{
 		if label == nil {
 			return fmt.Errorf("'label' missing")
 		}
+		id := ""
+		if idOpt != nil {
+			id = *idOpt
+		}
 
 		// validate date
 		date, err := time.Parse(time.RFC3339, *dateStr)
@@ -163,16 +167,15 @@ var ledgerTxAddCmd = &cmd.Command{
 		}
 
 		// marshal body json
-		tx := service.Transaction{
-			Ledger: ledger,
-			Amount: *amount,
-			Date:   date,
-			Label:  *label,
-		}
-		if id != nil {
-			tx.ID = *id
-		}
-		body, err := json.Marshal(tx)
+		body, err := json.Marshal(
+			service.Transaction{
+				ID:     id,
+				Ledger: ledger,
+				Amount: *amount,
+				Date:   date,
+				Label:  *label,
+			},
+		)
 		if err != nil {
 			return err
 		}

@@ -151,9 +151,16 @@ func CreatePayment(
 			continue
 		}
 
+		// create unique transaction id from payment id + ledger name
 		txID := fmt.Sprintf("%s:%s", id, r.LedgerName)
-		err := AddTransaction(r.LedgerName, share, date, "patron", txID)
-		if err != nil {
+
+		if err := AddTransaction(
+			txID,
+			r.LedgerName,
+			share,
+			date,
+			"patron",
+		); err != nil {
 			return err
 		}
 	}

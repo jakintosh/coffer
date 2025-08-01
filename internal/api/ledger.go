@@ -105,8 +105,6 @@ func handlePostLedgerTransaction(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	// TODO: validate Authorization header
-
 	vars := mux.Vars(r)
 	ledger := vars["ledger"]
 
@@ -124,7 +122,7 @@ func handlePostLedgerTransaction(
 		writeError(w, http.StatusBadRequest, "Invalid date")
 	}
 
-	err = service.AddTransaction(ledger, req.Amount, date, req.Label, req.ID)
+	err = service.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal server error")
 		switch {
