@@ -68,3 +68,23 @@ go test ./...
 ```
 
 All current tests should pass.
+
+## CLI Environments
+
+The `coffer` CLI can store multiple sets of credentials and URLs under
+named environments. Use `coffer auth env` to manage them:
+
+```sh
+# list configured environments ("*" marks the active one)
+coffer auth env list
+
+# create a new environment and bootstrap an API key
+coffer auth env create staging --base-url http://staging.example.com \
+  --bootstrap
+
+# switch the CLI to use that environment
+coffer auth env use staging
+
+# delete an environment
+coffer auth env delete staging
+```

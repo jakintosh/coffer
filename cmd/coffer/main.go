@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +20,7 @@ const (
 	AUTHOR      = "jakintosh"
 	VERSION     = "0.1"
 	DEFAULT_CFG = "~/.config/coffer"
+	DEFAULT_ENV = "default"
 	DEFAULT_URL = "http://localhost:9000"
 )
 
@@ -47,6 +50,12 @@ var root = &cmd.Command{
 			Help:  "coffer API base url",
 		},
 		{
+			Short: 'e',
+			Long:  "env",
+			Type:  cmd.OptionTypeParameter,
+			Help:  "environment name",
+		},
+		{
 			Long: "config-dir",
 			Type: cmd.OptionTypeParameter,
 			Help: "config directory",
@@ -74,9 +83,9 @@ func baseURL(
 	return url + "/api/v1"
 }
 
-func configDir(
-	i *cmd.Input,
-) string {
+// baseConfigDir returns the root configuration directory without
+// appending the environment name.
+func baseConfigDir(i *cmd.Input) string {
 	dir := DEFAULT_CFG
 	if c := i.GetParameter("config-dir"); c != nil && *c != "" {
 		dir = *c
@@ -87,6 +96,64 @@ func configDir(
 		}
 	}
 	return dir
+}
+
+// loadActiveEnv reads the saved active environment name.
+func loadActiveEnv(i *cmd.Input) (string, error) {
+	path := filepath.Join(baseConfigDir(i), "active_env")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+// saveActiveEnv writes the active environment name.
+func saveActiveEnv(i *cmd.Input, name string) error {
+	dir := baseConfigDir(i)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	path := filepath.Join(dir, "active_env")
+	return os.WriteFile(path, []byte(name), 0o600)
+}
+
+// envDir returns the path to a specific environment directory under the
+// config base.
+func envDir(i *cmd.Input, env string) string {
+	return filepath.Join(baseConfigDir(i), "envs", env)
+}
+
+// activeEnv resolves the environment to use based on the option, the
+// COFFER_ENV variable, the saved active environment file, or the default.
+func activeEnv(i *cmd.Input) string {
+	if e := i.GetParameter("env"); e != nil && *e != "" {
+		return *e
+	}
+	if env := os.Getenv("COFFER_ENV"); env != "" {
+		return env
+	}
+	if n, err := loadActiveEnv(i); err == nil && n != "" {
+		return n
+	}
+	return DEFAULT_ENV
+}
+
+func generateAPIKey() (string, error) {
+	keyBytes := make([]byte, 32)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return "", err
+	}
+	return "default." + hex.EncodeToString(keyBytes), nil
+}
+
+func configDir(
+	i *cmd.Input,
+) string {
+	return envDir(i, activeEnv(i))
 }
 
 func keyPath(
