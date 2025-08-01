@@ -47,6 +47,7 @@ var authEnvListCmd = &cmd.Command{
 	Name: "list",
 	Help: "list environments",
 	Handler: func(i *cmd.Input) error {
+
 		cfg, err := loadConfig(i)
 		if err != nil {
 			return err
@@ -139,16 +140,7 @@ var authEnvUseCmd = &cmd.Command{
 			return fmt.Errorf("missing name")
 		}
 
-		cfg, err := loadConfig(i)
-		if err != nil {
-			return err
-		}
-		if _, ok := cfg.Envs[name]; !ok {
-			return fmt.Errorf("environment '%s' does not exist", name)
-		}
-
-		cfg.ActiveEnv = name
-		return saveConfig(i, cfg)
+		return saveActiveEnv(i, name)
 	},
 }
 

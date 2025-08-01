@@ -41,7 +41,6 @@ var root = &cmd.Command{
 		settingsCmd,
 		authCmd,
 	},
-	Operands: []cmd.Operand{},
 	Options: []cmd.Option{
 		{
 			Short: 'u',
@@ -63,7 +62,9 @@ var root = &cmd.Command{
 	},
 }
 
-func baseURL(i *cmd.Input) string {
+func baseURL(
+	i *cmd.Input,
+) string {
 	u := i.GetParameter("url")
 	envVar := os.Getenv("COFFER_URL")
 	cfgURL, _ := loadBaseURL(i)
@@ -97,24 +98,9 @@ func baseConfigDir(
 	return dir
 }
 
-func loadActiveEnv(i *cmd.Input) (string, error) {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return "", err
-	}
-	return cfg.ActiveEnv, nil
-}
-
-func saveActiveEnv(i *cmd.Input, name string) error {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return err
-	}
-	cfg.ActiveEnv = name
-	return saveConfig(i, cfg)
-}
-
-func activeEnv(i *cmd.Input) string {
+func activeEnv(
+	i *cmd.Input,
+) string {
 	if e := i.GetParameter("env"); e != nil && *e != "" {
 		return *e
 	}
@@ -125,80 +111,6 @@ func activeEnv(i *cmd.Input) string {
 		return n
 	}
 	return DEFAULT_ENV
-}
-
-func loadAPIKey(i *cmd.Input) (string, error) {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return "", err
-	}
-	env := activeEnv(i)
-	if e, ok := cfg.Envs[env]; ok {
-		return strings.TrimSpace(e.APIKey), nil
-	}
-	return "", nil
-}
-
-func saveAPIKey(i *cmd.Input, key string) error {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return err
-	}
-	env := activeEnv(i)
-	ec := cfg.Envs[env]
-	ec.APIKey = key
-	cfg.Envs[env] = ec
-	return saveConfig(i, cfg)
-}
-
-func deleteAPIKey(i *cmd.Input) error {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return err
-	}
-	env := activeEnv(i)
-	if ec, ok := cfg.Envs[env]; ok {
-		ec.APIKey = ""
-		cfg.Envs[env] = ec
-	}
-	return saveConfig(i, cfg)
-}
-
-func loadBaseURL(i *cmd.Input) (string, error) {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return "", err
-	}
-	env := activeEnv(i)
-	if e, ok := cfg.Envs[env]; ok {
-		return strings.TrimSpace(e.BaseURL), nil
-	}
-	return "", nil
-}
-
-func saveBaseURL(i *cmd.Input, url string) error {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return err
-	}
-	env := activeEnv(i)
-	ec := cfg.Envs[env]
-	ec.BaseURL = url
-	cfg.Envs[env] = ec
-	return saveConfig(i, cfg)
-}
-
-func deleteBaseURL(i *cmd.Input) error {
-	cfg, err := loadConfig(i)
-	if err != nil {
-		return err
-	}
-	env := activeEnv(i)
-	if ec, ok := cfg.Envs[env]; ok {
-		ec.BaseURL = ""
-		cfg.Envs[env] = ec
-	}
-	return saveConfig(i, cfg)
 }
 
 func generateAPIKey() (
