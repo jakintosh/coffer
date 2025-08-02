@@ -4,19 +4,20 @@ import (
 	"net/http"
 	"testing"
 
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 	"github.com/stripe/stripe-go/v82/webhook"
 )
 
 func signPayload(body string) string {
 
-	payload := webhook.UnsignedPayload{Payload: []byte(body), Secret: STRIPE_TEST_KEY}
+	payload := webhook.UnsignedPayload{Payload: []byte(body), Secret: util.STRIPE_TEST_KEY}
 	signed := webhook.GenerateTestSignedPayload(&payload)
 	return signed.Header
 }
 
 func TestWebhookOK(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	url := "/stripe/webhook"
@@ -38,7 +39,7 @@ func TestWebhookOK(t *testing.T) {
 
 func TestWebhookBadSignature(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	url := "/stripe/webhook"

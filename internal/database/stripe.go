@@ -1,5 +1,7 @@
 package database
 
+import "database/sql"
+
 type DBStripeStore struct{}
 
 func NewStripeStore() DBStripeStore { return DBStripeStore{} }
@@ -7,16 +9,25 @@ func NewStripeStore() DBStripeStore { return DBStripeStore{} }
 func (DBStripeStore) InsertCustomer(
 	id string,
 	created int64,
-	email, name string,
+	name *string,
 ) error {
+
+	var nameNullStr sql.NullString
+	if name != nil {
+		nameNullStr.String = *name
+		nameNullStr.Valid = true
+	}
+
 	_, err := db.Exec(`
-		INSERT INTO customer (id, created, email, name)
-		VALUES(?1, ?2, ?3, ?4)
-		ON CONFLICT(id) DO
-			UPDATE SET
-				updated=unixepoch(),
-				email=excluded.email,
-				name=excluded.name;`, id, created, email, name)
+		INSERT INTO customer (id, created, name)
+		VALUES(?1, ?2, ?3)
+		ON CONFLICT(id) DO UPDATE
+			SET updated=unixepoch(),
+				name=excluded.name;`,
+		id,
+		created,
+		nameNullStr,
+	)
 	return err
 }
 
@@ -34,7 +45,14 @@ func (DBStripeStore) InsertSubscription(
 			SET updated=unixepoch(),
 				status=excluded.status,
 				amount=excluded.amount,
-				currency=excluded.currency;`, id, created, customerID, status, amount, currency)
+				currency=excluded.currency;`,
+		id,
+		created,
+		customerID,
+		status,
+		amount,
+		currency,
+	)
 	return err
 }
 
@@ -50,7 +68,14 @@ func (DBStripeStore) InsertPayment(
 		VALUES(?1, ?2, ?3, ?4, ?5, ?6)
 		ON CONFLICT(id) DO UPDATE
 			SET updated=unixepoch(),
-				status=excluded.status;`, id, created, status, customer, amount, currency)
+				status=excluded.status;`,
+		id,
+		created,
+		status,
+		customer,
+		amount,
+		currency,
+	)
 	return err
 }
 
@@ -66,6 +91,12 @@ func (DBStripeStore) InsertPayout(
 		VALUES(?1, ?2, ?3, ?4, ?5)
 		ON CONFLICT(id) DO UPDATE
 			SET updated=unixepoch(),
-				status=excluded.status;`, id, created, status, amount, currency)
+				status=excluded.status;`,
+		id,
+		created,
+		status,
+		amount,
+		currency,
+	)
 	return err
 }

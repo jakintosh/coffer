@@ -7,7 +7,7 @@ import (
 	"time"
 
 	stripe "github.com/stripe/stripe-go/v82"
-	"github.com/stripe/stripe-go/v82/customer"
+	"github.com/stripe/stripe-go/v82/checkout/session"
 	"github.com/stripe/stripe-go/v82/paymentintent"
 	"github.com/stripe/stripe-go/v82/payout"
 	"github.com/stripe/stripe-go/v82/subscription"
@@ -15,7 +15,7 @@ import (
 )
 
 type StripeStore interface {
-	InsertCustomer(id string, created int64, email string, name string) error
+	InsertCustomer(id string, created int64, publicName *string) error
 	InsertSubscription(id string, created int64, customer string, status string, amount int64, currency string) error
 	InsertPayment(id string, created int64, status string, customer string, amount int64, currency string) error
 	InsertPayout(id string, created int64, status string, amount int64, currency string) error
@@ -64,13 +64,13 @@ func ProcessStripeEvent(
 ) {
 	log.Printf("<-  event %s %s", event.ID, event.Type)
 	switch event.Type {
-	case "customer.created", "customer.updated":
-		var c stripe.Customer
-		if err := json.Unmarshal(event.Data.Raw, &c); err != nil {
-			log.Printf("parse customer event: %v", err)
+	case "checkout.session.completed":
+		var s stripe.CheckoutSession
+		if err := json.Unmarshal(event.Data.Raw, &s); err != nil {
+			log.Printf("parse checkout.session event: %v", err)
 			return
 		}
-		updateRequests <- updateRequest{"customer", c.ID}
+		updateRequests <- updateRequest{"checkout", s.ID}
 
 	case "customer.subscription.created", "customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.deleted", "customer.subscription.updated":
 		var s stripe.Subscription
@@ -192,8 +192,8 @@ func scheduleResourceUpdates(
 		case req := <-ready:
 			delete(resets, req.ID)
 			switch req.Type {
-			case "customer":
-				go processCustomer(req.ID)
+			case "checkout":
+				go processCheckoutSession(req.ID)
 			case "subscription":
 				go processSubscription(req.ID)
 			case "payment":
@@ -227,36 +227,55 @@ func queueResourceUpdate(
 	}
 }
 
-func processCustomer(
+func processCheckoutSession(
 	id string,
 ) error {
 	if stripeStore == nil {
 		return ErrNoStripeStore
 	}
 
-	log.Printf(" -> customer %s", id)
-	params := &stripe.CustomerParams{}
-	c, err := customer.Get(id, params)
+	log.Printf(" -> session %s", id)
+	params := &stripe.CheckoutSessionParams{}
+	session, err := session.Get(id, params)
 	if err != nil {
 		if stripeErr, ok := err.(*stripe.Error); ok {
-			log.Printf("<-  customer %s STRIPE ERROR: %v", id, stripeErr)
+			log.Printf("<-  session %s STRIPE ERROR: %v", id, stripeErr)
 		} else {
-			log.Printf("<-  customer %s ERROR: %v", id, err)
+			log.Printf("<-  session %s ERROR: %v", id, err)
 		}
 		return err
 	}
-	log.Printf("<-  customer %s", id)
+	log.Printf("<-  checkout session %s", id)
+
+	var publicName *string
+	for _, f := range session.CustomFields {
+		if f != nil && f.Key == "publicsignature" && f.Text != nil {
+			v := f.Text.Value
+			if v != "" {
+				publicName = &v
+			}
+			break
+		}
+	}
+
+	custID := ""
+	if session.Customer != nil {
+		custID = session.Customer.ID
+	}
+	if custID == "" {
+		log.Printf("[!] session %s missing customer", id)
+		return nil
+	}
 
 	if err = stripeStore.InsertCustomer(
-		id,
-		c.Created,
-		c.Email,
-		c.Name,
+		custID,
+		time.Now().Unix(),
+		publicName,
 	); err != nil {
-		log.Printf("DB ERROR customer %s: %v", id, err)
+		log.Printf("DB ERROR session %s: %v", id, err)
 		return err
 	}
-	log.Printf("OK customer %s", c.ID)
+	log.Printf("OK session %s", id)
 	return nil
 }
 

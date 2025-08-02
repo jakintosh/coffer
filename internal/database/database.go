@@ -45,7 +45,6 @@ func Init(
 			id TEXT NOT NULL PRIMARY KEY,
 			created INTEGER,
 			updated INTEGER,
-			email TEXT,
 			name TEXT
 		);
 		CREATE TABLE IF NOT EXISTS subscription (

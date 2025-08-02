@@ -6,11 +6,12 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestGetCORS(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	setupCORS()
 	router := setupRouter()
 
@@ -35,7 +36,7 @@ func TestGetCORS(t *testing.T) {
 
 func TestPutCORS(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	setupCORS()
 	router := setupRouter()
 
@@ -73,7 +74,7 @@ func TestPutCORS(t *testing.T) {
 
 func TestPutCORSBad(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	setupCORS()
 	router := setupRouter()
 

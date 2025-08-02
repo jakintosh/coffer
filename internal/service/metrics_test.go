@@ -4,35 +4,14 @@ import (
 	"errors"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
-func seedSubscriptions(t *testing.T) {
-
-	stripeStore := database.NewStripeStore()
-
-	t1 := util.MakeDateUnix(2025, 1, 1)
-	if err := stripeStore.InsertSubscription("s1", t1, "c1", "active", 300, "usd"); err != nil {
-		t.Fatal(err)
-	}
-
-	t2 := util.MakeDateUnix(2025, 2, 1)
-	if err := stripeStore.InsertSubscription("s2", t2, "c2", "active", 800, "usd"); err != nil {
-		t.Fatal(err)
-	}
-
-	t3 := util.MakeDateUnix(2025, 3, 1)
-	if err := stripeStore.InsertSubscription("s3", t3, "c3", "active", 400, "usd"); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestGetMetrics(t *testing.T) {
 
 	util.SetupTestDB(t)
-	seedSubscriptions(t)
+	util.SeedSubscriberData(t)
 
 	metrics, err := service.GetMetrics()
 	if err != nil {

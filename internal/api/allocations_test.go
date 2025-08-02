@@ -6,11 +6,12 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestGetAllocations(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	url := "/settings/allocations"
@@ -35,7 +36,7 @@ func TestGetAllocations(t *testing.T) {
 
 func TestPutAllocations(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// put allocations
@@ -87,7 +88,7 @@ func TestPutAllocations(t *testing.T) {
 
 func TestPutAllocationsBad(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// put invalid allocations

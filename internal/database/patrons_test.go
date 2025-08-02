@@ -2,36 +2,15 @@ package database_test
 
 import (
 	"testing"
-	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
-func seedCustomerData(t *testing.T) {
-
-	stripeStore := database.NewStripeStore()
-
-	ts := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-	if err := stripeStore.InsertCustomer("c1", ts-60, "one@example.com", "One"); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c2", ts-40, "two@example.com", "Two"); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c3", ts-20, "three@example.com", "Three"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := stripeStore.InsertCustomer("c2", ts-40, "two@example.org", "Two"); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestGetCustomers(t *testing.T) {
 
 	util.SetupTestDB(t)
-	seedCustomerData(t)
+	util.SeedCustomerData(t)
 
 	store := database.NewPatronStore()
 	patrons, err := store.GetCustomers(2, 0)

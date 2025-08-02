@@ -9,8 +9,7 @@ import (
 
 type DBCustomer struct {
 	ID      string
-	Email   string
-	Name    string
+	Name    sql.NullString
 	Created int64
 	Updated sql.NullInt64
 }
@@ -27,7 +26,7 @@ func (PatronStore) GetCustomers(
 	error,
 ) {
 	rows, err := db.Query(`
-		SELECT id, email, name, created, updated
+		SELECT id, name, created, updated
 		FROM customer
 		ORDER BY COALESCE(updated, created) DESC
 		LIMIT ?1 OFFSET ?2;
@@ -45,21 +44,26 @@ func (PatronStore) GetCustomers(
 		var c DBCustomer
 		if err := rows.Scan(
 			&c.ID,
-			&c.Email,
 			&c.Name,
 			&c.Created,
 			&c.Updated,
 		); err != nil {
 			return nil, err
 		}
+
 		updated := c.Created
 		if c.Updated.Valid {
 			updated = c.Updated.Int64
 		}
+
+		name := ""
+		if c.Name.Valid {
+			name = c.Name.String
+		}
+
 		patrons = append(patrons, service.Patron{
 			ID:        c.ID,
-			Email:     c.Email,
-			Name:      c.Name,
+			Name:      name,
 			CreatedAt: time.Unix(c.Created, 0),
 			UpdatedAt: time.Unix(updated, 0),
 		})
