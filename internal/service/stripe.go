@@ -7,7 +7,7 @@ import (
 	"time"
 
 	stripe "github.com/stripe/stripe-go/v82"
-	checkout "github.com/stripe/stripe-go/v82/checkout/session"
+	"github.com/stripe/stripe-go/v82/checkout/session"
 	"github.com/stripe/stripe-go/v82/paymentintent"
 	"github.com/stripe/stripe-go/v82/payout"
 	"github.com/stripe/stripe-go/v82/subscription"
@@ -234,14 +234,14 @@ func processCheckoutSession(
 		return ErrNoStripeStore
 	}
 
-	log.Printf(" -> checkout session %s", id)
+	log.Printf(" -> session %s", id)
 	params := &stripe.CheckoutSessionParams{}
-	session, err := checkout.Get(id, params)
+	session, err := session.Get(id, params)
 	if err != nil {
 		if stripeErr, ok := err.(*stripe.Error); ok {
-			log.Printf("<-  checkout session %s STRIPE ERROR: %v", id, stripeErr)
+			log.Printf("<-  session %s STRIPE ERROR: %v", id, stripeErr)
 		} else {
-			log.Printf("<-  checkout session %s ERROR: %v", id, err)
+			log.Printf("<-  session %s ERROR: %v", id, err)
 		}
 		return err
 	}
@@ -263,15 +263,19 @@ func processCheckoutSession(
 		custID = session.Customer.ID
 	}
 	if custID == "" {
-		log.Printf("checkout session %s missing customer", id)
+		log.Printf("[!] session %s missing customer", id)
 		return nil
 	}
 
-	if err = stripeStore.InsertCustomer(custID, time.Now().Unix(), publicName); err != nil {
-		log.Printf("DB ERROR checkout session %s: %v", id, err)
+	if err = stripeStore.InsertCustomer(
+		custID,
+		time.Now().Unix(),
+		publicName,
+	); err != nil {
+		log.Printf("DB ERROR session %s: %v", id, err)
 		return err
 	}
-	log.Printf("OK checkout session %s", id)
+	log.Printf("OK session %s", id)
 	return nil
 }
 

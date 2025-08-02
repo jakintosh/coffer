@@ -9,21 +9,21 @@ import (
 
 func seedCustomerData(t *testing.T) {
 
-	ts := util.MakeDateUnix(2025, 7, 1)
-	name := "Example Name"
-
 	stripeStore := database.NewStripeStore()
-	if err := stripeStore.InsertCustomer("c1", ts, &name); err != nil {
+	name := "Example Name"
+	ts := util.MakeDateUnix(2025, 7, 1)
+
+	if err := stripeStore.InsertCustomer("c1", ts-60, &name); err != nil {
 		t.Fatal(err)
 	}
-	if err := stripeStore.InsertCustomer("c2", ts+20, &name); err != nil {
+	if err := stripeStore.InsertCustomer("c2", ts-40, &name); err != nil {
 		t.Fatal(err)
 	}
-	if err := stripeStore.InsertCustomer("c3", ts+40, &name); err != nil {
+	if err := stripeStore.InsertCustomer("c3", ts-20, &name); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := stripeStore.InsertCustomer("c2", ts+20, nil); err != nil {
+	if err := stripeStore.InsertCustomer("c2", ts-40, nil); err != nil {
 		t.Fatal(err)
 	}
 }

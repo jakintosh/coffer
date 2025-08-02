@@ -54,23 +54,23 @@ func seedCustomerData(t *testing.T) {
 
 	stripeStore := database.NewStripeStore()
 
-	ts := util.MakeDateUnix(2025, 7, 1)
-
 	n1 := "One"
-	if err := stripeStore.InsertCustomer("c1", ts, &n1); err != nil {
-		t.Fatal(err)
-	}
 	n2 := "Two"
-	if err := stripeStore.InsertCustomer("c2", ts+20, &n2); err != nil {
+	n3 := "Three"
+	t1 := util.MakeDateUnix(2025, 1, 1)
+
+	if err := stripeStore.InsertCustomer("c1", t1, &n1); err != nil {
 		t.Fatal(err)
 	}
-	n3 := "Three"
-	if err := stripeStore.InsertCustomer("c3", ts+40, &n3); err != nil {
+	if err := stripeStore.InsertCustomer("c2", t1+20, &n2); err != nil {
+		t.Fatal(err)
+	}
+	if err := stripeStore.InsertCustomer("c3", t1+40, &n3); err != nil {
 		t.Fatal(err)
 	}
 
 	// update c2
-	if err := stripeStore.InsertCustomer("c2", ts+20, &n2); err != nil {
+	if err := stripeStore.InsertCustomer("c2", t1+20, &n2); err != nil {
 		t.Fatal(err)
 	}
 }

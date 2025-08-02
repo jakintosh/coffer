@@ -10,10 +10,10 @@ import (
 
 func seedCustomers(t *testing.T) {
 
+	stripeStore := database.NewStripeStore()
 	ts := util.MakeDateUnix(2025, 7, 1)
 	name := "Example Name"
 
-	stripeStore := database.NewStripeStore()
 	if err := stripeStore.InsertCustomer("c1", ts, &name); err != nil {
 		t.Fatal(err)
 	}
