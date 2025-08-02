@@ -137,7 +137,6 @@ Invalid values return `400 Bad Request`.
 [
   {
     "id": string,
-    "email": string,
     "name": string,
     "created_at": "RFC3339 timestamp",
     "updated_at": "RFC3339 timestamp"

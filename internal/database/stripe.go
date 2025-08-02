@@ -5,19 +5,23 @@ type DBStripeStore struct{}
 func NewStripeStore() DBStripeStore { return DBStripeStore{} }
 
 func (DBStripeStore) InsertCustomer(
-	id string,
-	created int64,
-	email, name string,
+        id string,
+        publicName *string,
 ) error {
-	_, err := db.Exec(`
-		INSERT INTO customer (id, created, email, name)
-		VALUES(?1, ?2, ?3, ?4)
-		ON CONFLICT(id) DO
-			UPDATE SET
-				updated=unixepoch(),
-				email=excluded.email,
-				name=excluded.name;`, id, created, email, name)
-	return err
+        var name interface{}
+        if publicName != nil {
+                name = *publicName
+        } else {
+                name = nil
+        }
+        _, err := db.Exec(`
+                INSERT INTO customer (id, created, name)
+                VALUES(?1, unixepoch(), ?2)
+                ON CONFLICT(id) DO
+                        UPDATE SET
+                                updated=unixepoch(),
+                                name=excluded.name;`, id, name)
+        return err
 }
 
 func (DBStripeStore) InsertSubscription(

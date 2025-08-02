@@ -1,32 +1,38 @@
 package service_test
 
 import (
-	"testing"
+        "testing"
+        "time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
-	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+        "git.sr.ht/~jakintosh/coffer/internal/database"
+        "git.sr.ht/~jakintosh/coffer/internal/service"
+        "git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func seedCustomers(t *testing.T) {
 
 	stripeStore := database.NewStripeStore()
 
-	ts := util.MakeDateUnix(2025, 1, 1)
-	if err := stripeStore.InsertCustomer("c1", ts-60, "one@example.com", "One"); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c2", ts-40, "two@example.com", "Two"); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c3", ts-20, "three@example.com", "Three"); err != nil {
-		t.Fatal(err)
-	}
+        n1 := "One"
+        if err := stripeStore.InsertCustomer("c1", &n1); err != nil {
+                t.Fatal(err)
+        }
+        time.Sleep(time.Second)
+        n2 := "Two"
+        if err := stripeStore.InsertCustomer("c2", &n2); err != nil {
+                t.Fatal(err)
+        }
+        time.Sleep(time.Second)
+        n3 := "Three"
+        if err := stripeStore.InsertCustomer("c3", &n3); err != nil {
+                t.Fatal(err)
+        }
+        time.Sleep(time.Second)
 
-	// update c2
-	if err := stripeStore.InsertCustomer("c2", ts-40, "two@example.org", "Two"); err != nil {
-		t.Fatal(err)
-	}
+        // update c2
+        if err := stripeStore.InsertCustomer("c2", &n2); err != nil {
+                t.Fatal(err)
+        }
 }
 
 func TestListPatrons(t *testing.T) {

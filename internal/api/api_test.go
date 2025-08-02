@@ -1,17 +1,18 @@
 package api_test
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http/httptest"
-	"strings"
-	"testing"
+        "encoding/json"
+        "fmt"
+        "net/http/httptest"
+        "strings"
+        "testing"
+        "time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
-	"git.sr.ht/~jakintosh/coffer/internal/database"
-	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
-	"github.com/gorilla/mux"
+        "git.sr.ht/~jakintosh/coffer/internal/api"
+        "git.sr.ht/~jakintosh/coffer/internal/database"
+        "git.sr.ht/~jakintosh/coffer/internal/service"
+        "git.sr.ht/~jakintosh/coffer/internal/util"
+        "github.com/gorilla/mux"
 )
 
 const STRIPE_TEST_KEY = "whsec_test"
@@ -54,28 +55,26 @@ func seedCustomerData(t *testing.T) {
 
 	stripeStore := database.NewStripeStore()
 
-	t1 := util.MakeDateUnix(2025, 1, 1)
+        n1 := "One"
+        if err := stripeStore.InsertCustomer("c1", &n1); err != nil {
+                t.Fatal(err)
+        }
+        time.Sleep(time.Second)
+        n2 := "Two"
+        if err := stripeStore.InsertCustomer("c2", &n2); err != nil {
+                t.Fatal(err)
+        }
+        time.Sleep(time.Second)
+        n3 := "Three"
+        if err := stripeStore.InsertCustomer("c3", &n3); err != nil {
+                t.Fatal(err)
+        }
+        time.Sleep(time.Second)
 
-	err := stripeStore.InsertCustomer("c1", t1-60, "one@example.com", "One")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = stripeStore.InsertCustomer("c2", t1-40, "two@example.com", "Two")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = stripeStore.InsertCustomer("c3", t1-20, "three@example.com", "Three")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// update c2
-	err = stripeStore.InsertCustomer("c2", t1-40, "two@example.org", "Two")
-	if err != nil {
-		t.Fatal(err)
-	}
+        // update c2
+        if err := stripeStore.InsertCustomer("c2", &n2); err != nil {
+                t.Fatal(err)
+        }
 }
 
 func seedSubscriberData(t *testing.T) {
