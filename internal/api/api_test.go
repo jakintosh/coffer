@@ -1,18 +1,17 @@
 package api_test
 
 import (
-        "encoding/json"
-        "fmt"
-        "net/http/httptest"
-        "strings"
-        "testing"
-        "time"
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
+	"strings"
+	"testing"
 
-        "git.sr.ht/~jakintosh/coffer/internal/api"
-        "git.sr.ht/~jakintosh/coffer/internal/database"
-        "git.sr.ht/~jakintosh/coffer/internal/service"
-        "git.sr.ht/~jakintosh/coffer/internal/util"
-        "github.com/gorilla/mux"
+	"git.sr.ht/~jakintosh/coffer/internal/api"
+	"git.sr.ht/~jakintosh/coffer/internal/database"
+	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"github.com/gorilla/mux"
 )
 
 const STRIPE_TEST_KEY = "whsec_test"
@@ -55,26 +54,25 @@ func seedCustomerData(t *testing.T) {
 
 	stripeStore := database.NewStripeStore()
 
-        n1 := "One"
-        if err := stripeStore.InsertCustomer("c1", &n1); err != nil {
-                t.Fatal(err)
-        }
-        time.Sleep(time.Second)
-        n2 := "Two"
-        if err := stripeStore.InsertCustomer("c2", &n2); err != nil {
-                t.Fatal(err)
-        }
-        time.Sleep(time.Second)
-        n3 := "Three"
-        if err := stripeStore.InsertCustomer("c3", &n3); err != nil {
-                t.Fatal(err)
-        }
-        time.Sleep(time.Second)
+	ts := util.MakeDateUnix(2025, 7, 1)
 
-        // update c2
-        if err := stripeStore.InsertCustomer("c2", &n2); err != nil {
-                t.Fatal(err)
-        }
+	n1 := "One"
+	if err := stripeStore.InsertCustomer("c1", ts, &n1); err != nil {
+		t.Fatal(err)
+	}
+	n2 := "Two"
+	if err := stripeStore.InsertCustomer("c2", ts+20, &n2); err != nil {
+		t.Fatal(err)
+	}
+	n3 := "Three"
+	if err := stripeStore.InsertCustomer("c3", ts+40, &n3); err != nil {
+		t.Fatal(err)
+	}
+
+	// update c2
+	if err := stripeStore.InsertCustomer("c2", ts+20, &n2); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func seedSubscriberData(t *testing.T) {

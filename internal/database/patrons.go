@@ -8,10 +8,10 @@ import (
 )
 
 type DBCustomer struct {
-        ID      string
-        Name    sql.NullString
-        Created int64
-        Updated sql.NullInt64
+	ID      string
+	Name    sql.NullString
+	Created int64
+	Updated sql.NullInt64
 }
 
 type PatronStore struct{}
@@ -25,15 +25,15 @@ func (PatronStore) GetCustomers(
 	[]service.Patron,
 	error,
 ) {
-        rows, err := db.Query(`
-                SELECT id, name, created, updated
-                FROM customer
-                ORDER BY COALESCE(updated, created) DESC
-                LIMIT ?1 OFFSET ?2;
-                `,
-                limit,
-                offset,
-        )
+	rows, err := db.Query(`
+		SELECT id, name, created, updated
+		FROM customer
+		ORDER BY COALESCE(updated, created) DESC
+		LIMIT ?1 OFFSET ?2;
+		`,
+		limit,
+		offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -43,27 +43,30 @@ func (PatronStore) GetCustomers(
 	for rows.Next() {
 		var c DBCustomer
 		if err := rows.Scan(
-                        &c.ID,
-                        &c.Name,
-                        &c.Created,
-                        &c.Updated,
-                ); err != nil {
-                        return nil, err
-                }
+			&c.ID,
+			&c.Name,
+			&c.Created,
+			&c.Updated,
+		); err != nil {
+			return nil, err
+		}
+
 		updated := c.Created
 		if c.Updated.Valid {
 			updated = c.Updated.Int64
 		}
-                name := ""
-                if c.Name.Valid {
-                        name = c.Name.String
-                }
-                patrons = append(patrons, service.Patron{
-                        ID:        c.ID,
-                        Name:      name,
-                        CreatedAt: time.Unix(c.Created, 0),
-                        UpdatedAt: time.Unix(updated, 0),
-                })
-        }
-        return patrons, nil
+
+		name := ""
+		if c.Name.Valid {
+			name = c.Name.String
+		}
+
+		patrons = append(patrons, service.Patron{
+			ID:        c.ID,
+			Name:      name,
+			CreatedAt: time.Unix(c.Created, 0),
+			UpdatedAt: time.Unix(updated, 0),
+		})
+	}
+	return patrons, nil
 }

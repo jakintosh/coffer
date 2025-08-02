@@ -1,24 +1,24 @@
 package service
 
 import (
-        "encoding/json"
-        "fmt"
-        "log"
-        "time"
+	"encoding/json"
+	"fmt"
+	"log"
+	"time"
 
-        stripe "github.com/stripe/stripe-go/v82"
-        checkout "github.com/stripe/stripe-go/v82/checkout/session"
-        "github.com/stripe/stripe-go/v82/paymentintent"
-        "github.com/stripe/stripe-go/v82/payout"
-        "github.com/stripe/stripe-go/v82/subscription"
-        "github.com/stripe/stripe-go/v82/webhook"
+	stripe "github.com/stripe/stripe-go/v82"
+	checkout "github.com/stripe/stripe-go/v82/checkout/session"
+	"github.com/stripe/stripe-go/v82/paymentintent"
+	"github.com/stripe/stripe-go/v82/payout"
+	"github.com/stripe/stripe-go/v82/subscription"
+	"github.com/stripe/stripe-go/v82/webhook"
 )
 
 type StripeStore interface {
-        InsertCustomer(id string, publicName *string) error
-        InsertSubscription(id string, created int64, customer string, status string, amount int64, currency string) error
-        InsertPayment(id string, created int64, status string, customer string, amount int64, currency string) error
-        InsertPayout(id string, created int64, status string, amount int64, currency string) error
+	InsertCustomer(id string, created int64, publicName *string) error
+	InsertSubscription(id string, created int64, customer string, status string, amount int64, currency string) error
+	InsertPayment(id string, created int64, status string, customer string, amount int64, currency string) error
+	InsertPayout(id string, created int64, status string, amount int64, currency string) error
 }
 
 var stripeStore StripeStore
@@ -63,16 +63,16 @@ func ProcessStripeEvent(
 	event stripe.Event,
 ) {
 	log.Printf("<-  event %s %s", event.ID, event.Type)
-        switch event.Type {
-        case "checkout.session.completed":
-                var s stripe.CheckoutSession
-                if err := json.Unmarshal(event.Data.Raw, &s); err != nil {
-                        log.Printf("parse checkout.session event: %v", err)
-                        return
-                }
-                updateRequests <- updateRequest{"checkout", s.ID}
+	switch event.Type {
+	case "checkout.session.completed":
+		var s stripe.CheckoutSession
+		if err := json.Unmarshal(event.Data.Raw, &s); err != nil {
+			log.Printf("parse checkout.session event: %v", err)
+			return
+		}
+		updateRequests <- updateRequest{"checkout", s.ID}
 
-        case "customer.subscription.created", "customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.deleted", "customer.subscription.updated":
+	case "customer.subscription.created", "customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.deleted", "customer.subscription.updated":
 		var s stripe.Subscription
 		if err := json.Unmarshal(event.Data.Raw, &s); err != nil {
 			log.Printf("parse subscription event: %v", err)
@@ -191,24 +191,24 @@ func scheduleResourceUpdates(
 
 		case req := <-ready:
 			delete(resets, req.ID)
-                        switch req.Type {
-                        case "checkout":
-                                go processCheckoutSession(req.ID)
-                        case "subscription":
-                                go processSubscription(req.ID)
-                        case "payment":
-                                go processPaymentIntent(req.ID)
-                        case "payout":
-                                go processPayout(req.ID)
-                        }
+			switch req.Type {
+			case "checkout":
+				go processCheckoutSession(req.ID)
+			case "subscription":
+				go processSubscription(req.ID)
+			case "payment":
+				go processPaymentIntent(req.ID)
+			case "payout":
+				go processPayout(req.ID)
+			}
 		}
 	}
 }
 
 func queueResourceUpdate(
-        req updateRequest,
-        ready chan<- updateRequest,
-        reset <-chan int,
+	req updateRequest,
+	ready chan<- updateRequest,
+	reset <-chan int,
 ) {
 	duration := time.Millisecond * 500
 	timer := time.NewTimer(duration)
@@ -224,59 +224,59 @@ func queueResourceUpdate(
 			ready <- req
 			return
 		}
-        }
+	}
 }
- 
+
 func processCheckoutSession(
-        id string,
+	id string,
 ) error {
-        if stripeStore == nil {
-                return ErrNoStripeStore
-        }
+	if stripeStore == nil {
+		return ErrNoStripeStore
+	}
 
-        log.Printf(" -> checkout session %s", id)
-        params := &stripe.CheckoutSessionParams{}
-        session, err := checkout.Get(id, params)
-        if err != nil {
-                if stripeErr, ok := err.(*stripe.Error); ok {
-                        log.Printf("<-  checkout session %s STRIPE ERROR: %v", id, stripeErr)
-                } else {
-                        log.Printf("<-  checkout session %s ERROR: %v", id, err)
-                }
-                return err
-        }
-        log.Printf("<-  checkout session %s", id)
+	log.Printf(" -> checkout session %s", id)
+	params := &stripe.CheckoutSessionParams{}
+	session, err := checkout.Get(id, params)
+	if err != nil {
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			log.Printf("<-  checkout session %s STRIPE ERROR: %v", id, stripeErr)
+		} else {
+			log.Printf("<-  checkout session %s ERROR: %v", id, err)
+		}
+		return err
+	}
+	log.Printf("<-  checkout session %s", id)
 
-        var publicName *string
-        for _, f := range session.CustomFields {
-                if f != nil && f.Key == "publicsignature" && f.Text != nil {
-                        v := f.Text.Value
-                        if v != "" {
-                                publicName = &v
-                        }
-                        break
-                }
-        }
+	var publicName *string
+	for _, f := range session.CustomFields {
+		if f != nil && f.Key == "publicsignature" && f.Text != nil {
+			v := f.Text.Value
+			if v != "" {
+				publicName = &v
+			}
+			break
+		}
+	}
 
-        custID := ""
-        if session.Customer != nil {
-                custID = session.Customer.ID
-        }
-        if custID == "" {
-                log.Printf("checkout session %s missing customer", id)
-                return nil
-        }
+	custID := ""
+	if session.Customer != nil {
+		custID = session.Customer.ID
+	}
+	if custID == "" {
+		log.Printf("checkout session %s missing customer", id)
+		return nil
+	}
 
-        if err = stripeStore.InsertCustomer(custID, publicName); err != nil {
-                log.Printf("DB ERROR checkout session %s: %v", id, err)
-                return err
-        }
-        log.Printf("OK checkout session %s", id)
-        return nil
+	if err = stripeStore.InsertCustomer(custID, time.Now().Unix(), publicName); err != nil {
+		log.Printf("DB ERROR checkout session %s: %v", id, err)
+		return err
+	}
+	log.Printf("OK checkout session %s", id)
+	return nil
 }
 
 func processSubscription(
-        id string,
+	id string,
 ) error {
 	if stripeStore == nil {
 		return ErrNoStripeStore

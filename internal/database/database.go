@@ -41,12 +41,12 @@ func Init(
 	}
 
 	if _, err := db.Exec(`
-                CREATE TABLE IF NOT EXISTS customer (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        created INTEGER,
-                        updated INTEGER,
-                        name TEXT
-                );
+		CREATE TABLE IF NOT EXISTS customer (
+			id TEXT NOT NULL PRIMARY KEY,
+			created INTEGER,
+			updated INTEGER,
+			name TEXT
+		);
 		CREATE TABLE IF NOT EXISTS subscription (
 			id TEXT NOT NULL PRIMARY KEY,
 			created INTEGER,
