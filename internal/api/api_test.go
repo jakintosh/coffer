@@ -53,24 +53,24 @@ func setupRouter() *mux.Router {
 func seedCustomerData(t *testing.T) {
 
 	stripeStore := database.NewStripeStore()
+	ts := util.MakeDateUnix(2025, 7, 1)
+	name := "Example Name"
 
-	n1 := "One"
-	n2 := "Two"
-	n3 := "Three"
-	t1 := util.MakeDateUnix(2025, 1, 1)
-
-	if err := stripeStore.InsertCustomer("c1", t1, &n1); err != nil {
+	err := stripeStore.InsertCustomer("c1", ts, &name)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := stripeStore.InsertCustomer("c2", t1+20, &n2); err != nil {
+	err = stripeStore.InsertCustomer("c2", ts+20, &name)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := stripeStore.InsertCustomer("c3", t1+40, &n3); err != nil {
+	err = stripeStore.InsertCustomer("c3", ts+40, &name)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	// update c2
-	if err := stripeStore.InsertCustomer("c2", t1+20, &n2); err != nil {
+	err = stripeStore.InsertCustomer("c2", ts+20, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
 }
