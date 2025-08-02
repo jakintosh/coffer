@@ -22,7 +22,7 @@ func handleGetCORS(
 ) {
 	origins, err := service.GetAllowedOrigins()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	writeData(w, http.StatusOK, origins)
@@ -40,9 +40,9 @@ func handlePutCORS(
 
 	if err := service.SetAllowedOrigins(origins); err != nil {
 		if errors.Is(err, service.ErrInvalidOrigin) {
-			writeError(w, http.StatusBadRequest, err.Error())
+			writeError(w, http.StatusBadRequest, "Invalid Origin URL")
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		}
 		return
 	}

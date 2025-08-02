@@ -10,9 +10,9 @@ func TestParsePaginationQueriesDefaults(t *testing.T) {
 	// create dummy request
 	req := httptest.NewRequest("GET", "http://test", nil)
 
-	limit, offset, err := parsePaginationQueries(req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	limit, offset, malformedQueryErr := parsePaginationQueries(req)
+	if malformedQueryErr != nil {
+		t.Fatalf("unexpected error: %v", malformedQueryErr)
 	}
 
 	// validate results
@@ -30,7 +30,7 @@ func TestParsePaginationQueriesInvalid(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://test?limit=a&offset=b", nil)
 
 	// validate bad input yields error
-	if _, _, err := parsePaginationQueries(req); err == nil {
+	if _, _, malformedQueryErr := parsePaginationQueries(req); malformedQueryErr == nil {
 		t.Fatalf("expected error for invalid query")
 	}
 }

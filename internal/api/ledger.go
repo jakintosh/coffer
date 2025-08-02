@@ -43,7 +43,7 @@ func handleGetLedger(
 
 	if sinceQ != "" {
 		if since, err = time.Parse("2006-01-02", sinceQ); err != nil {
-			writeError(w, http.StatusBadRequest, "Invalid 'since' query")
+			writeError(w, http.StatusBadRequest, "Malformed 'since' Query")
 			return
 		}
 	} else {
@@ -52,7 +52,7 @@ func handleGetLedger(
 
 	if untilQ != "" {
 		if until, err = time.Parse("2006-01-02", untilQ); err != nil {
-			writeError(w, http.StatusBadRequest, "Invalid 'until' query")
+			writeError(w, http.StatusBadRequest, "Malformed 'until' Query")
 			return
 		}
 	} else {
@@ -61,7 +61,7 @@ func handleGetLedger(
 
 	snapshot, err := service.GetSnapshot(ledger, since, until)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch {
 		case errors.As(err, &service.DatabaseError{}):
 			// TODO: log?
@@ -80,15 +80,15 @@ func handleGetLedgerTransactions(
 ) {
 	vars := mux.Vars(r)
 	f := vars["ledger"]
-	limit, offset, err := parsePaginationQueries(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprint(err))
+	limit, offset, malformedQueryErr := parsePaginationQueries(r)
+	if malformedQueryErr != nil {
+		writeError(w, http.StatusBadRequest, malformedQueryErr.Error())
 		return
 	}
 
 	transactions, err := service.GetTransactions(f, limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch err.(type) {
 		case service.DatabaseError:
 			// TODO: log?
@@ -119,12 +119,12 @@ func handlePostLedgerTransaction(
 	date, err := time.Parse(time.RFC3339, req.Date)
 	if err != nil {
 		fmt.Printf("Invalid date: %v", err)
-		writeError(w, http.StatusBadRequest, "Invalid date")
+		writeError(w, http.StatusBadRequest, "Invalid RFC3339 Date")
 	}
 
 	err = service.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch {
 		case errors.As(err, &service.DatabaseError{}):
 			// TODO: log?

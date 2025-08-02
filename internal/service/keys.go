@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -129,7 +130,7 @@ func VerifyAPIKey(
 		return false, DatabaseError{err}
 	}
 
-	// decode the hex
+	// decode the salt
 	salt, err := hex.DecodeString(saltHex)
 	if err != nil {
 		// invalid hex, this should be unreachable
@@ -143,11 +144,18 @@ func VerifyAPIKey(
 		return false, err
 	}
 
-	// rebuild the hashed secret
-	h := sha256.Sum256(append(salt, secret...))
+	// decode the hash
+	hash, err := hex.DecodeString(hashHex)
+	if err != nil {
+		// invalid hex, this should be unreachable
+		return false, err
+	}
 
-	// verify hashed secrets match
-	if hex.EncodeToString(h[:]) == hashHex {
+	// rebuild the hashed secret
+	constructedHash := sha256.Sum256(append(salt, secret...))
+
+	// verify hashes are equal in constant time
+	if subtle.ConstantTimeCompare(hash, constructedHash[:]) == 1 {
 		return true, nil
 	}
 	return false, nil

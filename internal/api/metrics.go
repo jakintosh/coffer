@@ -19,7 +19,7 @@ func handleGetMetrics(
 ) {
 	metrics, err := service.GetMetrics()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Failed to generate summary")
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 	} else {
 		writeData(w, http.StatusOK, metrics)
 	}

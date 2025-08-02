@@ -22,7 +22,7 @@ func handleGetAllocations(
 ) {
 	rules, err := service.GetAllocations()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	writeData(w, http.StatusOK, rules)
@@ -40,9 +40,9 @@ func handlePutAllocations(
 
 	if err := service.SetAllocations(rules); err != nil {
 		if errors.Is(err, service.ErrInvalidAlloc) {
-			writeError(w, http.StatusBadRequest, err.Error())
+			writeError(w, http.StatusBadRequest, "Invalid Allocation Percentage")
 		} else {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		}
 		return
 	}

@@ -9,6 +9,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type ErrMalformedQuery struct {
+	Query string
+}
+
+func (e ErrMalformedQuery) Error() string {
+	return fmt.Sprintf("Malformed '%s' Query", e.Query)
+}
+
 type APIResponse struct {
 	Error *APIError `json:"error"`
 	Data  any       `json:"data"`
@@ -35,7 +43,7 @@ func parsePaginationQueries(
 ) (
 	int,
 	int,
-	error,
+	*ErrMalformedQuery,
 ) {
 	limitQ := r.URL.Query().Get("limit")
 	offsetQ := r.URL.Query().Get("offset")
@@ -45,7 +53,7 @@ func parsePaginationQueries(
 		var err error
 		limit, err = strconv.Atoi(limitQ)
 		if err != nil {
-			return 0, 0, fmt.Errorf("Invalid 'limit' query")
+			return 0, 0, &ErrMalformedQuery{"limit"}
 		}
 	}
 
@@ -54,7 +62,7 @@ func parsePaginationQueries(
 		var err error
 		offset, err = strconv.Atoi(offsetQ)
 		if err != nil {
-			return 0, 0, fmt.Errorf("Invalid 'offset' query")
+			return 0, 0, &ErrMalformedQuery{"offset"}
 		}
 	}
 	return limit, offset, nil

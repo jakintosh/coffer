@@ -21,7 +21,7 @@ func handlePostKey(
 ) {
 	token, err := service.CreateAPIKey()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	writeData(w, http.StatusCreated, token)
@@ -34,11 +34,11 @@ func handleDeleteKey(
 	id := mux.Vars(r)["id"]
 	id = strings.TrimSpace(id)
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "missing key id")
+		writeError(w, http.StatusBadRequest, "Missing Key ID")
 		return
 	}
 	if err := service.DeleteAPIKey(id); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

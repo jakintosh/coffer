@@ -18,7 +18,7 @@ func withAuth(
 			token = strings.TrimSpace(token[7:])
 		}
 		if token == "" {
-			writeError(w, http.StatusUnauthorized, "missing authorization")
+			writeError(w, http.StatusUnauthorized, "Missing Authorization")
 			return
 		}
 
@@ -51,7 +51,7 @@ func withCORS(
 		if origin != "" {
 			allowed, err = service.IsAllowedOrigin(origin)
 			if err != nil {
-				writeError(w, http.StatusInternalServerError, err.Error())
+				writeError(w, http.StatusInternalServerError, "Internal Server Error")
 				return
 			}
 		}
