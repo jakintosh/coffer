@@ -16,20 +16,266 @@ Coffer is a small Go service that stores information about paying patrons and le
 - **Authentication middleware** - Mutating endpoints require the `Authorization: Bearer` header. Tokens are verified against the stored API keys before the request is forwarded.
 
 
-## HTTP API
+## HTTP API Reference
 
-See [API](./API.md)
+This document describes the HTTP endpoints implemented under the `/api/v1` prefix.
+Every response follows the structure defined in `internal/api/api.go`:
 
-
-## Running Tests
-
-Run all unit tests with:
-
-```sh
-go test ./...
+```json
+{
+  "error": { "code": int, "message": string } | null,
+  "data": <payload or null>
+}
 ```
 
-All current tests should pass.
+Status codes and payloads for each route are listed below.
+
+### `/health`
+#### GET
+Checks basic application status.
+
+**Response Codes**
+- `200 OK` – service and database reachable
+- `503 Service Unavailable` – database check failed
+
+**Response Body** ([`HealthResponse`](internal/api/health.go))
+```json
+{
+  "status": "ok",
+  "db": "ok" | "unreachable"
+}
+```
+
+### `/ledger/{ledger}`
+#### GET
+Retrieve a ledger snapshot.
+
+Path parameter `ledger` is the ledger name.
+
+**Query Parameters**
+- `since` (YYYY-MM-DD, optional) – start date. Defaults to epoch start.
+- `until` (YYYY-MM-DD, optional) – end date. Defaults to current time.
+
+Invalid dates return `400 Bad Request`.
+
+**Response Codes**
+- `200 OK` with snapshot
+- `500 Internal Server Error` on storage errors
+
+**Response Body** ([`LedgerSnapshot`](internal/service/ledger.go))
+```json
+{
+  "opening_balance": int,
+  "incoming_funds": int,
+  "outgoing_funds": int,
+  "closing_balance": int
+}
+```
+
+#### `/ledger/{ledger}/transactions`
+##### GET
+List transactions for the ledger.
+
+**Query Parameters**
+- `limit` (integer, optional, default 100)
+- `offset` (integer, optional, default 0)
+
+Non‑integer values return `400 Bad Request`.
+
+**Response Codes**
+- `200 OK` with list
+- `500 Internal Server Error` on storage errors
+
+**Response Body** – array of [`Transaction`](internal/service/ledger.go)
+```json
+[
+  {
+    "id": string,
+    "ledger": string,
+    "amount": int,
+    "date": "RFC3339 timestamp",
+    "label": string
+  }
+]
+```
+
+##### POST *(requires `Authorization` header)*
+Create a new transaction.
+
+**Request Body** ([`CreateTransactionRequest`](internal/api/ledger.go))
+```json
+{
+  "id": string?,
+  "date": "RFC3339",
+  "amount": int,
+  "label": string
+}
+```
+
+**Response Codes**
+- `201 Created` on success
+- `400 Bad Request` for malformed JSON or invalid date
+- `401 Unauthorized` for missing/invalid token
+- `500 Internal Server Error` on storage errors
+
+### `/metrics`
+#### GET
+Returns summary subscription metrics.
+
+**Response Codes**
+- `200 OK` with metrics
+- `500 Internal Server Error` if metrics collection fails
+
+**Response Body** ([`Metrics`](internal/service/metrics.go))
+```json
+{
+  "patrons_active": int,
+  "mrr_cents": int,
+  "avg_pledge_cents": int,
+  "payment_success_rate_pct": number,
+  "community_fund_balance_cents": int,
+  "general_fund_balance_cents": int
+}
+```
+
+### `/patrons`
+#### GET *(requires `Authorization` header)*
+List known patrons.
+
+**Query Parameters**
+- `limit` (integer, optional, default 100)
+- `offset` (integer, optional, default 0)
+
+Invalid values return `400 Bad Request`.
+
+**Response Codes**
+- `200 OK` with array
+- `500 Internal Server Error` on storage errors
+
+**Response Body** – array of [`Patron`](internal/service/patrons.go)
+```json
+[
+  {
+    "id": string,
+    "name": string,
+    "created_at": "RFC3339 timestamp",
+    "updated_at": "RFC3339 timestamp"
+  }
+]
+```
+
+### `/settings/allocations`
+#### GET
+Retrieve ledger allocation rules.
+
+**Response Codes**
+- `200 OK` with rules
+- `500 Internal Server Error` on retrieval error
+
+**Response Body** – array of [`AllocationRule`](internal/service/allocations.go)
+```json
+[
+  {
+    "id": string,
+    "ledger": string,
+    "percentage": int
+  }
+]
+```
+
+#### PUT *(requires `Authorization` header)*
+Replace all allocation rules.
+
+**Request Body** – array of the same `AllocationRule` objects. Percentages must sum to 100.
+```json
+[
+  {
+    "id": string,
+    "ledger": string,
+    "percentage": int
+  }
+]
+```
+
+**Response Codes**
+- `204 No Content` on success
+- `400 Bad Request` for malformed JSON or invalid percentages
+- `401 Unauthorized` for missing/invalid token
+- `500 Internal Server Error` on storage error
+
+### `/settings/cors`
+#### GET *(requires `Authorization` header)*
+Retrieve the list of allowed CORS origins.
+
+**Response Codes**
+- `200 OK` with origins
+- `401 Unauthorized` if token missing/invalid
+- `500 Internal Server Error` on retrieval error
+
+**Response Body** – array of [`AllowedOrigin`](internal/service/cors.go)
+```json
+[
+  {
+    "url": string
+  }
+]
+```
+
+#### PUT *(requires `Authorization` header)*
+Replace all allowed origins.
+
+**Request Body** – array of `AllowedOrigin` objects. URLs must start with `http://` or `https://`.
+```json
+[
+  {
+    "url": string
+  }
+]
+```
+
+**Response Codes**
+- `204 No Content` on success
+- `400 Bad Request` for malformed JSON or invalid origins
+- `401 Unauthorized` for missing/invalid token
+- `500 Internal Server Error` on storage error
+
+### `/settings/keys`
+#### POST *(requires `Authorization` header)*
+Create a new API key.
+
+**Response Codes**
+- `201 Created` with generated token
+- `401 Unauthorized` if token missing/invalid
+- `500 Internal Server Error` on failure
+
+**Response Body**
+String token value (returned once).
+
+### `/settings/keys/{id}` *(requires `Authorization` header)*
+#### DELETE
+Delete an API key by id.
+
+**Response Codes**
+- `204 No Content` on success
+- `400 Bad Request` if id is empty
+- `401 Unauthorized` if token invalid
+- `500 Internal Server Error` on failure
+
+### `/stripe/webhook`
+#### POST
+Stripe webhook endpoint. Payload is validated using the `Stripe-Signature` header. Only intended to be called by Stripe's API.
+
+**Headers**
+- `Stripe-Signature`: signature provided by Stripe
+
+**Response Codes**
+- `200 OK` when event accepted
+- `400 Bad Request` if signature verification or body parsing fails
+
+Body content is ignored; no data returned.
+
+### Authentication
+Endpoints that modify server state require an API key. Provide it via the `Authorization` header. Either `Bearer <token>` or just the raw token are accepted by the middleware implemented in [`middleware.go`](internal/api/middleware.go).
 
 
 ## CLI Environments
@@ -53,3 +299,14 @@ coffer auth env use staging
 # delete an environment
 coffer auth env delete staging
 ```
+
+
+## Running Tests
+
+Run all unit tests with:
+
+```sh
+go test ./...
+```
+
+All current tests should pass.
