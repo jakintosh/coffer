@@ -133,8 +133,6 @@ Returns summary subscription metrics.
   "mrr_cents": int,
   "avg_pledge_cents": int,
   "payment_success_rate_pct": number,
-  "community_fund_balance_cents": int,
-  "general_fund_balance_cents": int
 }
 ```
 

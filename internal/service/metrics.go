@@ -11,12 +11,10 @@ func SetMetricsStore(store MetricsStore) {
 }
 
 type Metrics struct {
-	PatronsActive             int     `json:"patrons_active"`
-	MRRCents                  int     `json:"mrr_cents"`
-	AvgPledgeCents            int     `json:"avg_pledge_cents"`
-	PaymentSuccessRatePct     float64 `json:"payment_success_rate_pct"`
-	CommunityFundBalanceCents int     `json:"community_fund_balance_cents"`
-	GeneralFundBalanceCents   int     `json:"general_fund_balance_cents"`
+	PatronsActive         int     `json:"patrons_active"`
+	MRRCents              int     `json:"mrr_cents"`
+	AvgPledgeCents        int     `json:"avg_pledge_cents"`
+	PaymentSuccessRatePct float64 `json:"payment_success_rate_pct"`
 }
 
 type SubscriptionSummary struct {
@@ -37,12 +35,10 @@ func GetMetrics() (*Metrics, error) {
 	}
 
 	metrics := &Metrics{
-		PatronsActive:             sum.Count,
-		MRRCents:                  sum.Total * 100,
-		AvgPledgeCents:            0,
-		PaymentSuccessRatePct:     0,
-		CommunityFundBalanceCents: 0,
-		GeneralFundBalanceCents:   0,
+		PatronsActive:         sum.Count,
+		MRRCents:              sum.Total * 100,
+		AvgPledgeCents:        0,
+		PaymentSuccessRatePct: 0,
 	}
 	if sum.Count > 0 {
 		metrics.AvgPledgeCents = (sum.Total * 100) / sum.Count
