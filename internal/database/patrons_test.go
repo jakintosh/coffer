@@ -7,31 +7,10 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
-func seedCustomerData(t *testing.T) {
-
-	stripeStore := database.NewStripeStore()
-	name := "Example Name"
-	ts := util.MakeDateUnix(2025, 7, 1)
-
-	if err := stripeStore.InsertCustomer("c1", ts-60, &name); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c2", ts-40, &name); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c3", ts-20, &name); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := stripeStore.InsertCustomer("c2", ts-40, nil); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestGetCustomers(t *testing.T) {
 
 	util.SetupTestDB(t)
-	seedCustomerData(t)
+	util.SeedCustomerData(t)
 
 	store := database.NewPatronStore()
 	patrons, err := store.GetCustomers(2, 0)

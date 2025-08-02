@@ -3,36 +3,14 @@ package service_test
 import (
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
-func seedCustomers(t *testing.T) {
-
-	stripeStore := database.NewStripeStore()
-	ts := util.MakeDateUnix(2025, 7, 1)
-	name := "Example Name"
-
-	if err := stripeStore.InsertCustomer("c1", ts, &name); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c2", ts+20, &name); err != nil {
-		t.Fatal(err)
-	}
-	if err := stripeStore.InsertCustomer("c3", ts+40, &name); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := stripeStore.InsertCustomer("c2", ts+20, nil); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestListPatrons(t *testing.T) {
 
 	util.SetupTestDB(t)
-	seedCustomers(t)
+	util.SeedCustomerData(t)
 
 	patrons, err := service.ListPatrons(2, 0)
 	if err != nil {

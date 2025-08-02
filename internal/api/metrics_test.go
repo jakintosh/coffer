@@ -6,13 +6,15 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestGetMetrics(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
+	util.SeedSubscriberData(t)
+
 	router := setupRouter()
-	seedSubscriberData(t)
 
 	// get metrics
 	url := "/metrics"

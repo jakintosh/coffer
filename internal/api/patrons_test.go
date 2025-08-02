@@ -6,13 +6,14 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestListPatrons(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
+	util.SeedCustomerData(t)
 	router := setupRouter()
-	seedCustomerData(t)
 
 	url := "/patrons"
 	var response struct {
@@ -45,9 +46,9 @@ func TestListPatrons(t *testing.T) {
 
 func TestListPatronsPagination(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
+	util.SeedCustomerData(t)
 	router := setupRouter()
-	seedCustomerData(t)
 
 	url := "/patrons?limit=2&offset=0"
 	var response struct {
@@ -76,7 +77,7 @@ func TestListPatronsPagination(t *testing.T) {
 
 func TestListPatronsNegativeQuery(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	url := "/patrons?limit=-1&offset=-1"
@@ -91,7 +92,7 @@ func TestListPatronsNegativeQuery(t *testing.T) {
 
 func TestListPatronsInvalidQuery(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	url := "/patrons?limit=bad&offset=-1"

@@ -1,16 +1,19 @@
 package api_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestCreateTransaction(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// post transaction
@@ -37,7 +40,7 @@ func TestCreateTransaction(t *testing.T) {
 
 func TestCreateTransactionBadInput(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// post transaction
@@ -64,9 +67,9 @@ func TestCreateTransactionBadInput(t *testing.T) {
 
 func TestGetSnapshot(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
+	util.SeedTransactionData(t)
 	router := setupRouter()
-	seedTransactions(t)
 
 	// get snapshot
 	url := "/ledger/general"
@@ -86,25 +89,27 @@ func TestGetSnapshot(t *testing.T) {
 	if response.Snapshot.OpeningBalance != 0 {
 		t.Errorf("opening want 0 got %d", response.Snapshot.OpeningBalance)
 	}
-	if response.Snapshot.IncomingFunds != 200 {
-		t.Errorf("incoming want 200 got %d", response.Snapshot.IncomingFunds)
+	if response.Snapshot.IncomingFunds != 300 {
+		t.Errorf("incoming want 300 got %d", response.Snapshot.IncomingFunds)
 	}
 	if response.Snapshot.OutgoingFunds != -50 {
 		t.Errorf("outgoing want -50 got %d", response.Snapshot.OutgoingFunds)
 	}
-	if response.Snapshot.ClosingBalance != 150 {
-		t.Errorf("closing want 150 got %d", response.Snapshot.ClosingBalance)
+	if response.Snapshot.ClosingBalance != 250 {
+		t.Errorf("closing want 250 got %d", response.Snapshot.ClosingBalance)
 	}
 }
 
 func TestGetSnapshotWithParams(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
+	start, end := util.SeedTransactionData(t)
 	router := setupRouter()
-	seedTransactions(t)
 
 	// get snapshot
-	url := "/ledger/general?since=2025-01-01&until=2025-07-01"
+	startQ := start.Format("2006-01-02")
+	endQ := end.Add(time.Hour * -24).Format("2006-01-02")
+	url := fmt.Sprintf("/ledger/general?since=%s&until=%s", startQ, endQ)
 	var response struct {
 		Error    api.APIError           `json:"error"`
 		Snapshot service.LedgerSnapshot `json:"data"`
@@ -118,23 +123,23 @@ func TestGetSnapshotWithParams(t *testing.T) {
 	}
 
 	// validate response
-	if response.Snapshot.OpeningBalance != 100 {
-		t.Errorf("opening want 100 got %d", response.Snapshot.OpeningBalance)
+	if response.Snapshot.OpeningBalance != 0 {
+		t.Errorf("opening want 0 got %d", response.Snapshot.OpeningBalance)
 	}
-	if response.Snapshot.IncomingFunds != 100 {
-		t.Errorf("incoming want 100 got %d", response.Snapshot.IncomingFunds)
+	if response.Snapshot.IncomingFunds != 300 {
+		t.Errorf("incoming want 300 got %d", response.Snapshot.IncomingFunds)
 	}
-	if response.Snapshot.OutgoingFunds != -50 {
-		t.Errorf("outgoing want -50 got %d", response.Snapshot.OutgoingFunds)
+	if response.Snapshot.OutgoingFunds != 0 {
+		t.Errorf("outgoing want 0 got %d", response.Snapshot.OutgoingFunds)
 	}
-	if response.Snapshot.ClosingBalance != 150 {
-		t.Errorf("closing want 150 got %d", response.Snapshot.ClosingBalance)
+	if response.Snapshot.ClosingBalance != 300 {
+		t.Errorf("closing want 300 got %d", response.Snapshot.ClosingBalance)
 	}
 }
 
 func TestGetSnapshotBadParams(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// get snapshot
@@ -150,9 +155,9 @@ func TestGetSnapshotBadParams(t *testing.T) {
 
 func TestGetTransactions(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
+	util.SeedTransactionData(t)
 	router := setupRouter()
-	seedTransactions(t)
 
 	// get snapshot
 	url := "/ledger/general/transactions"
@@ -177,9 +182,9 @@ func TestGetTransactions(t *testing.T) {
 
 func TestGetTransactionsPaginated(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
+	util.SeedTransactionData(t)
 	router := setupRouter()
-	seedTransactions(t)
 
 	// get snapshot
 	url := "/ledger/general/transactions?offset=1"
@@ -201,24 +206,24 @@ func TestGetTransactionsPaginated(t *testing.T) {
 		t.Fatalf("want 2 transactions, got %d", len(txs))
 	}
 
-	if txs[0].Amount != 100 {
-		t.Errorf("first transaction should be amount 100, got %d", txs[0].Amount)
+	if txs[0].Amount != 200 {
+		t.Errorf("first transaction should be amount 200, got %d", txs[0].Amount)
 	}
-	if txs[0].Label != "extra" {
-		t.Errorf("first transaction should be label 'extra', got %s", txs[0].Label)
+	if txs[0].Label != "in" {
+		t.Errorf("first transaction should be label 'in', got %s", txs[0].Label)
 	}
 
 	if txs[1].Amount != 100 {
 		t.Errorf("second transaction should be amount 100, got %d", txs[1].Amount)
 	}
-	if txs[1].Label != "base" {
-		t.Errorf("second transaction should be label 'base', got %s", txs[1].Label)
+	if txs[1].Label != "in" {
+		t.Errorf("second transaction should be label 'in', got %s", txs[1].Label)
 	}
 }
 
 func TestGetTransactionsBadQuery(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// get snapshot

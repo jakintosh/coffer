@@ -7,11 +7,12 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestCreateAPIKeyEndpoint(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// post create key
@@ -41,7 +42,7 @@ func TestCreateAPIKeyEndpoint(t *testing.T) {
 
 func TestDeleteAPIKeyEndpoint(t *testing.T) {
 
-	setupDB()
+	util.SetupTestDB(t)
 	router := setupRouter()
 
 	// create API key
