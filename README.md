@@ -276,26 +276,30 @@ Body content is ignored; no data returned.
 Endpoints that modify server state require an API key. Provide it via the `Authorization` header. Either `Bearer <token>` or just the raw token are accepted by the middleware implemented in [`middleware.go`](internal/api/middleware.go).
 
 
-## CLI Environments
+## CLI Usage
 
-The `coffer` CLI stores all of its settings in a single `config.json`
+The `coffer` CLI separates remote API calls under the `api` command and
+local configuration under `env`. Settings are stored in a `config.json`
 file under the configuration directory (default `~/.config/coffer`).
-This file tracks the active environment and, for each environment, the
-API key and base URL. Use `coffer auth env` to manage the entries:
 
 ```sh
 # list configured environments ("*" marks the active one)
-coffer auth env list
+coffer env list
 
 # create a new environment and bootstrap an API key
-coffer auth env create staging --base-url http://staging.example.com \
-  --bootstrap
+coffer env create staging --base-url http://staging.example.com --bootstrap
 
 # switch the CLI to use that environment
-coffer auth env use staging
+coffer env activate staging
 
 # delete an environment
-coffer auth env delete staging
+coffer env delete staging
+
+# post a transaction to a ledger
+coffer api ledger tx create main --amount 1000 --date 2024-05-01T00:00:00Z --label example
+
+# show current status
+coffer status
 ```
 
 

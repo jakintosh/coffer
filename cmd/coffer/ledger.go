@@ -51,11 +51,11 @@ var ledgerSnapshotCmd = &cmd.Command{
 }
 
 var ledgerTxCmd = &cmd.Command{
-	Name: "transactions",
-	Help: "manage transaction resources",
+	Name: "tx",
+	Help: "manage transactions",
 	Subcommands: []*cmd.Command{
 		ledgerTxListCmd,
-		ledgerTxAddCmd,
+		ledgerTxCreateCmd,
 	},
 }
 
@@ -89,8 +89,8 @@ var ledgerTxListCmd = &cmd.Command{
 	},
 }
 
-var ledgerTxAddCmd = &cmd.Command{
-	Name: "add",
+var ledgerTxCreateCmd = &cmd.Command{
+	Name: "create",
 	Help: "create new transaction",
 	Operands: []cmd.Operand{
 		{

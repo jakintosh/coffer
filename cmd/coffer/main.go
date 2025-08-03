@@ -35,13 +35,10 @@ var root = &cmd.Command{
 	Version: VERSION,
 	Help:    "manage your coffer from the command line",
 	Subcommands: []*cmd.Command{
+		apiCmd,
+		envCmd,
 		serveCmd,
-		healthCmd,
-		ledgerCmd,
-		metricsCmd,
-		patronsCmd,
-		settingsCmd,
-		authCmd,
+		statusCmd,
 	},
 	Options: []cmd.Option{
 		{
