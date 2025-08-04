@@ -33,7 +33,12 @@ var allocGetCmd = &cmd.Command{
 	Name: "get",
 	Help: "get allocation rules",
 	Handler: func(i *cmd.Input) error {
-		return request(i, http.MethodGet, "/settings/allocations", nil)
+
+		response := &[]service.AllocationRule{}
+		if err := request(i, http.MethodGet, "/settings/allocations", nil, response); err != nil {
+			return err
+		}
+		return writeJSON(response)
 	},
 }
 
@@ -64,42 +69,47 @@ var allocSetCmd = &cmd.Command{
 	},
 	Handler: func(i *cmd.Input) error {
 
+		var body []byte
+		var err error
+
 		// file-based path
 		if f := i.GetParameter("file"); f != nil {
-			body, err := os.ReadFile(*f)
+			body, err = os.ReadFile(*f)
 			if err != nil {
 				return err
 			}
-			return request(i, http.MethodPut, "/settings/allocations", body)
-		}
+		} else {
+			// option-based path
+			id := i.GetArray("id")
+			ledger := i.GetArray("ledger")
+			percentage := i.GetIntArray("percentage")
 
-		// option-based path
-		id := i.GetArray("id")
-		ledger := i.GetArray("ledger")
-		percentage := i.GetIntArray("percentage")
+			if !(len(id) == len(ledger) && len(id) == len(percentage)) {
+				return fmt.Errorf("id, ledger and percentage must have same count")
+			}
+			if len(id) == 0 {
+				return fmt.Errorf("id, ledger and percentage required")
+			}
 
-		if !(len(id) == len(ledger) && len(id) == len(percentage)) {
-			return fmt.Errorf("id, ledger and percentage must have same count")
-		}
-		if len(id) == 0 {
-			return fmt.Errorf("id, ledger and percentage required")
-		}
+			var rule []service.AllocationRule
+			for i := range len(id) {
+				rule = append(rule, service.AllocationRule{
+					ID:         id[i],
+					LedgerName: ledger[i],
+					Percentage: percentage[i],
+				})
+			}
 
-		var rule []service.AllocationRule
-		for i := range len(id) {
-			rule = append(rule, service.AllocationRule{
-				ID:         id[i],
-				LedgerName: ledger[i],
-				Percentage: percentage[i],
-			})
+			body, err = json.Marshal(rule)
+			if err != nil {
+				return err
+			}
 		}
-
-		body, err := json.Marshal(rule)
-		if err != nil {
-			return err
+		response := &[]service.AllocationRule{}
+		if err := request(i, http.MethodPut, "/settings/allocations", body, response); err != nil {
+			return nil
 		}
-
-		return request(i, http.MethodPut, "/settings/allocations", body)
+		return writeJSON(response)
 	},
 }
 
@@ -116,7 +126,7 @@ var keysCreateCmd = &cmd.Command{
 	Name: "create",
 	Help: "create new api key",
 	Handler: func(i *cmd.Input) error {
-		return request(i, http.MethodPost, "/settings/keys", nil)
+		return request[struct{}](i, http.MethodPost, "/settings/keys", nil, nil)
 	},
 }
 
@@ -130,27 +140,41 @@ var keysDeleteCmd = &cmd.Command{
 		},
 	},
 	Handler: func(i *cmd.Input) error {
+
 		id := i.GetOperand("id")
 		path := fmt.Sprintf("/settings/keys/%s", id)
-		return request(i, http.MethodDelete, path, nil)
+		return request[struct{}](i, http.MethodDelete, path, nil, nil)
 	},
 }
 
 var corsCmd = &cmd.Command{
 	Name: "cors",
 	Help: "manage cors whitelist",
-	Options: []cmd.Option{
-		{
-			Long: "set",
-			Type: cmd.OptionTypeArray,
-			Help: "allowed origin url",
-		},
+	Subcommands: []*cmd.Command{
+		corsGetCmd,
+		corsSetCmd,
 	},
+}
+
+var corsGetCmd = &cmd.Command{
+	Name: "get",
+	Help: "show existing cors whitelist",
 	Handler: func(i *cmd.Input) error {
-		urls := i.GetArray("set")
-		if len(urls) == 0 {
-			return request(i, http.MethodGet, "/settings/cors", nil)
+
+		response := &[]service.AllowedOrigin{}
+		if err := request(i, http.MethodGet, "/settings/cors", nil, response); err != nil {
+			return err
 		}
+		return writeJSON(response)
+	},
+}
+
+var corsSetCmd = &cmd.Command{
+	Name: "get",
+	Help: "set cors whitelist",
+	Handler: func(i *cmd.Input) error {
+
+		urls := i.GetArray("url")
 
 		var list []service.AllowedOrigin
 		for _, u := range urls {
@@ -162,6 +186,6 @@ var corsCmd = &cmd.Command{
 			return err
 		}
 
-		return request(i, http.MethodPut, "/settings/cors", body)
+		return request[struct{}](i, http.MethodPut, "/settings/cors", body, nil)
 	},
 }

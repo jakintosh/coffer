@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -35,13 +36,10 @@ var root = &cmd.Command{
 	Version: VERSION,
 	Help:    "manage your coffer from the command line",
 	Subcommands: []*cmd.Command{
+		apiCmd,
+		envCmd,
 		serveCmd,
-		healthCmd,
-		ledgerCmd,
-		metricsCmd,
-		patronsCmd,
-		settingsCmd,
-		authCmd,
+		statusCmd,
 	},
 	Options: []cmd.Option{
 		{
@@ -176,52 +174,78 @@ func addParams(
 	}
 }
 
-func request(
+func request[T any](
 	i *cmd.Input,
 	method string,
 	path string,
 	body []byte,
+	response *T,
 ) error {
 	url := baseURL(i) + path
 
+	// create request
 	var reader io.Reader
 	if body != nil {
 		reader = bytes.NewReader(body)
 	}
-
 	req, err := http.NewRequest(method, url, reader)
 	if err != nil {
 		return err
 	}
 
+	// set content-type header
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	// set authorization header
 	if key, err := loadAPIKey(i); err == nil && key != "" {
 		req.Header.Set("Authorization", "Bearer "+key)
 	} else {
 		return fmt.Errorf("failed to load api key")
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	// do request
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer res.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	// read body
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
 
-	if len(data) > 0 {
-		fmt.Printf("%s", data)
+	// if response expected, deserialize
+	if response != nil {
+
+		// unmarshal outer APIResponse
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(data, &m); err != nil {
+			return err
+		}
+
+		// unmarshal inner response
+		err := json.Unmarshal(m["data"], &response)
+		if err != nil {
+			return fmt.Errorf("failed to deserialize body response: %v", err)
+		}
 	}
 
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("server returned %s", resp.Status)
+	if res.StatusCode >= 400 {
+		return fmt.Errorf("server returned %s", res.Status)
 	}
 
+	return nil
+}
+
+func writeJSON(
+	data any,
+) error {
+	if data != nil {
+		return json.NewEncoder(os.Stdout).Encode(data)
+	}
 	return nil
 }

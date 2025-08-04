@@ -7,43 +7,20 @@ import (
 	cmd "git.sr.ht/~jakintosh/command-go"
 )
 
-var authCmd = &cmd.Command{
-	Name: "auth",
-	Help: "manage local api key",
-	Subcommands: []*cmd.Command{
-		authBootstrapCmd,
-		authEnvCmd,
-		authLoginCmd,
-		authLogoutCmd,
-		authUrlCmd,
-	},
-}
-
-var authBootstrapCmd = &cmd.Command{
-	Name: "bootstrap",
-	Help: "generate api key",
-	Handler: func(i *cmd.Input) error {
-		key, err := generateAPIKey()
-		if err != nil {
-			return err
-		}
-		fmt.Print(key)
-		return saveAPIKey(i, key)
-	},
-}
-
-var authEnvCmd = &cmd.Command{
+var envCmd = &cmd.Command{
 	Name: "env",
-	Help: "manage environments",
+	Help: "manage environments, credentials, and base URLs",
 	Subcommands: []*cmd.Command{
-		authEnvCreateCmd,
-		authEnvDeleteCmd,
-		authEnvListCmd,
-		authEnvUseCmd,
+		envListCmd,
+		envCreateCmd,
+		envSetCmd,
+		envDeleteCmd,
+		envKeyCmd,
+		envURLCmd,
 	},
 }
 
-var authEnvListCmd = &cmd.Command{
+var envListCmd = &cmd.Command{
 	Name: "list",
 	Help: "list environments",
 	Handler: func(i *cmd.Input) error {
@@ -61,11 +38,12 @@ var authEnvListCmd = &cmd.Command{
 			}
 			fmt.Printf("%s %s\n", marker, name)
 		}
+
 		return nil
 	},
 }
 
-var authEnvCreateCmd = &cmd.Command{
+var envCreateCmd = &cmd.Command{
 	Name: "create",
 	Help: "create environment",
 	Operands: []cmd.Operand{
@@ -95,7 +73,7 @@ var authEnvCreateCmd = &cmd.Command{
 
 		name := i.GetOperand("name")
 		if name == "" {
-			return fmt.Errorf("missing name")
+			return fmt.Errorf("<name> is empty")
 		}
 
 		cfg, err := loadConfig(i)
@@ -104,20 +82,30 @@ var authEnvCreateCmd = &cmd.Command{
 		}
 
 		envCfg := cfg.Envs[name]
-
 		if url := i.GetParameter("base-url"); url != nil && *url != "" {
 			envCfg.BaseURL = strings.TrimRight(*url, "/")
 		}
 
 		if i.GetFlag("bootstrap") {
+
+			// generate a brand new API key for this env
 			key, err := generateAPIKey()
 			if err != nil {
 				return err
 			}
+
+			// write key to stdout, so shell can do something with it
 			fmt.Print(key)
+
+			// set same API key to the newly created environment
 			envCfg.APIKey = key
-		} else if key := i.GetParameter("api-key"); key != nil && *key != "" {
-			envCfg.APIKey = *key
+
+		} else {
+			// if not bootstrapping, look for passed API key
+			key := i.GetParameter("api-key")
+			if key != nil && *key != "" {
+				envCfg.APIKey = *key
+			}
 		}
 
 		if cfg.Envs == nil {
@@ -129,30 +117,40 @@ var authEnvCreateCmd = &cmd.Command{
 	},
 }
 
-var authEnvUseCmd = &cmd.Command{
-	Name:     "use",
-	Help:     "set active environment",
-	Operands: []cmd.Operand{{Name: "name", Help: "environment name"}},
+var envSetCmd = &cmd.Command{
+	Name: "set",
+	Help: "set active environment",
+	Operands: []cmd.Operand{
+		{
+			Name: "name",
+			Help: "environment name",
+		},
+	},
 	Handler: func(i *cmd.Input) error {
 
 		name := i.GetOperand("name")
 		if name == "" {
-			return fmt.Errorf("missing name")
+			return fmt.Errorf("<name> is empty")
 		}
 
 		return saveActiveEnv(i, name)
 	},
 }
 
-var authEnvDeleteCmd = &cmd.Command{
-	Name:     "delete",
-	Help:     "delete environment",
-	Operands: []cmd.Operand{{Name: "name", Help: "environment name"}},
+var envDeleteCmd = &cmd.Command{
+	Name: "delete",
+	Help: "delete environment",
+	Operands: []cmd.Operand{
+		{
+			Name: "name",
+			Help: "environment name",
+		},
+	},
 	Handler: func(i *cmd.Input) error {
 
 		name := i.GetOperand("name")
 		if name == "" {
-			return fmt.Errorf("missing name")
+			return fmt.Errorf("<name> is empty")
 		}
 
 		cfg, err := loadConfig(i)
@@ -169,9 +167,18 @@ var authEnvDeleteCmd = &cmd.Command{
 	},
 }
 
-var authLoginCmd = &cmd.Command{
-	Name: "login",
-	Help: "set api key",
+var envKeyCmd = &cmd.Command{
+	Name: "key",
+	Help: "manage stored api key for active environment",
+	Subcommands: []*cmd.Command{
+		envKeySetCmd,
+		envKeyClearCmd,
+	},
+}
+
+var envKeySetCmd = &cmd.Command{
+	Name: "set",
+	Help: "store provided api key",
 	Operands: []cmd.Operand{
 		{
 			Name: "key",
@@ -182,55 +189,75 @@ var authLoginCmd = &cmd.Command{
 
 		key := i.GetOperand("key")
 		if key == "" {
-			return fmt.Errorf("missing key")
+			return fmt.Errorf("<key> is empty")
 		}
+
 		return saveAPIKey(i, key)
 	},
 }
 
-var authLogoutCmd = &cmd.Command{
-	Name: "logout",
+var envKeyClearCmd = &cmd.Command{
+	Name: "clear",
 	Help: "remove saved api key",
 	Handler: func(i *cmd.Input) error {
 		return deleteAPIKey(i)
 	},
 }
 
-var authUrlCmd = &cmd.Command{
+var envURLCmd = &cmd.Command{
 	Name: "url",
-	Help: "manage api base url",
-	Options: []cmd.Option{
-		{
-			Long: "set",
-			Type: cmd.OptionTypeParameter,
-			Help: "set base url",
-		},
-		{
-			Long: "unset",
-			Type: cmd.OptionTypeFlag,
-			Help: "unset base url",
-		},
+	Help: "manage api base url for active environment",
+	Subcommands: []*cmd.Command{
+		envURLGetCmd,
+		envURLSetCmd,
+		envURLClearCmd,
 	},
+}
+
+var envURLGetCmd = &cmd.Command{
+	Name: "get",
+	Help: "print base url",
 	Handler: func(i *cmd.Input) error {
-
-		if i.GetFlag("unset") {
-			return deleteBaseURL(i)
-		}
-
-		u := i.GetParameter("set")
-		if u != nil && *u != "" {
-			return saveBaseURL(i, strings.TrimRight(*u, "/"))
-		}
 
 		url, err := loadBaseURL(i)
 		if err != nil {
 			return err
 		}
+
 		if url == "" {
 			fmt.Println("none set")
 		} else {
 			fmt.Println(url)
 		}
+
 		return nil
+	},
+}
+
+var envURLSetCmd = &cmd.Command{
+	Name: "set",
+	Help: "set base url",
+	Operands: []cmd.Operand{
+		{
+			Name: "url",
+			Help: "base url",
+		},
+	},
+	Handler: func(i *cmd.Input) error {
+
+		u := i.GetOperand("url")
+		if u == "" {
+			return fmt.Errorf("<url> is empty")
+		}
+
+		return saveBaseURL(i, strings.TrimRight(u, "/"))
+	},
+}
+
+var envURLClearCmd = &cmd.Command{
+	Name: "clear",
+	Help: "clear base url",
+	Handler: func(i *cmd.Input) error {
+		return deleteBaseURL(i)
 	},
 }
