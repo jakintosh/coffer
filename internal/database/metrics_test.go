@@ -11,10 +11,10 @@ import (
 func TestEmptySubscriptionSummary(t *testing.T) {
 
 	util.SetupTestDB(t)
-	metricsStore := database.NewMetricsStore()
+	store := database.NewMetricsStore()
 
 	// no data → zero
-	sum, err := metricsStore.GetSubscriptionSummary()
+	sum, err := store.GetSubscriptionSummary()
 	if err != nil {
 		t.Fatal(err)
 	}

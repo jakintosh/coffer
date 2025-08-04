@@ -12,12 +12,12 @@ func TestLedgerSnapshotAndTransactions(t *testing.T) {
 
 	util.SetupTestDB(t)
 	start, end := util.SeedTransactionData(t)
-	ledgerStore := database.NewLedgerStore()
+	store := database.NewLedgerStore()
 
 	// snapshot from start to end
 	snapStart := start.Add(time.Second).Unix()
 	snapEnd := end.Unix()
-	snapshot, err := ledgerStore.GetLedgerSnapshot("general", snapStart, snapEnd)
+	snapshot, err := store.GetLedgerSnapshot("general", snapStart, snapEnd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestLedgerSnapshotAndTransactions(t *testing.T) {
 	}
 
 	// list transactions
-	rows, err := ledgerStore.GetTransactions("general", 10, 0)
+	rows, err := store.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,9 +45,9 @@ func TestLedgerTransactionsLimitOffset(t *testing.T) {
 
 	util.SetupTestDB(t)
 	util.SeedTransactionData(t)
-	ledgerStore := database.NewLedgerStore()
+	store := database.NewLedgerStore()
 
-	txs, err := ledgerStore.GetTransactions("general", 1, 1)
+	txs, err := store.GetTransactions("general", 1, 1)
 	if err != nil {
 		t.Fatalf("GetTransactions: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestLedgerTransactionsLimitOffset(t *testing.T) {
 		t.Fatalf("unexpected txs %+v", txs)
 	}
 
-	empty, err := ledgerStore.GetTransactions("general", 10, 5)
+	empty, err := store.GetTransactions("general", 10, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
