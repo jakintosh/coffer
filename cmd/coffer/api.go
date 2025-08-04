@@ -6,7 +6,7 @@ import (
 
 var apiCmd = &cmd.Command{
 	Name: "api",
-	Help: "Call HTTP API resources",
+	Help: "call HTTP API resources",
 	Subcommands: []*cmd.Command{
 		metricsCmd,
 		ledgerCmd,
