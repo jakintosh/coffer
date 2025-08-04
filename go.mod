@@ -10,6 +10,8 @@ require (
 	modernc.org/sqlite v1.37.0
 )
 
+replace git.sr.ht/~jakintosh/command-go => /home/jak/src/command-go
+
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -46,13 +46,19 @@ var ledgerSnapshotCmd = &cmd.Command{
 		ledger := i.GetOperand("ledger")
 		path := fmt.Sprintf("/ledger/%s", ledger)
 		path = addParams(i, path, "since", "until")
-		return request(i, http.MethodGet, path, nil)
+
+		response := &service.LedgerSnapshot{}
+		if err := request(i, http.MethodGet, path, nil, response); err != nil {
+			return err
+		}
+
+		return writeJSON(response)
 	},
 }
 
 var ledgerTxCmd = &cmd.Command{
 	Name: "tx",
-	Help: "manage transactions",
+	Help: "manage transaction resources",
 	Subcommands: []*cmd.Command{
 		ledgerTxListCmd,
 		ledgerTxCreateCmd,
@@ -85,7 +91,13 @@ var ledgerTxListCmd = &cmd.Command{
 		ledger := i.GetOperand("ledger")
 		path := fmt.Sprintf("/ledger/%s/transactions", ledger)
 		path = addParams(i, path, "limit", "offset")
-		return request(i, http.MethodGet, path, nil)
+
+		response := &[]service.Transaction{}
+		if err := request(i, http.MethodGet, path, nil, response); err != nil {
+			return err
+		}
+
+		return writeJSON(response)
 	},
 }
 
@@ -131,55 +143,55 @@ var ledgerTxCreateCmd = &cmd.Command{
 		path := fmt.Sprintf("/ledger/%s/transactions", ledger)
 
 		// file-based request
+		var body []byte
 		if f := i.GetParameter("file"); f != nil {
-			body, err := os.ReadFile(*f)
+			var err error
+			body, err = os.ReadFile(*f)
 			if err != nil {
 				return err
 			}
-			return request(i, http.MethodPost, path, body)
-		}
+		} else {
+			// option-based request
+			amount := i.GetIntParameter("amount")
+			dateStr := i.GetParameter("date")
+			label := i.GetParameter("label")
+			idOpt := i.GetParameter("id")
 
-		// option-based request
-		amount := i.GetIntParameter("amount")
-		dateStr := i.GetParameter("date")
-		label := i.GetParameter("label")
-		idOpt := i.GetParameter("id")
+			// validate options present
+			if amount == nil {
+				return fmt.Errorf("'amount' missing")
+			}
+			if dateStr == nil {
+				return fmt.Errorf("'date' missing")
+			}
+			if label == nil {
+				return fmt.Errorf("'label' missing")
+			}
+			id := ""
+			if idOpt != nil {
+				id = *idOpt
+			}
 
-		// validate options present
-		if amount == nil {
-			return fmt.Errorf("'amount' missing")
-		}
-		if dateStr == nil {
-			return fmt.Errorf("'date' missing")
-		}
-		if label == nil {
-			return fmt.Errorf("'label' missing")
-		}
-		id := ""
-		if idOpt != nil {
-			id = *idOpt
-		}
+			// validate date
+			date, err := time.Parse(time.RFC3339, *dateStr)
+			if err != nil {
+				return fmt.Errorf("invalid date format: expected YYYY-MM-DDTHH-mm-ssZ")
+			}
 
-		// validate date
-		date, err := time.Parse(time.RFC3339, *dateStr)
-		if err != nil {
-			return fmt.Errorf("invalid date format: expected YYYY-MM-DDTHH-mm-ssZ")
+			// marshal body json
+			body, err = json.Marshal(
+				service.Transaction{
+					ID:     id,
+					Ledger: ledger,
+					Amount: *amount,
+					Date:   date,
+					Label:  *label,
+				},
+			)
+			if err != nil {
+				return err
+			}
 		}
-
-		// marshal body json
-		body, err := json.Marshal(
-			service.Transaction{
-				ID:     id,
-				Ledger: ledger,
-				Amount: *amount,
-				Date:   date,
-				Label:  *label,
-			},
-		)
-		if err != nil {
-			return err
-		}
-
-		return request(i, http.MethodPost, path, body)
+		return request[struct{}](i, http.MethodPost, path, body, nil)
 	},
 }

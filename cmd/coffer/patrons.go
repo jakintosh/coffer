@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	cmd "git.sr.ht/~jakintosh/command-go"
 )
 
@@ -32,6 +33,11 @@ var patronsListCmd = &cmd.Command{
 	Operands: []cmd.Operand{},
 	Handler: func(i *cmd.Input) error {
 		path := addParams(i, "/patrons", "limit", "offset")
-		return request(i, http.MethodGet, path, nil)
+
+		response := &[]service.Patron{}
+		if err := request(i, http.MethodGet, path, nil, response); err != nil {
+			return err
+		}
+		return writeJSON(response)
 	},
 }

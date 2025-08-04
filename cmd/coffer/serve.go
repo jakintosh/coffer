@@ -14,7 +14,7 @@ import (
 
 var serveCmd = &cmd.Command{
 	Name: "serve",
-	Help: "run the local server",
+	Help: "run the coffer server",
 	Handler: func(i *cmd.Input) error {
 
 		dbPath := readEnvVar("DB_FILE_PATH")

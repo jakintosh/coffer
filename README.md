@@ -19,6 +19,7 @@ Coffer is a small Go service that stores information about paying patrons and le
 ## HTTP API Reference
 
 This document describes the HTTP endpoints implemented under the `/api/v1` prefix.
+
 Every response follows the structure defined in `internal/api/api.go`:
 
 ```json
@@ -278,11 +279,12 @@ Endpoints that modify server state require an API key. Provide it via the `Autho
 
 ## CLI Usage
 
-The `coffer` CLI separates remote API calls under the `api` command and
-local configuration under `env`. Settings are stored in a `config.json`
-file under the configuration directory (default `~/.config/coffer`).
+The `coffer` CLI separates remote API calls under the `api` command and local configuration under `env`. The server is started with `serve`. Settings are stored in a `config.json` file under the configuration directory (default `~/.config/coffer`).
 
 ```sh
+# start the coffer HTTP API server
+coffer serve
+
 # list configured environments ("*" marks the active one)
 coffer env list
 
