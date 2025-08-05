@@ -8,6 +8,7 @@ import (
 )
 
 func TestMigrateToVersion1(t *testing.T) {
+
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -18,6 +19,7 @@ func TestMigrateToVersion1(t *testing.T) {
 		t.Fatalf("migrate failed: %v", err)
 	}
 
+	// ensure proper version
 	var version int
 	if err := db.QueryRow(`PRAGMA user_version;`).Scan(&version); err != nil {
 		t.Fatal(err)
@@ -26,6 +28,7 @@ func TestMigrateToVersion1(t *testing.T) {
 		t.Fatalf("expected version 1, got %d", version)
 	}
 
+	// ensure proper tables
 	want := []string{
 		"customer",
 		"subscription",
@@ -38,11 +41,14 @@ func TestMigrateToVersion1(t *testing.T) {
 	}
 	for _, table := range want {
 		var name string
-		err := db.QueryRow(
-			"SELECT name FROM sqlite_master WHERE type='table' AND name=?1;",
+		row := db.QueryRow(`
+			SELECT name
+			FROM sqlite_master
+			WHERE type='table'
+			AND name=?1;`,
 			table,
-		).Scan(&name)
-		if err != nil {
+		)
+		if err := row.Scan(&name); err != nil {
 			t.Fatalf("table %s missing: %v", table, err)
 		}
 	}
