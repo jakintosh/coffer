@@ -40,65 +40,8 @@ func Init(
 		}
 	}
 
-	if _, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS customer (
-			id TEXT NOT NULL PRIMARY KEY,
-			created INTEGER,
-			updated INTEGER,
-			name TEXT
-		);
-		CREATE TABLE IF NOT EXISTS subscription (
-			id TEXT NOT NULL PRIMARY KEY,
-			created INTEGER,
-			updated INTEGER,
-			customer TEXT,
-			status TEXT,
-			amount INTEGER,
-			currency TEXT
-		);
-		CREATE TABLE IF NOT EXISTS payment (
-			id TEXT NOT NULL PRIMARY KEY,
-			created INTEGER,
-			updated INTEGER,
-			status TEXT,
-			customer TEXT,
-			amount INTEGER,
-			currency TEXT
-		);
-		CREATE TABLE IF NOT EXISTS payout (
-			id TEXT NOT NULL PRIMARY KEY,
-			created INTEGER,
-			updated INTEGER,
-			status TEXT,
-			amount INTEGER,
-			currency TEXT
-		);
-		CREATE TABLE IF NOT EXISTS tx (
-			id TEXT NOT NULL PRIMARY KEY,
-			created INTEGER NOT NULL,
-			updated INTEGER,
-			date INTEGER NOT NULL,
-			ledger TEXT NOT NULL,
-			label TEXT,
-			amount INTEGER NOT NULL
-		);
-		CREATE TABLE IF NOT EXISTS allocation (
-			id TEXT NOT NULL PRIMARY KEY,
-			ledger TEXT NOT NULL,
-			percentage INTEGER NOT NULL
-		);
-		CREATE TABLE IF NOT EXISTS api_key (
-			id TEXT NOT NULL PRIMARY KEY,
-			salt TEXT NOT NULL,
-			hash TEXT NOT NULL,
-			created INTEGER,
-			last_used INTEGER
-		);
-		CREATE TABLE IF NOT EXISTS allowed_origin (
-			url TEXT NOT NULL PRIMARY KEY
-		);
-	`); err != nil {
-		log.Fatalf("could not initialize tables: %v", err)
+	if err := migrate(db); err != nil {
+		log.Fatalf("could not migrate database: %v", err)
 	}
 
 	ensureDefaultAllocations()
