@@ -3,14 +3,12 @@ module git.sr.ht/~jakintosh/coffer
 go 1.24.2
 
 require (
-	git.sr.ht/~jakintosh/command-go v0.0.3
+	git.sr.ht/~jakintosh/command-go v0.0.4
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/stripe/stripe-go/v82 v82.4.0
 	modernc.org/sqlite v1.37.0
 )
-
-replace git.sr.ht/~jakintosh/command-go => /home/jak/src/command-go
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
