@@ -20,20 +20,23 @@ func Init(
 		log.Fatalf("failed to connect to database: %v\n", err)
 	}
 
+	// disallow multiple connections for serial writes
 	db.SetMaxOpenConns(1)
 
-	_, err = db.Exec("PRAGMA foreign_keys = ON;")
-	if err != nil {
-		log.Fatalf("could not enable foreign keys: %v", err)
-	}
+	// foreign keys are not yet used in the database
+	// _, err = db.Exec("PRAGMA foreign_keys = ON;")
+	// if err != nil {
+	// 	log.Fatalf("could not enable foreign keys: %v", err)
+	// }
 
-	// enable write ahead logging mode
 	if wal {
+		// enable write ahead logging mode
 		_, err = db.Exec("PRAGMA journal_mode = WAL;")
 		if err != nil {
 			log.Fatalf("could not enable WAL mode: %v", err)
 		}
 
+		// increase timeout so writes can finish
 		_, err = db.Exec("PRAGMA busy_timeout = 5000;")
 		if err != nil {
 			log.Fatalf("could not set busy timeout: %v", err)
@@ -44,6 +47,7 @@ func Init(
 		log.Fatalf("could not migrate database: %v", err)
 	}
 
+	// ensure defailt data
 	ensureDefaultAllocations()
 }
 
