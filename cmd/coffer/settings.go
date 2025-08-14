@@ -170,8 +170,15 @@ var corsGetCmd = &cmd.Command{
 }
 
 var corsSetCmd = &cmd.Command{
-	Name: "get",
+	Name: "set",
 	Help: "set cors whitelist",
+	Options: []cmd.Option{
+		{
+			Long: "url",
+			Type: cmd.OptionTypeArray,
+			Help: "url in cors whitelist",
+		},
+	},
 	Handler: func(i *cmd.Input) error {
 
 		urls := i.GetArray("url")
