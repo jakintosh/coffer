@@ -22,6 +22,9 @@ func SetKeyStore(s KeyStore) {
 	keyStore = s
 }
 
+// InitKeys exists to check if the keystore is empty, and if so, to populate it with
+// a bootstrap key provided by the apiKey parameter. it exits early if there are any
+// existing keys in the store
 func InitKeys(
 	apiKey string,
 ) error {
