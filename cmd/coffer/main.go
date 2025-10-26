@@ -11,8 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	env "git.sr.ht/~jakintosh/coffer/pkg/clienv"
-	cmd "git.sr.ht/~jakintosh/command-go"
+	"git.sr.ht/~jakintosh/command-go/pkg/args"
+	"git.sr.ht/~jakintosh/command-go/pkg/envs"
 )
 
 const (
@@ -26,31 +26,31 @@ func main() {
 	root.Parse()
 }
 
-var root = &cmd.Command{
+var root = &args.Command{
 	Name:    BIN_NAME,
 	Author:  AUTHOR,
 	Version: VERSION,
 	Help:    "manage your coffer from the command line",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		apiCmd,
-		env.Command(DEFAULT_CFG),
+		envs.Command(DEFAULT_CFG),
 		serveCmd,
 		statusCmd,
 	},
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "url",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "coffer API base url",
 		},
 		{
 			Long: "env",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "environment name",
 		},
 		{
 			Long: "config-dir",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "config directory",
 		},
 	},
@@ -69,7 +69,7 @@ func loadCredential(
 }
 
 func addParams(
-	i *cmd.Input,
+	i *args.Input,
 	path string,
 	names ...string,
 ) string {
@@ -87,14 +87,14 @@ func addParams(
 }
 
 func request[T any](
-	i *cmd.Input,
+	i *args.Input,
 	method string,
 	path string,
 	body []byte,
 	response *T,
 ) error {
 	// load relevant info from active environment
-	cfg, err := env.BuildConfig(DEFAULT_CFG, i)
+	cfg, err := envs.BuildConfig(DEFAULT_CFG, i)
 	if err != nil {
 		return fmt.Errorf("Failed to build config: %w", err)
 	}

@@ -9,7 +9,7 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	cmd "git.sr.ht/~jakintosh/command-go"
+	"git.sr.ht/~jakintosh/command-go/pkg/args"
 	"github.com/gorilla/mux"
 )
 
@@ -21,7 +21,7 @@ const (
 )
 
 func resolveOption(
-	i *cmd.Input,
+	i *args.Input,
 	opt string,
 	env string,
 	def string,
@@ -35,32 +35,32 @@ func resolveOption(
 	return def
 }
 
-var serveCmd = &cmd.Command{
+var serveCmd = &args.Command{
 	Name: "serve",
 	Help: "run the coffer server",
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "db-file-path",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "database file path",
 		},
 		{
 			Long: "port",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "port to listen on",
 		},
 		{
 			Long: "cors-allowed-origins",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "comma-separated allowed origins",
 		},
 		{
 			Long: "credentials-directory",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "credentials directory",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 		dbPath := resolveOption(i, "db-file-path", "DB_FILE_PATH", DB_FILE_PATH)
 		port := ":" + resolveOption(i, "port", "PORT", PORT)
 		originsStr := resolveOption(i, "cors-allowed-origins", "CORS_ALLOWED_ORIGINS", CORS_ALLOWED_ORIGINS)

@@ -4,34 +4,34 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	cmd "git.sr.ht/~jakintosh/command-go"
+	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
-var patronsCmd = &cmd.Command{
+var patronsCmd = &args.Command{
 	Name: "patrons",
 	Help: "manage patron resources",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		patronsListCmd,
 	},
 }
 
-var patronsListCmd = &cmd.Command{
+var patronsListCmd = &args.Command{
 	Name: "list",
 	Help: "list patrons",
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "limit",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "result limit",
 		},
 		{
 			Long: "offset",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "result offset",
 		},
 	},
-	Operands: []cmd.Operand{},
-	Handler: func(i *cmd.Input) error {
+	Operands: []args.Operand{},
+	Handler: func(i *args.Input) error {
 		path := addParams(i, "/patrons", "limit", "offset")
 
 		response := &[]service.Patron{}

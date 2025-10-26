@@ -8,40 +8,40 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	cmd "git.sr.ht/~jakintosh/command-go"
+	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
-var ledgerCmd = &cmd.Command{
+var ledgerCmd = &args.Command{
 	Name: "ledger",
 	Help: "manage ledger resources",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		ledgerSnapshotCmd,
 		ledgerTxCmd,
 	},
 }
 
-var ledgerSnapshotCmd = &cmd.Command{
+var ledgerSnapshotCmd = &args.Command{
 	Name: "snapshot",
 	Help: "get snapshot of ledger over date range",
-	Operands: []cmd.Operand{
+	Operands: []args.Operand{
 		{
 			Name: "ledger",
 			Help: "ledger name",
 		},
 	},
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "since",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "YYYY-MM-DD, defaults to '0'",
 		},
 		{
 			Long: "until",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "YYYY-MM-DD, defaults to 'now'",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		ledger := i.GetOperand("ledger")
 		path := fmt.Sprintf("/ledger/%s", ledger)
@@ -56,37 +56,37 @@ var ledgerSnapshotCmd = &cmd.Command{
 	},
 }
 
-var ledgerTxCmd = &cmd.Command{
+var ledgerTxCmd = &args.Command{
 	Name: "tx",
 	Help: "manage transaction resources",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		ledgerTxListCmd,
 		ledgerTxCreateCmd,
 	},
 }
 
-var ledgerTxListCmd = &cmd.Command{
+var ledgerTxListCmd = &args.Command{
 	Name: "list",
 	Help: "list transactions",
-	Operands: []cmd.Operand{
+	Operands: []args.Operand{
 		{
 			Name: "ledger",
 			Help: "ledger name",
 		},
 	},
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "limit",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "limit",
 		},
 		{
 			Long: "offset",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "offset",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		ledger := i.GetOperand("ledger")
 		path := fmt.Sprintf("/ledger/%s/transactions", ledger)
@@ -101,43 +101,43 @@ var ledgerTxListCmd = &cmd.Command{
 	},
 }
 
-var ledgerTxCreateCmd = &cmd.Command{
+var ledgerTxCreateCmd = &args.Command{
 	Name: "create",
 	Help: "create new transaction",
-	Operands: []cmd.Operand{
+	Operands: []args.Operand{
 		{
 			Name: "ledger",
 			Help: "target ledger",
 		},
 	},
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "amount",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "amount",
 		},
 		{
 			Long: "date",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "RFC3339 date",
 		},
 		{
 			Long: "label",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "transaction label",
 		},
 		{
 			Long: "id",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "transaction id (optional)",
 		},
 		{
 			Long: "file",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "json file to send as body",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		ledger := i.GetOperand("ledger")
 		path := fmt.Sprintf("/ledger/%s/transactions", ledger)

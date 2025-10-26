@@ -4,24 +4,24 @@ import (
 	"fmt"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
-	env "git.sr.ht/~jakintosh/coffer/pkg/clienv"
-	cmd "git.sr.ht/~jakintosh/command-go"
+	"git.sr.ht/~jakintosh/command-go/pkg/args"
+	"git.sr.ht/~jakintosh/command-go/pkg/envs"
 )
 
-var statusCmd = &cmd.Command{
+var statusCmd = &args.Command{
 	Name: "status",
 	Help: "show environment and server health",
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "verbose",
-			Type: cmd.OptionTypeFlag,
+			Type: args.OptionTypeFlag,
 			Help: "show detailed output",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		// load relevant info from active environment
-		cfg, err := env.BuildConfig(DEFAULT_CFG, i)
+		cfg, err := envs.BuildConfig(DEFAULT_CFG, i)
 		if err != nil {
 			return fmt.Errorf("Failed to build config: %w", err)
 		}

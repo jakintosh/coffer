@@ -7,32 +7,32 @@ import (
 	"os"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	cmd "git.sr.ht/~jakintosh/command-go"
+	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
-var settingsCmd = &cmd.Command{
+var settingsCmd = &args.Command{
 	Name: "settings",
 	Help: "manage settings",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		allocationsCmd,
 		corsCmd,
 		keysCmd,
 	},
 }
 
-var allocationsCmd = &cmd.Command{
+var allocationsCmd = &args.Command{
 	Name: "allocations",
 	Help: "manage allocation rules",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		allocGetCmd,
 		allocSetCmd,
 	},
 }
 
-var allocGetCmd = &cmd.Command{
+var allocGetCmd = &args.Command{
 	Name: "get",
 	Help: "get allocation rules",
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		response := &[]service.AllocationRule{}
 		if err := request(i, http.MethodGet, "/settings/allocations", nil, response); err != nil {
@@ -42,32 +42,32 @@ var allocGetCmd = &cmd.Command{
 	},
 }
 
-var allocSetCmd = &cmd.Command{
+var allocSetCmd = &args.Command{
 	Name: "set",
 	Help: "set allocation rules",
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "id",
-			Type: cmd.OptionTypeArray,
+			Type: args.OptionTypeArray,
 			Help: "allocation rule id",
 		},
 		{
 			Long: "ledger",
-			Type: cmd.OptionTypeArray,
+			Type: args.OptionTypeArray,
 			Help: "ledger name for allocation rule",
 		},
 		{
 			Long: "percentage",
-			Type: cmd.OptionTypeArray,
+			Type: args.OptionTypeArray,
 			Help: "percentage of allocation rule",
 		},
 		{
 			Long: "file",
-			Type: cmd.OptionTypeParameter,
+			Type: args.OptionTypeParameter,
 			Help: "json file to read allocation rules from",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		var body []byte
 		var err error
@@ -113,33 +113,33 @@ var allocSetCmd = &cmd.Command{
 	},
 }
 
-var keysCmd = &cmd.Command{
+var keysCmd = &args.Command{
 	Name: "keys",
 	Help: "manage api keys",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		keysCreateCmd,
 		keysDeleteCmd,
 	},
 }
 
-var keysCreateCmd = &cmd.Command{
+var keysCreateCmd = &args.Command{
 	Name: "create",
 	Help: "create new api key",
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 		return request[struct{}](i, http.MethodPost, "/settings/keys", nil, nil)
 	},
 }
 
-var keysDeleteCmd = &cmd.Command{
+var keysDeleteCmd = &args.Command{
 	Name: "delete",
 	Help: "delete api key",
-	Operands: []cmd.Operand{
+	Operands: []args.Operand{
 		{
 			Name: "id",
 			Help: "api key id",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		id := i.GetOperand("id")
 		path := fmt.Sprintf("/settings/keys/%s", id)
@@ -147,19 +147,19 @@ var keysDeleteCmd = &cmd.Command{
 	},
 }
 
-var corsCmd = &cmd.Command{
+var corsCmd = &args.Command{
 	Name: "cors",
 	Help: "manage cors whitelist",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		corsGetCmd,
 		corsSetCmd,
 	},
 }
 
-var corsGetCmd = &cmd.Command{
+var corsGetCmd = &args.Command{
 	Name: "get",
 	Help: "show existing cors whitelist",
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		response := &[]service.AllowedOrigin{}
 		if err := request(i, http.MethodGet, "/settings/cors", nil, response); err != nil {
@@ -169,17 +169,17 @@ var corsGetCmd = &cmd.Command{
 	},
 }
 
-var corsSetCmd = &cmd.Command{
+var corsSetCmd = &args.Command{
 	Name: "set",
 	Help: "set cors whitelist",
-	Options: []cmd.Option{
+	Options: []args.Option{
 		{
 			Long: "url",
-			Type: cmd.OptionTypeArray,
+			Type: args.OptionTypeArray,
 			Help: "url in cors whitelist",
 		},
 	},
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		urls := i.GetArray("url")
 

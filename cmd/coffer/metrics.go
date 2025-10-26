@@ -4,21 +4,21 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	cmd "git.sr.ht/~jakintosh/command-go"
+	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
-var metricsCmd = &cmd.Command{
+var metricsCmd = &args.Command{
 	Name: "metrics",
 	Help: "manage metrics resources",
-	Subcommands: []*cmd.Command{
+	Subcommands: []*args.Command{
 		metricsGetCmd,
 	},
 }
 
-var metricsGetCmd = &cmd.Command{
+var metricsGetCmd = &args.Command{
 	Name: "get",
 	Help: "get metrics",
-	Handler: func(i *cmd.Input) error {
+	Handler: func(i *args.Input) error {
 
 		response := &service.Metrics{}
 		if err := request(i, http.MethodGet, "/metrics", nil, response); err != nil {
