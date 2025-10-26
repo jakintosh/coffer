@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
+	env "git.sr.ht/~jakintosh/coffer/pkg/clienv"
 	cmd "git.sr.ht/~jakintosh/command-go"
 )
 
@@ -20,12 +20,21 @@ var statusCmd = &cmd.Command{
 	},
 	Handler: func(i *cmd.Input) error {
 
-		env := activeEnv(i)
-		base := strings.TrimSuffix(baseURL(i), "/api/v1")
-		key, _ := loadAPIKey(i)
+		// load relevant info from active environment
+		cfg, err := env.BuildConfig(DEFAULT_CFG, i)
+		if err != nil {
+			return fmt.Errorf("Failed to build config: %w", err)
+		}
+		env := cfg.GetActiveEnv()
+		base := cfg.GetBaseUrl()
+		key := cfg.GetApiKey()
 
 		fmt.Printf("Environment: %s\n", env)
-		fmt.Printf("Base URL: %s\n", base)
+		if base == "" {
+			fmt.Println("Base URL: none")
+		} else {
+			fmt.Printf("Base URL: %s\n", base)
+		}
 		if key == "" {
 			fmt.Println("API Key: none")
 		} else {
@@ -33,7 +42,7 @@ var statusCmd = &cmd.Command{
 		}
 
 		response := &api.HealthResponse{}
-		err := request(i, "GET", "/health", nil, response)
+		err = request(i, "GET", "/health", nil, response)
 		if err != nil {
 			fmt.Println("Health: down")
 			if i.GetFlag("verbose") {

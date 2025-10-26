@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +10,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
+	env "git.sr.ht/~jakintosh/coffer/pkg/clienv"
 	cmd "git.sr.ht/~jakintosh/command-go"
 )
 
@@ -22,8 +20,6 @@ const (
 	AUTHOR      = "jakintosh"
 	VERSION     = "0.1"
 	DEFAULT_CFG = "~/.config/coffer"
-	DEFAULT_ENV = "default"
-	DEFAULT_URL = "http://localhost:9000"
 )
 
 func main() {
@@ -37,7 +33,7 @@ var root = &cmd.Command{
 	Help:    "manage your coffer from the command line",
 	Subcommands: []*cmd.Command{
 		apiCmd,
-		envCmd,
+		env.Command(DEFAULT_CFG),
 		serveCmd,
 		statusCmd,
 	},
@@ -72,90 +68,6 @@ func loadCredential(
 	return string(cred)
 }
 
-func readEnvVar(
-	name string,
-) string {
-	var present bool
-	str, present := os.LookupEnv(name)
-	if !present {
-		log.Fatalf("missing required env var '%s'\n", name)
-	}
-	return str
-}
-
-func readEnvVarList(
-	name string,
-) []string {
-	listStr := os.Getenv(name)
-	var list []string
-	if listStr != "" {
-		list = strings.Split(listStr, ",")
-	}
-	return list
-}
-
-func baseURL(
-	i *cmd.Input,
-) string {
-	u := i.GetParameter("url")
-	envVar := os.Getenv("COFFER_URL")
-	cfgURL, _ := loadBaseURL(i)
-
-	var url string
-	switch {
-	case u != nil && *u != "":
-		url = strings.TrimRight(*u, "/")
-	case envVar != "":
-		url = strings.TrimRight(envVar, "/")
-	case cfgURL != "":
-		url = strings.TrimRight(cfgURL, "/")
-	default:
-		url = DEFAULT_URL
-	}
-	return url + "/api/v1"
-}
-
-func baseConfigDir(
-	i *cmd.Input,
-) string {
-	dir := DEFAULT_CFG
-	if c := i.GetParameter("config-dir"); c != nil && *c != "" {
-		dir = *c
-	}
-	if strings.HasPrefix(dir, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			dir = filepath.Join(home, dir[2:])
-		}
-	}
-	return dir
-}
-
-func activeEnv(
-	i *cmd.Input,
-) string {
-	if e := i.GetParameter("env"); e != nil && *e != "" {
-		return *e
-	}
-	if env := os.Getenv("COFFER_ENV"); env != "" {
-		return env
-	}
-	if n, err := loadActiveEnv(i); err == nil && n != "" {
-		return n
-	}
-	return DEFAULT_ENV
-}
-
-func generateAPIKey() (
-	string,
-	error,
-) {
-	keyBytes := make([]byte, 32)
-	if _, err := rand.Read(keyBytes); err != nil {
-		return "", err
-	}
-	return "default." + hex.EncodeToString(keyBytes), nil
-}
-
 func addParams(
 	i *cmd.Input,
 	path string,
@@ -181,7 +93,13 @@ func request[T any](
 	body []byte,
 	response *T,
 ) error {
-	url := baseURL(i) + path
+	// load relevant info from active environment
+	cfg, err := env.BuildConfig(DEFAULT_CFG, i)
+	if err != nil {
+		return fmt.Errorf("Failed to build config: %w", err)
+	}
+	url := cfg.GetBaseUrl() + "/api/v1" + path
+	key := cfg.GetApiKey()
 
 	// create request
 	var reader io.Reader
@@ -199,7 +117,7 @@ func request[T any](
 	}
 
 	// set authorization header
-	if key, err := loadAPIKey(i); err == nil && key != "" {
+	if key != "" {
 		req.Header.Set("Authorization", "Bearer "+key)
 	} else {
 		return fmt.Errorf("failed to load api key")
