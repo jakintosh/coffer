@@ -6,14 +6,13 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 func buildCORSRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("", withAuth(handleGetCORS)).Methods("GET")
-	r.HandleFunc("", withAuth(handlePutCORS)).Methods("PUT")
+	mux.HandleFunc("GET /settings/cors", withAuth(handleGetCORS))
+	mux.HandleFunc("PUT /settings/cors", withAuth(handlePutCORS))
 }
 
 func handleGetCORS(

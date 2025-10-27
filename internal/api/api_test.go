@@ -3,13 +3,13 @@ package api_test
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 type httpResult struct {
@@ -26,11 +26,8 @@ func setupCORS() {
 	service.SetAllowedOrigins([]service.AllowedOrigin{{URL: "http://test-default"}})
 }
 
-func setupRouter() *mux.Router {
-
-	router := mux.NewRouter()
-	api.BuildRouter(router)
-	return router
+func setupRouter() http.Handler {
+	return api.BuildRouter()
 }
 
 func makeTestAuthHeader(t *testing.T) header {
@@ -54,7 +51,7 @@ func expectStatus(
 }
 
 func get(
-	router *mux.Router,
+	router http.Handler,
 	url string,
 	response any,
 	headers ...header,
@@ -78,7 +75,7 @@ func get(
 }
 
 func post(
-	router *mux.Router,
+	router http.Handler,
 	url string,
 	body string,
 	response any,
@@ -104,7 +101,7 @@ func post(
 }
 
 func put(
-	router *mux.Router,
+	router http.Handler,
 	url string,
 	body string,
 	response any,
@@ -130,7 +127,7 @@ func put(
 }
 
 func del(
-	router *mux.Router,
+	router http.Handler,
 	url string,
 	response any,
 	headers ...header,

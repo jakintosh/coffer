@@ -4,13 +4,13 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 func buildMetricsRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("", withCORS(handleGetMetrics)).Methods("GET", "OPTIONS")
+	mux.HandleFunc("GET /metrics", withCORS(handleGetMetrics))
+	mux.HandleFunc("OPTIONS /metrics", withCORS(handleGetMetrics))
 }
 
 func handleGetMetrics(

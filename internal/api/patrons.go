@@ -4,13 +4,12 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 func buildPatronsRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("", withAuth(handleListPatrons)).Methods("GET")
+	mux.HandleFunc("GET /patrons", withAuth(handleListPatrons))
 }
 
 func handleListPatrons(

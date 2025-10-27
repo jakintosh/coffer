@@ -1,11 +1,11 @@
 package api
 
-import "github.com/gorilla/mux"
+import "net/http"
 
 func buildSettingsRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	buildAllocationsRouter(r.PathPrefix("/allocations").Subrouter())
-	buildCORSRouter(r.PathPrefix("/cors").Subrouter())
-	buildKeysRouter(r.PathPrefix("/keys").Subrouter())
+	buildAllocationsRouter(mux)
+	buildCORSRouter(mux)
+	buildKeysRouter(mux)
 }

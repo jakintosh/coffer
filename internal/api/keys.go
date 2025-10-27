@@ -5,14 +5,13 @@ import (
 	"strings"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 func buildKeysRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("", withAuth(handlePostKey)).Methods("POST")
-	r.HandleFunc("/{id}", withAuth(handleDeleteKey)).Methods("DELETE")
+	mux.HandleFunc("POST /settings/keys", withAuth(handlePostKey))
+	mux.HandleFunc("DELETE /settings/keys/{id}", withAuth(handleDeleteKey))
 }
 
 func handlePostKey(
@@ -31,7 +30,7 @@ func handleDeleteKey(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	id := mux.Vars(r)["id"]
+	id := r.PathValue("id")
 	id = strings.TrimSpace(id)
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "Missing Key ID")

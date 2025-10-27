@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/gorilla/mux"
 )
 
 type ErrMalformedQuery struct {
@@ -27,15 +25,15 @@ type APIError struct {
 	Message string `json:"message"`
 }
 
-func BuildRouter(
-	r *mux.Router,
-) {
-	buildHealthRouter(r.PathPrefix("/health").Subrouter())
-	buildLedgerRouter(r.PathPrefix("/ledger").Subrouter())
-	buildMetricsRouter(r.PathPrefix("/metrics").Subrouter())
-	buildPatronsRouter(r.PathPrefix("/patrons").Subrouter())
-	buildSettingsRouter(r.PathPrefix("/settings").Subrouter())
-	buildStripeRouter(r.PathPrefix("/stripe").Subrouter())
+func BuildRouter() http.Handler {
+	mux := http.NewServeMux()
+	buildHealthRouter(mux)
+	buildLedgerRouter(mux)
+	buildMetricsRouter(mux)
+	buildPatronsRouter(mux)
+	buildSettingsRouter(mux)
+	buildStripeRouter(mux)
+	return mux
 }
 
 func parsePaginationQueries(

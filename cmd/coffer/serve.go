@@ -10,7 +10,6 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -93,9 +92,10 @@ var serveCmd = &args.Command{
 			log.Fatalf("failed to init cors: %v", err)
 		}
 
-		r := mux.NewRouter()
-		api.BuildRouter(r.PathPrefix("/api/v1").Subrouter())
+		apiHandler := api.BuildRouter()
+		mux := http.NewServeMux()
+		mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))
 
-		return http.ListenAndServe(port, r)
+		return http.ListenAndServe(port, mux)
 	},
 }

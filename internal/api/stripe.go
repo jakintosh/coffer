@@ -6,13 +6,12 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 func buildStripeRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("/webhook", handleStripeWebhook).Methods("POST")
+	mux.HandleFunc("POST /stripe/webhook", handleStripeWebhook)
 }
 
 func handleStripeWebhook(

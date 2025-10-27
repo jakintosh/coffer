@@ -5,7 +5,6 @@ go 1.24.2
 require (
 	git.sr.ht/~jakintosh/command-go v0.1.1
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/mux v1.8.1
 	github.com/stripe/stripe-go/v82 v82.4.0
 	modernc.org/sqlite v1.37.0
 )

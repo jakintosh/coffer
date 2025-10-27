@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
-	"github.com/gorilla/mux"
 )
 
 type HealthResponse struct {
@@ -13,9 +12,9 @@ type HealthResponse struct {
 }
 
 func buildHealthRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("", handleGetHealth).Methods("GET")
+	mux.HandleFunc("GET /health", handleGetHealth)
 }
 
 func handleGetHealth(

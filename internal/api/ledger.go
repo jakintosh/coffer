@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 type CreateTransactionRequest struct {
@@ -19,19 +18,22 @@ type CreateTransactionRequest struct {
 }
 
 func buildLedgerRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("/{ledger}", withCORS(handleGetLedger)).Methods("GET", "OPTIONS")
-	r.HandleFunc("/{ledger}/transactions", withCORS(handleGetLedgerTransactions)).Methods("GET", "OPTIONS")
-	r.HandleFunc("/{ledger}/transactions", withAuth(handlePostLedgerTransaction)).Methods("POST")
+	mux.HandleFunc("GET /ledger/{ledger}", withCORS(handleGetLedger))
+	mux.HandleFunc("OPTIONS /ledger/{ledger}", withCORS(handleGetLedger))
+
+	mux.HandleFunc("GET /ledger/{ledger}/transactions", withCORS(handleGetLedgerTransactions))
+	mux.HandleFunc("OPTIONS /ledger/{ledger}/transactions", withCORS(handleGetLedgerTransactions))
+
+	mux.HandleFunc("POST /ledger/{ledger}/transactions", withAuth(handlePostLedgerTransaction))
 }
 
 func handleGetLedger(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	vars := mux.Vars(r)
-	ledger := vars["ledger"]
+	ledger := r.PathValue("ledger")
 	sinceQ := r.URL.Query().Get("since")
 	untilQ := r.URL.Query().Get("until")
 
@@ -78,8 +80,7 @@ func handleGetLedgerTransactions(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	vars := mux.Vars(r)
-	f := vars["ledger"]
+	f := r.PathValue("ledger")
 	limit, offset, malformedQueryErr := parsePaginationQueries(r)
 	if malformedQueryErr != nil {
 		writeError(w, http.StatusBadRequest, malformedQueryErr.Error())
@@ -105,8 +106,7 @@ func handlePostLedgerTransaction(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	vars := mux.Vars(r)
-	ledger := vars["ledger"]
+	ledger := r.PathValue("ledger")
 
 	// decode body
 	var req CreateTransactionRequest

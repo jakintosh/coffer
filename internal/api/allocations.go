@@ -6,14 +6,14 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"github.com/gorilla/mux"
 )
 
 func buildAllocationsRouter(
-	r *mux.Router,
+	mux *http.ServeMux,
 ) {
-	r.HandleFunc("", withCORS(handleGetAllocations)).Methods("GET", "OPTIONS")
-	r.HandleFunc("", withAuth(handlePutAllocations)).Methods("PUT")
+	mux.HandleFunc("GET /settings/allocations", withCORS(handleGetAllocations))
+	mux.HandleFunc("OPTIONS /settings/allocations", withCORS(handleGetAllocations))
+	mux.HandleFunc("PUT /settings/allocations", withAuth(handlePutAllocations))
 }
 
 func handleGetAllocations(
