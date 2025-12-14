@@ -11,21 +11,15 @@ type AllocationsStore interface {
 	SetAllocations([]AllocationRule) error
 }
 
-var allocStore AllocationsStore
-
-func SetAllocationsStore(s AllocationsStore) {
-	allocStore = s
-}
-
-func GetAllocations() (
+func (s *Service) GetAllocations() (
 	[]AllocationRule,
 	error,
 ) {
-	if allocStore == nil {
+	if s == nil || s.Allocations == nil {
 		return nil, ErrNoAllocStore
 	}
 
-	rules, err := allocStore.GetAllocations()
+	rules, err := s.Allocations.GetAllocations()
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
@@ -33,10 +27,10 @@ func GetAllocations() (
 	return rules, nil
 }
 
-func SetAllocations(
+func (s *Service) SetAllocations(
 	rules []AllocationRule,
 ) error {
-	if allocStore == nil {
+	if s == nil || s.Allocations == nil {
 		return ErrNoAllocStore
 	}
 
@@ -49,7 +43,7 @@ func SetAllocations(
 		return ErrInvalidAlloc
 	}
 
-	err := allocStore.SetAllocations(rules)
+	err := s.Allocations.SetAllocations(rules)
 	if err != nil {
 		return DatabaseError{err}
 	}

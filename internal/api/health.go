@@ -2,8 +2,6 @@ package api
 
 import (
 	"net/http"
-
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 )
 
 type HealthResponse struct {
@@ -11,18 +9,18 @@ type HealthResponse struct {
 	DB     string `json:"db"`
 }
 
-func buildHealthRouter(
+func (a *API) buildHealthRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /health", handleGetHealth)
+	mux.HandleFunc("GET /health", a.handleGetHealth)
 }
 
-func handleGetHealth(
+func (a *API) handleGetHealth(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
 	dbStatus := "ok"
-	if err := database.HealthCheck(); err != nil {
+	if err := a.svc.HealthCheck(); err != nil {
 		dbStatus = "unreachable"
 	}
 

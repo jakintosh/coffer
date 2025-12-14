@@ -12,12 +12,6 @@ type LedgerStore interface {
 	GetTransactions(ledger string, limit, offset int) ([]Transaction, error)
 }
 
-var ledgerStore LedgerStore
-
-func SetLedgerStore(p LedgerStore) {
-	ledgerStore = p
-}
-
 type LedgerSnapshot struct {
 	OpeningBalance int `json:"opening_balance"`
 	IncomingFunds  int `json:"incoming_funds"`
@@ -33,7 +27,7 @@ type Transaction struct {
 	Label  string    `json:"label"`
 }
 
-func AddTransaction(
+func (s *Service) AddTransaction(
 	id string,
 	ledger string,
 	amount int,
@@ -41,7 +35,7 @@ func AddTransaction(
 	label string,
 ) error {
 
-	if ledgerStore == nil {
+	if s == nil || s.Ledger == nil {
 		return ErrNoLedgerStore
 	}
 
@@ -49,7 +43,7 @@ func AddTransaction(
 		id = uuid.NewString()
 	}
 
-	err := ledgerStore.InsertTransaction(
+	err := s.Ledger.InsertTransaction(
 		id,
 		ledger,
 		amount,
@@ -63,7 +57,7 @@ func AddTransaction(
 	return nil
 }
 
-func GetSnapshot(
+func (s *Service) GetSnapshot(
 	ledger string,
 	since time.Time,
 	until time.Time,
@@ -71,11 +65,11 @@ func GetSnapshot(
 	*LedgerSnapshot,
 	error,
 ) {
-	if ledgerStore == nil {
+	if s == nil || s.Ledger == nil {
 		return nil, ErrNoLedgerStore
 	}
 
-	snapshot, err := ledgerStore.GetLedgerSnapshot(
+	snapshot, err := s.Ledger.GetLedgerSnapshot(
 		ledger,
 		since.Unix(),
 		until.Unix(),
@@ -87,7 +81,7 @@ func GetSnapshot(
 	return snapshot, nil
 }
 
-func GetTransactions(
+func (s *Service) GetTransactions(
 	ledger string,
 	limit int,
 	offset int,
@@ -95,7 +89,7 @@ func GetTransactions(
 	[]Transaction,
 	error,
 ) {
-	if ledgerStore == nil {
+	if s == nil || s.Ledger == nil {
 		return nil, ErrNoLedgerStore
 	}
 
@@ -104,7 +98,7 @@ func GetTransactions(
 	}
 	offset = max(offset, 0)
 
-	txs, err := ledgerStore.GetTransactions(
+	txs, err := s.Ledger.GetTransactions(
 		ledger,
 		limit,
 		offset,

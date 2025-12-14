@@ -4,12 +4,6 @@ type MetricsStore interface {
 	GetSubscriptionSummary() (*SubscriptionSummary, error)
 }
 
-var metricsStore MetricsStore
-
-func SetMetricsStore(store MetricsStore) {
-	metricsStore = store
-}
-
 type Metrics struct {
 	PatronsActive         int     `json:"patrons_active"`
 	MRRCents              int     `json:"mrr_cents"`
@@ -23,13 +17,13 @@ type SubscriptionSummary struct {
 	Tiers map[int]int
 }
 
-func GetMetrics() (*Metrics, error) {
+func (s *Service) GetMetrics() (*Metrics, error) {
 
-	if metricsStore == nil {
+	if s == nil || s.Metrics == nil {
 		return nil, ErrNoMetricsStore
 	}
 
-	sum, err := metricsStore.GetSubscriptionSummary()
+	sum, err := s.Metrics.GetSubscriptionSummary()
 	if err != nil {
 		return nil, DatabaseError{err}
 	}

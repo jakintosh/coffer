@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
 type ErrMalformedQuery struct {
@@ -25,14 +27,22 @@ type APIError struct {
 	Message string `json:"message"`
 }
 
-func BuildRouter() http.Handler {
+type API struct {
+	svc *service.Service
+}
+
+func New(svc *service.Service) *API {
+	return &API{svc: svc}
+}
+
+func (a *API) BuildRouter() http.Handler {
 	mux := http.NewServeMux()
-	buildHealthRouter(mux)
-	buildLedgerRouter(mux)
-	buildMetricsRouter(mux)
-	buildPatronsRouter(mux)
-	buildSettingsRouter(mux)
-	buildStripeRouter(mux)
+	a.buildHealthRouter(mux)
+	a.buildLedgerRouter(mux)
+	a.buildMetricsRouter(mux)
+	a.buildPatronsRouter(mux)
+	a.buildSettingsRouter(mux)
+	a.buildStripeRouter(mux)
 	return mux
 }
 

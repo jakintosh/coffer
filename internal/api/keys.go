@@ -3,22 +3,20 @@ package api
 import (
 	"net/http"
 	"strings"
-
-	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func buildKeysRouter(
+func (a *API) buildKeysRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("POST /settings/keys", withAuth(handlePostKey))
-	mux.HandleFunc("DELETE /settings/keys/{id}", withAuth(handleDeleteKey))
+	mux.HandleFunc("POST /settings/keys", a.withAuth(a.handlePostKey))
+	mux.HandleFunc("DELETE /settings/keys/{id}", a.withAuth(a.handleDeleteKey))
 }
 
-func handlePostKey(
+func (a *API) handlePostKey(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	token, err := service.CreateAPIKey()
+	token, err := a.svc.CreateAPIKey()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
@@ -26,7 +24,7 @@ func handlePostKey(
 	writeData(w, http.StatusCreated, token)
 }
 
-func handleDeleteKey(
+func (a *API) handleDeleteKey(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -36,7 +34,7 @@ func handleDeleteKey(
 		writeError(w, http.StatusBadRequest, "Missing Key ID")
 		return
 	}
-	if err := service.DeleteAPIKey(id); err != nil {
+	if err := a.svc.DeleteAPIKey(id); err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}

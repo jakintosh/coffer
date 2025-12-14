@@ -10,10 +10,11 @@ import (
 
 func TestGetAllocationsDefault(t *testing.T) {
 
-	util.SetupTestDB(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
 	// get allocations
-	rules, err := service.GetAllocations()
+	rules, err := svc.GetAllocations()
 	if err != nil {
 		t.Fatalf("failed to get allocations: %v", err)
 	}
@@ -29,10 +30,11 @@ func TestGetAllocationsDefault(t *testing.T) {
 
 func TestSetAllocationsInvalid(t *testing.T) {
 
-	util.SetupTestDB(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
 	// set invalid new rules
-	err := service.SetAllocations([]service.AllocationRule{
+	err := svc.SetAllocations([]service.AllocationRule{
 		{
 			ID:         "g",
 			LedgerName: "general",
@@ -46,7 +48,8 @@ func TestSetAllocationsInvalid(t *testing.T) {
 
 func TestSetAllocationsValid(t *testing.T) {
 
-	util.SetupTestDB(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
 	// set new rules
 	rules := []service.AllocationRule{
@@ -61,12 +64,12 @@ func TestSetAllocationsValid(t *testing.T) {
 			Percentage: 30,
 		},
 	}
-	if err := service.SetAllocations(rules); err != nil {
+	if err := svc.SetAllocations(rules); err != nil {
 		t.Fatalf("failed to set allocations: %v", err)
 	}
 
 	// get rules
-	allocations, err := service.GetAllocations()
+	allocations, err := svc.GetAllocations()
 	if err != nil {
 		t.Fatalf("failed to get allocations: %v", err)
 	}

@@ -4,17 +4,15 @@ import (
 	"io"
 	"log"
 	"net/http"
-
-	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func buildStripeRouter(
+func (a *API) buildStripeRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("POST /stripe/webhook", handleStripeWebhook)
+	mux.HandleFunc("POST /stripe/webhook", a.handleStripeWebhook)
 }
 
-func handleStripeWebhook(
+func (a *API) handleStripeWebhook(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -28,14 +26,18 @@ func handleStripeWebhook(
 	}
 
 	sig := r.Header.Get("Stripe-Signature")
-	event, err := service.ParseEvent(payload, sig)
+	event, err := a.svc.ParseEvent(payload, sig)
 	if err != nil {
 		log.Printf("Error verifying webhook signature: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	service.ProcessStripeEvent(event)
+	if err := a.svc.ProcessStripeEvent(event); err != nil {
+		log.Printf("Error processing stripe event: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }

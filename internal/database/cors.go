@@ -2,15 +2,17 @@ package database
 
 import "git.sr.ht/~jakintosh/coffer/internal/service"
 
-type DBCORSStore struct{}
+type DBCORSStore struct {
+	db *DB
+}
 
-func NewCORSStore() DBCORSStore { return DBCORSStore{} }
+func (db *DB) CORSStore() *DBCORSStore { return &DBCORSStore{db: db} }
 
-func (DBCORSStore) CountOrigins() (
+func (s *DBCORSStore) CountOrigins() (
 	int,
 	error,
 ) {
-	row := db.QueryRow(`
+	row := s.db.conn.QueryRow(`
 		SELECT COUNT(*)
 		FROM allowed_origin;
 	`)
@@ -21,11 +23,11 @@ func (DBCORSStore) CountOrigins() (
 	return count, nil
 }
 
-func (DBCORSStore) GetOrigins() (
+func (s *DBCORSStore) GetOrigins() (
 	[]service.AllowedOrigin,
 	error,
 ) {
-	rows, err := db.Query(`
+	rows, err := s.db.conn.Query(`
 		SELECT url
 		FROM allowed_origin
 		ORDER BY rowid;
@@ -46,10 +48,10 @@ func (DBCORSStore) GetOrigins() (
 	return origins, nil
 }
 
-func (DBCORSStore) SetOrigins(
+func (s *DBCORSStore) SetOrigins(
 	origins []service.AllowedOrigin,
 ) error {
-	tx, err := db.Begin()
+	tx, err := s.db.conn.Begin()
 	if err != nil {
 		return err
 	}

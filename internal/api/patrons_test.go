@@ -11,16 +11,16 @@ import (
 
 func TestListPatrons(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedCustomerData(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	util.SeedCustomerData(t, env.Service)
+	router := env.Router
 
 	url := "/patrons"
 	var response struct {
 		Error   api.APIError     `json:"error"`
 		Patrons []service.Patron `json:"data"`
 	}
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := get(router, url, &response, auth)
 
 	// validate result
@@ -46,16 +46,16 @@ func TestListPatrons(t *testing.T) {
 
 func TestListPatronsPagination(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedCustomerData(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	util.SeedCustomerData(t, env.Service)
+	router := env.Router
 
 	url := "/patrons?limit=2&offset=0"
 	var response struct {
 		Error   api.APIError     `json:"error"`
 		Patrons []service.Patron `json:"data"`
 	}
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := get(router, url, &response, auth)
 
 	// validate result
@@ -77,11 +77,11 @@ func TestListPatronsPagination(t *testing.T) {
 
 func TestListPatronsNegativeQuery(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	url := "/patrons?limit=-1&offset=-1"
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := get(router, url, nil, auth)
 
 	// validate result
@@ -92,11 +92,11 @@ func TestListPatronsNegativeQuery(t *testing.T) {
 
 func TestListPatronsInvalidQuery(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	url := "/patrons?limit=bad&offset=-1"
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := get(router, url, nil, auth)
 
 	// validate result

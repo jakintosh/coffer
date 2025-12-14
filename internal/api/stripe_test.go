@@ -17,8 +17,8 @@ func signPayload(body string) string {
 
 func TestWebhookOK(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	url := "/stripe/webhook"
 	body := `
@@ -39,8 +39,8 @@ func TestWebhookOK(t *testing.T) {
 
 func TestWebhookBadSignature(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	url := "/stripe/webhook"
 	body := `{}`

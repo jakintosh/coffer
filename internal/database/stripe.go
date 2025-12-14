@@ -2,11 +2,13 @@ package database
 
 import "database/sql"
 
-type DBStripeStore struct{}
+type DBStripeStore struct {
+	db *DB
+}
 
-func NewStripeStore() DBStripeStore { return DBStripeStore{} }
+func (db *DB) StripeStore() *DBStripeStore { return &DBStripeStore{db: db} }
 
-func (DBStripeStore) InsertCustomer(
+func (s *DBStripeStore) InsertCustomer(
 	id string,
 	created int64,
 	name *string,
@@ -18,7 +20,7 @@ func (DBStripeStore) InsertCustomer(
 		nameNullStr.Valid = true
 	}
 
-	_, err := db.Exec(`
+	_, err := s.db.conn.Exec(`
 		INSERT INTO customer (id, created, name)
 		VALUES(?1, ?2, ?3)
 		ON CONFLICT(id) DO UPDATE
@@ -31,14 +33,14 @@ func (DBStripeStore) InsertCustomer(
 	return err
 }
 
-func (DBStripeStore) InsertSubscription(
+func (s *DBStripeStore) InsertSubscription(
 	id string,
 	created int64,
 	customerID, status string,
 	amount int64,
 	currency string,
 ) error {
-	_, err := db.Exec(`
+	_, err := s.db.conn.Exec(`
 		INSERT INTO subscription (id, created, customer, status, amount, currency)
 		VALUES(?1, ?2, ?3, ?4, ?5, ?6)
 		ON CONFLICT(id) DO UPDATE
@@ -56,14 +58,14 @@ func (DBStripeStore) InsertSubscription(
 	return err
 }
 
-func (DBStripeStore) InsertPayment(
+func (s *DBStripeStore) InsertPayment(
 	id string,
 	created int64,
 	status, customer string,
 	amount int64,
 	currency string,
 ) error {
-	_, err := db.Exec(`
+	_, err := s.db.conn.Exec(`
 		INSERT INTO payment (id, created, status, customer, amount, currency)
 		VALUES(?1, ?2, ?3, ?4, ?5, ?6)
 		ON CONFLICT(id) DO UPDATE
@@ -79,14 +81,14 @@ func (DBStripeStore) InsertPayment(
 	return err
 }
 
-func (DBStripeStore) InsertPayout(
+func (s *DBStripeStore) InsertPayout(
 	id string,
 	created int64,
 	status string,
 	amount int64,
 	currency string,
 ) error {
-	_, err := db.Exec(`
+	_, err := s.db.conn.Exec(`
 		INSERT INTO payout (id, created, status, amount, currency)
 		VALUES(?1, ?2, ?3, ?4, ?5)
 		ON CONFLICT(id) DO UPDATE

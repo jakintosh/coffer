@@ -6,13 +6,12 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestGetAllocations(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	url := "/settings/allocations"
 	var response struct {
@@ -36,8 +35,8 @@ func TestGetAllocations(t *testing.T) {
 
 func TestPutAllocations(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// put allocations
 	url := "/settings/allocations"
@@ -53,7 +52,7 @@ func TestPutAllocations(t *testing.T) {
 			"percentage": 40
 		}
     ]`
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := put(router, url, body, nil, auth)
 
 	// validate result
@@ -88,8 +87,8 @@ func TestPutAllocations(t *testing.T) {
 
 func TestPutAllocationsBad(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// put invalid allocations
 	body := `
@@ -100,7 +99,7 @@ func TestPutAllocationsBad(t *testing.T) {
 			"percentage": 10
 		}
 	]`
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	response := api.APIResponse{}
 	result := put(router, "/settings/allocations", body, &response, auth)
 

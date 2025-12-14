@@ -5,13 +5,12 @@ import (
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestHealthOK(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// get health
 	url := "/health"

@@ -2,10 +2,10 @@ package api
 
 import "net/http"
 
-func buildSettingsRouter(
+func (a *API) buildSettingsRouter(
 	mux *http.ServeMux,
 ) {
-	buildAllocationsRouter(mux)
-	buildCORSRouter(mux)
-	buildKeysRouter(mux)
+	a.buildAllocationsRouter(mux)
+	a.buildCORSRouter(mux)
+	a.buildKeysRouter(mux)
 }

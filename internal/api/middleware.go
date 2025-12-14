@@ -9,7 +9,7 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func withAuth(
+func (a *API) withAuth(
 	next http.HandlerFunc,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +22,7 @@ func withAuth(
 			return
 		}
 
-		ok, err := service.VerifyAPIKey(token)
+		ok, err := a.svc.VerifyAPIKey(token)
 		if err != nil {
 			if errors.Is(err, service.ErrNoKeyStore) {
 				log.Printf("missing key store")
@@ -41,7 +41,7 @@ func withAuth(
 	}
 }
 
-func withCORS(
+func (a *API) withCORS(
 	next http.HandlerFunc,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func withCORS(
 		allowed := false
 		var err error
 		if origin != "" {
-			allowed, err = service.IsAllowedOrigin(origin)
+			allowed, err = a.svc.IsAllowedOrigin(origin)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "Internal Server Error")
 				return

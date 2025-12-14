@@ -4,14 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestEmptySubscriptionSummary(t *testing.T) {
 
-	util.SetupTestDB(t)
-	store := database.NewMetricsStore()
+	env := util.SetupTestEnv(t)
+	store := env.DB.MetricsStore()
 
 	// no data → zero
 	sum, err := store.GetSubscriptionSummary()
@@ -27,9 +26,9 @@ func TestEmptySubscriptionSummary(t *testing.T) {
 
 func TestSimpleSubscriptionSummary(t *testing.T) {
 
-	util.SetupTestDB(t)
-	metricsStore := database.NewMetricsStore()
-	stripeStore := database.NewStripeStore()
+	env := util.SetupTestEnv(t)
+	metricsStore := env.DB.MetricsStore()
+	stripeStore := env.DB.StripeStore()
 
 	// insert one active USD subscription @ $5.00
 	if err := stripeStore.InsertSubscription("s1", time.Now().Unix(), "c1", "active", 500, "usd"); err != nil {
@@ -49,9 +48,9 @@ func TestSimpleSubscriptionSummary(t *testing.T) {
 
 func TestSubscriptionSummaryFilters(t *testing.T) {
 
-	util.SetupTestDB(t)
-	metricsStore := database.NewMetricsStore()
-	stripeStore := database.NewStripeStore()
+	env := util.SetupTestEnv(t)
+	metricsStore := env.DB.MetricsStore()
+	stripeStore := env.DB.StripeStore()
 
 	now := time.Now().Unix()
 

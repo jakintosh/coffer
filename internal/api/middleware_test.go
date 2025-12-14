@@ -19,15 +19,16 @@ func (errorKeyStore) InsertKey(string, string, string) error  { return nil }
 
 func TestWithAuthSuccess(t *testing.T) {
 
-	util.SetupTestDB(t)
-	token, err := service.CreateAPIKey()
+	env := util.SetupTestEnv(t)
+	token, err := env.Service.CreateAPIKey()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// setup middleware func
 	called := false
-	handler := withAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service)
+	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})
@@ -50,7 +51,8 @@ func TestWithAuthSuccess(t *testing.T) {
 func TestWithAuthMissing(t *testing.T) {
 
 	// setup middleware func
-	handler := withAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(&service.Service{})
+	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -67,10 +69,11 @@ func TestWithAuthMissing(t *testing.T) {
 
 func TestWithAuthInvalid(t *testing.T) {
 
-	util.SetupTestDB(t)
+	env := util.SetupTestEnv(t)
 
 	// setup middleware func
-	handler := withAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service)
+	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -91,7 +94,8 @@ func TestWithAuthError(t *testing.T) {
 	// no key store setup — auth will fail with 500
 
 	// setup middleware func
-	handler := withAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(&service.Service{})
+	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 

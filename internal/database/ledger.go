@@ -18,18 +18,20 @@ type DBTransaction struct {
 	Amount  int
 }
 
-type DBLedgerStore struct{}
+type DBLedgerStore struct {
+	db *DB
+}
 
-func NewLedgerStore() DBLedgerStore { return DBLedgerStore{} }
+func (db *DB) LedgerStore() *DBLedgerStore { return &DBLedgerStore{db: db} }
 
-func (DBLedgerStore) InsertTransaction(
+func (s *DBLedgerStore) InsertTransaction(
 	id string,
 	ledger string,
 	amount int,
 	date int64,
 	label string,
 ) error {
-	_, err := db.Exec(`
+	_, err := s.db.conn.Exec(`
 		INSERT INTO tx (id, created, date, amount, ledger, label)
 		VALUES(?1, unixepoch(), ?2, ?3, ?4, ?5)
 		ON CONFLICT(id) DO UPDATE
@@ -48,7 +50,7 @@ func (DBLedgerStore) InsertTransaction(
 	return err
 }
 
-func (DBLedgerStore) GetLedgerSnapshot(
+func (s *DBLedgerStore) GetLedgerSnapshot(
 	ledger string,
 	since int64,
 	until int64,
@@ -61,7 +63,7 @@ func (DBLedgerStore) GetLedgerSnapshot(
 		incoming int
 		outgoing int
 	)
-	row := db.QueryRow(`
+	row := s.db.conn.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
 		WHERE ledger=?1
@@ -74,7 +76,7 @@ func (DBLedgerStore) GetLedgerSnapshot(
 		return nil, fmt.Errorf("failed to query opening balance: %w", err)
 	}
 
-	row = db.QueryRow(`
+	row = s.db.conn.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
 		WHERE ledger=?1
@@ -90,7 +92,7 @@ func (DBLedgerStore) GetLedgerSnapshot(
 		return nil, fmt.Errorf("failed to query incoming funds: %w", err)
 	}
 
-	row = db.QueryRow(`
+	row = s.db.conn.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
 		WHERE ledger=?1
@@ -115,7 +117,7 @@ func (DBLedgerStore) GetLedgerSnapshot(
 	return snapshot, nil
 }
 
-func (DBLedgerStore) GetTransactions(
+func (s *DBLedgerStore) GetTransactions(
 	ledger string,
 	limit int,
 	offset int,
@@ -123,7 +125,7 @@ func (DBLedgerStore) GetTransactions(
 	[]service.Transaction,
 	error,
 ) {
-	rows, err := db.Query(`
+	rows, err := s.db.conn.Query(`
 		SELECT id, amount, date, label
 		FROM tx
 		WHERE ledger=?1

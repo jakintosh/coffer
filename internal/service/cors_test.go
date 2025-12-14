@@ -3,25 +3,24 @@ package service_test
 import (
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestSetAndGetAllowedOrigins(t *testing.T) {
 
-	util.SetupTestDB(t)
-	service.SetCORSStore(database.NewCORSStore())
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
 	origins := []service.AllowedOrigin{
 		{URL: "http://one"},
 		{URL: "https://two"},
 	}
-	if err := service.SetAllowedOrigins(origins); err != nil {
+	if err := svc.SetAllowedOrigins(origins); err != nil {
 		t.Fatal(err)
 	}
 
-	list, err := service.GetAllowedOrigins()
+	list, err := svc.GetAllowedOrigins()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,13 +31,13 @@ func TestSetAndGetAllowedOrigins(t *testing.T) {
 
 func TestSetAllowedOriginsInvalid(t *testing.T) {
 
-	util.SetupTestDB(t)
-	service.SetCORSStore(database.NewCORSStore())
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
 	origins := []service.AllowedOrigin{
 		{URL: "ftp://bad"},
 	}
-	err := service.SetAllowedOrigins(origins)
+	err := svc.SetAllowedOrigins(origins)
 	if err == nil {
 		t.Fatalf("expected validation error")
 	}

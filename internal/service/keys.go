@@ -16,23 +16,17 @@ type KeyStore interface {
 	InsertKey(id string, salt string, hash string) error
 }
 
-var keyStore KeyStore
-
-func SetKeyStore(s KeyStore) {
-	keyStore = s
-}
-
 // InitKeys exists to check if the keystore is empty, and if so, to populate it with
 // a bootstrap key provided by the apiKey parameter. it exits early if there are any
 // existing keys in the store
-func InitKeys(
+func (s *Service) InitKeys(
 	apiKey string,
 ) error {
-	if keyStore == nil {
+	if s == nil || s.Keys == nil {
 		return ErrNoKeyStore
 	}
 
-	count, err := keyStore.CountKeys()
+	count, err := s.Keys.CountKeys()
 	if err != nil {
 		return DatabaseError{err}
 	}
@@ -58,18 +52,18 @@ func InitKeys(
 		return err
 	}
 
-	if err := registerKey(id, salt, secret); err != nil {
+	if err := s.registerKey(id, salt, secret); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func CreateAPIKey() (
+func (s *Service) CreateAPIKey() (
 	string,
 	error,
 ) {
-	if keyStore == nil {
+	if s == nil || s.Keys == nil {
 		return "", ErrNoKeyStore
 	}
 
@@ -88,7 +82,7 @@ func CreateAPIKey() (
 
 	id := hex.EncodeToString(idBytes)
 	secret := hex.EncodeToString(secretBytes)
-	if err := registerKey(id, saltBytes, secretBytes); err != nil {
+	if err := s.registerKey(id, saltBytes, secretBytes); err != nil {
 		return "", err
 	}
 
@@ -96,25 +90,25 @@ func CreateAPIKey() (
 	return token, nil
 }
 
-func DeleteAPIKey(
+func (s *Service) DeleteAPIKey(
 	id string,
 ) error {
-	if keyStore == nil {
+	if s == nil || s.Keys == nil {
 		return ErrNoKeyStore
 	}
-	if err := keyStore.DeleteKey(id); err != nil {
+	if err := s.Keys.DeleteKey(id); err != nil {
 		return DatabaseError{err}
 	}
 	return nil
 }
 
-func VerifyAPIKey(
+func (s *Service) VerifyAPIKey(
 	token string,
 ) (
 	bool,
 	error,
 ) {
-	if keyStore == nil {
+	if s == nil || s.Keys == nil {
 		return false, ErrNoKeyStore
 	}
 
@@ -127,7 +121,7 @@ func VerifyAPIKey(
 	secretHex := parts[1]
 
 	// get salt and hash
-	saltHex, hashHex, err := keyStore.FetchKey(id)
+	saltHex, hashHex, err := s.Keys.FetchKey(id)
 	if err != nil {
 		// couldn't fetch the key for some reason
 		return false, DatabaseError{err}
@@ -164,7 +158,7 @@ func VerifyAPIKey(
 	return false, nil
 }
 
-func registerKey(
+func (s *Service) registerKey(
 	id string,
 	saltBytes []byte,
 	secretBytes []byte,
@@ -174,7 +168,7 @@ func registerKey(
 	salt := hex.EncodeToString(saltBytes)
 	hash := hex.EncodeToString(hashBytes[:])
 
-	if err := keyStore.InsertKey(
+	if err := s.Keys.InsertKey(
 		id,
 		salt,
 		hash,

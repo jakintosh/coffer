@@ -8,12 +8,6 @@ type PatronStore interface {
 	GetCustomers(limit, offset int) ([]Patron, error)
 }
 
-var patronStore PatronStore
-
-func SetPatronsStore(store PatronStore) {
-	patronStore = store
-}
-
 type Patron struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -21,14 +15,14 @@ type Patron struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func ListPatrons(
+func (s *Service) ListPatrons(
 	limit int,
 	offset int,
 ) (
 	[]Patron,
 	error,
 ) {
-	if patronStore == nil {
+	if s == nil || s.Patrons == nil {
 		return nil, ErrNoPatronStore
 	}
 
@@ -37,7 +31,7 @@ func ListPatrons(
 	}
 	offset = max(offset, 0)
 
-	patrons, err := patronStore.GetCustomers(limit, offset)
+	patrons, err := s.Patrons.GetCustomers(limit, offset)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}

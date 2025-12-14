@@ -3,61 +3,72 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	_ "modernc.org/sqlite"
 )
 
-var db *sql.DB
+type Options struct {
+	WAL bool
+}
 
-func Init(
+type DB struct {
+	conn *sql.DB
+}
+
+func Open(
 	path string,
-	wal bool,
-) {
-	var err error
-	db, err = sql.Open("sqlite", path)
+	opts Options,
+) (*DB, error) {
+	conn, err := sql.Open("sqlite", path)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v\n", err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// disallow multiple connections for serial writes
-	db.SetMaxOpenConns(1)
+	conn.SetMaxOpenConns(1)
 
-	// foreign keys are not yet used in the database
-	// _, err = db.Exec("PRAGMA foreign_keys = ON;")
-	// if err != nil {
-	// 	log.Fatalf("could not enable foreign keys: %v", err)
-	// }
-
-	if wal {
+	if opts.WAL {
 		// enable write ahead logging mode
-		_, err = db.Exec("PRAGMA journal_mode = WAL;")
-		if err != nil {
-			log.Fatalf("could not enable WAL mode: %v", err)
+		if _, err = conn.Exec("PRAGMA journal_mode = WAL;"); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("could not enable WAL mode: %w", err)
 		}
 
 		// increase timeout so writes can finish
-		_, err = db.Exec("PRAGMA busy_timeout = 5000;")
-		if err != nil {
-			log.Fatalf("could not set busy timeout: %v", err)
+		if _, err = conn.Exec("PRAGMA busy_timeout = 5000;"); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("could not set busy timeout: %w", err)
 		}
 	}
 
-	if err := migrate(db); err != nil {
-		log.Fatalf("could not migrate database: %v", err)
+	if err := migrate(conn); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("could not migrate database: %w", err)
 	}
 
-	// ensure defailt data
-	ensureDefaultAllocations()
+	db := &DB{conn: conn}
+	if err := ensureDefaultAllocations(conn); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	return db, nil
 }
 
-func HealthCheck() error {
+func (db *DB) Close() error {
+	if db == nil || db.conn == nil {
+		return nil
+	}
+	return db.conn.Close()
+}
 
-	if db == nil {
+func (db *DB) HealthCheck() error {
+
+	if db == nil || db.conn == nil {
 		return fmt.Errorf("db not initialized")
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.conn.Begin()
 	if err != nil {
 		return err
 	}
@@ -85,4 +96,11 @@ func HealthCheck() error {
 	}
 
 	return nil
+}
+
+func (db *DB) connOrNil() *sql.DB {
+	if db == nil {
+		return nil
+	}
+	return db.conn
 }

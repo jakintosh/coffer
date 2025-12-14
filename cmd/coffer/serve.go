@@ -73,26 +73,39 @@ var serveCmd = &args.Command{
 		endpointSecret := loadCredential("endpoint_secret", credsDir)
 		apiKey := loadCredential("api_key", credsDir)
 
-		database.Init(dbPath, true)
+		db, err := database.Open(dbPath, database.Options{WAL: true})
+		if err != nil {
+			log.Fatalf("failed to open database: %v", err)
+		}
+		defer db.Close()
 
-		service.SetAllocationsStore(database.NewAllocationsStore())
-		service.SetCORSStore(database.NewCORSStore())
-		service.SetKeyStore(database.NewKeyStore())
-		service.SetLedgerStore(database.NewLedgerStore())
-		service.SetMetricsStore(database.NewMetricsStore())
-		service.SetPatronsStore(database.NewPatronStore())
-		service.SetStripeStore(database.NewStripeStore())
+		stores := service.Stores{
+			Allocations: db.AllocationsStore(),
+			CORS:        db.CORSStore(),
+			Keys:        db.KeyStore(),
+			Ledger:      db.LedgerStore(),
+			Metrics:     db.MetricsStore(),
+			Patrons:     db.PatronStore(),
+			Stripe:      db.StripeStore(),
+		}
 
-		service.InitStripe(stripeKey, endpointSecret, false)
-		if err := service.InitKeys(apiKey); err != nil {
+		stripeProcessor := service.NewStripeProcessor(stripeKey, endpointSecret, false)
+		svc := service.New(stores, service.Options{
+			StripeProcessor: stripeProcessor,
+			HealthCheck:     db.HealthCheck,
+		})
+		stripeProcessor.Start()
+		defer stripeProcessor.Stop()
+
+		if err := svc.InitKeys(apiKey); err != nil {
 			log.Fatalf("failed to init keys: %v", err)
 		}
 
-		if err := service.InitCORS(origins); err != nil {
+		if err := svc.InitCORS(origins); err != nil {
 			log.Fatalf("failed to init cors: %v", err)
 		}
 
-		apiHandler := api.BuildRouter()
+		apiHandler := api.New(svc).BuildRouter()
 		mux := http.NewServeMux()
 		mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))
 

@@ -3,16 +3,15 @@ package database_test
 import (
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestGetCustomers(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedCustomerData(t)
+	env := util.SetupTestEnv(t)
+	util.SeedCustomerData(t, env.Service)
 
-	store := database.NewPatronStore()
+	store := env.DB.PatronStore()
 	patrons, err := store.GetCustomers(2, 0)
 	if err != nil {
 		t.Fatalf("GetCustomers: %v", err)

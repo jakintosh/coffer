@@ -8,19 +8,19 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func buildAllocationsRouter(
+func (a *API) buildAllocationsRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /settings/allocations", withCORS(handleGetAllocations))
-	mux.HandleFunc("OPTIONS /settings/allocations", withCORS(handleGetAllocations))
-	mux.HandleFunc("PUT /settings/allocations", withAuth(handlePutAllocations))
+	mux.HandleFunc("GET /settings/allocations", a.withCORS(a.handleGetAllocations))
+	mux.HandleFunc("OPTIONS /settings/allocations", a.withCORS(a.handleGetAllocations))
+	mux.HandleFunc("PUT /settings/allocations", a.withAuth(a.handlePutAllocations))
 }
 
-func handleGetAllocations(
+func (a *API) handleGetAllocations(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	rules, err := service.GetAllocations()
+	rules, err := a.svc.GetAllocations()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
@@ -28,7 +28,7 @@ func handleGetAllocations(
 	writeData(w, http.StatusOK, rules)
 }
 
-func handlePutAllocations(
+func (a *API) handlePutAllocations(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -38,7 +38,7 @@ func handlePutAllocations(
 		return
 	}
 
-	if err := service.SetAllocations(rules); err != nil {
+	if err := a.svc.SetAllocations(rules); err != nil {
 		if errors.Is(err, service.ErrInvalidAlloc) {
 			writeError(w, http.StatusBadRequest, "Invalid Allocation Percentage")
 		} else {

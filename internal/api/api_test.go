@@ -10,6 +10,7 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 type httpResult struct {
@@ -22,17 +23,22 @@ type header struct {
 	value string
 }
 
-func setupCORS() {
-	service.SetAllowedOrigins([]service.AllowedOrigin{{URL: "http://test-default"}})
+func setupCORS(t *testing.T, env *util.TestEnv) {
+	if err := env.Service.SetAllowedOrigins([]service.AllowedOrigin{{URL: "http://test-default"}}); err != nil {
+		t.Fatalf("failed to set cors: %v", err)
+	}
 }
 
-func setupRouter() http.Handler {
-	return api.BuildRouter()
+func setupRouter(t *testing.T) *util.TestEnv {
+	t.Helper()
+	env := util.SetupTestEnv(t)
+	env.Router = api.New(env.Service).BuildRouter()
+	return env
 }
 
-func makeTestAuthHeader(t *testing.T) header {
+func makeTestAuthHeader(t *testing.T, env *util.TestEnv) header {
 
-	token, err := service.CreateAPIKey()
+	token, err := env.Service.CreateAPIKey()
 	if err != nil {
 		t.Fatal(err)
 	}

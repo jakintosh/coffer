@@ -1,43 +1,49 @@
 package database
 
 import (
-	"log"
+	"database/sql"
+	"fmt"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-type DBAllocationsStore struct{}
+type DBAllocationsStore struct {
+	db *DB
+}
 
-func NewAllocationsStore() DBAllocationsStore { return DBAllocationsStore{} }
+func (db *DB) AllocationsStore() *DBAllocationsStore {
+	return &DBAllocationsStore{db: db}
+}
 
-func ensureDefaultAllocations() {
+func ensureDefaultAllocations(conn *sql.DB) error {
 
 	// get current allocation count
 	var count int
-	row := db.QueryRow(`
+	row := conn.QueryRow(`
 		SELECT COUNT(*)
 		FROM allocation;
 	`)
 	if err := row.Scan(&count); err != nil {
-		log.Fatalf("failed to check allocation table: %v", err)
+		return fmt.Errorf("failed to check allocation table: %w", err)
 	}
 
 	// if zero, insert default
 	if count == 0 {
-		if _, err := db.Exec(`
+		if _, err := conn.Exec(`
 			INSERT INTO allocation (id, ledger, percentage)
 			VALUES ('general', 'general', 100);
 		`); err != nil {
-			log.Fatalf("failed to insert default allocation: %v", err)
+			return fmt.Errorf("failed to insert default allocation: %w", err)
 		}
 	}
+	return nil
 }
 
-func (DBAllocationsStore) GetAllocations() (
+func (s *DBAllocationsStore) GetAllocations() (
 	[]service.AllocationRule,
 	error,
 ) {
-	rows, err := db.Query(`
+	rows, err := s.db.conn.Query(`
 		SELECT id, ledger, percentage
 		FROM allocation
 		ORDER BY rowid;
@@ -63,11 +69,11 @@ func (DBAllocationsStore) GetAllocations() (
 	return allocations, nil
 }
 
-func (DBAllocationsStore) SetAllocations(
+func (s *DBAllocationsStore) SetAllocations(
 	rules []service.AllocationRule,
 ) error {
 	// begin db transaction
-	tx, err := db.Begin()
+	tx, err := s.db.conn.Begin()
 	if err != nil {
 		return err
 	}

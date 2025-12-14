@@ -4,22 +4,20 @@ import (
 	"strings"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
-	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestCreateAndVerifyKey(t *testing.T) {
 
-	util.SetupTestDB(t)
-	service.SetKeyStore(database.NewKeyStore())
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
-	token, err := service.CreateAPIKey()
+	token, err := svc.CreateAPIKey()
 	if err != nil {
 		t.Fatalf("failed to create API key: %v", err)
 	}
 
-	ok, err := service.VerifyAPIKey(token)
+	ok, err := svc.VerifyAPIKey(token)
 	if err != nil {
 		t.Fatalf("failed to verify API key: %v", err)
 	}
@@ -27,7 +25,7 @@ func TestCreateAndVerifyKey(t *testing.T) {
 		t.Fatalf("expected key to verify")
 	}
 
-	ok, err = service.VerifyAPIKey(token + "deadbeef")
+	ok, err = svc.VerifyAPIKey(token + "deadbeef")
 	if err != nil {
 		t.Fatalf("failed to verify API key: %v", err)
 	}
@@ -38,20 +36,20 @@ func TestCreateAndVerifyKey(t *testing.T) {
 
 func TestDeleteAPIKey(t *testing.T) {
 
-	util.SetupTestDB(t)
-	service.SetKeyStore(database.NewKeyStore())
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
-	token, err := service.CreateAPIKey()
+	token, err := svc.CreateAPIKey()
 	if err != nil {
 		t.Fatalf("failed to create API key: %v", err)
 	}
 
 	id := strings.Split(token, ".")[0]
-	if err := service.DeleteAPIKey(id); err != nil {
+	if err := svc.DeleteAPIKey(id); err != nil {
 		t.Fatalf("failed to delete API key: %v", err)
 	}
 
-	_, err = service.VerifyAPIKey(token)
+	_, err = svc.VerifyAPIKey(token)
 	if err == nil {
 		t.Fatalf("VerifyAPIKey should fail for deleted key")
 	}

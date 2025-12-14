@@ -6,21 +6,20 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestGetCORS(t *testing.T) {
 
-	util.SetupTestDB(t)
-	setupCORS()
-	router := setupRouter()
+	env := setupRouter(t)
+	setupCORS(t, env)
+	router := env.Router
 
 	// get cors domains
 	var response struct {
 		Error   api.APIError            `json:"error"`
 		Origins []service.AllowedOrigin `json:"data"`
 	}
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := get(router, "/settings/cors", &response, auth)
 
 	// validate result
@@ -36,9 +35,9 @@ func TestGetCORS(t *testing.T) {
 
 func TestPutCORS(t *testing.T) {
 
-	util.SetupTestDB(t)
-	setupCORS()
-	router := setupRouter()
+	env := setupRouter(t)
+	setupCORS(t, env)
+	router := env.Router
 
 	// put cors domains
 	body := `
@@ -46,7 +45,7 @@ func TestPutCORS(t *testing.T) {
 		{ "url": "http://test-default" },
 		{ "url":"https://test-second" }
 	]`
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := put(router, "/settings/cors", body, nil, auth)
 
 	// validate result
@@ -74,16 +73,16 @@ func TestPutCORS(t *testing.T) {
 
 func TestPutCORSBad(t *testing.T) {
 
-	util.SetupTestDB(t)
-	setupCORS()
-	router := setupRouter()
+	env := setupRouter(t)
+	setupCORS(t, env)
+	router := env.Router
 
 	// put bad cors domain
 	body := `
 	[
 		{"url":"ftp://bad"}
 	]`
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := put(router, "/settings/cors", body, nil, auth)
 
 	// validate result

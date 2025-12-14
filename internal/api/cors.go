@@ -8,18 +8,18 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func buildCORSRouter(
+func (a *API) buildCORSRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /settings/cors", withAuth(handleGetCORS))
-	mux.HandleFunc("PUT /settings/cors", withAuth(handlePutCORS))
+	mux.HandleFunc("GET /settings/cors", a.withAuth(a.handleGetCORS))
+	mux.HandleFunc("PUT /settings/cors", a.withAuth(a.handlePutCORS))
 }
 
-func handleGetCORS(
+func (a *API) handleGetCORS(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	origins, err := service.GetAllowedOrigins()
+	origins, err := a.svc.GetAllowedOrigins()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
@@ -27,7 +27,7 @@ func handleGetCORS(
 	writeData(w, http.StatusOK, origins)
 }
 
-func handlePutCORS(
+func (a *API) handlePutCORS(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -37,7 +37,7 @@ func handlePutCORS(
 		return
 	}
 
-	if err := service.SetAllowedOrigins(origins); err != nil {
+	if err := a.svc.SetAllowedOrigins(origins); err != nil {
 		if errors.Is(err, service.ErrInvalidOrigin) {
 			writeError(w, http.StatusBadRequest, "Invalid Origin URL")
 		} else {

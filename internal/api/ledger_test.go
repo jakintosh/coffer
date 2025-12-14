@@ -13,8 +13,8 @@ import (
 
 func TestCreateTransaction(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -24,7 +24,7 @@ func TestCreateTransaction(t *testing.T) {
 		"label": "base",
 		"amount": 50
 	}`
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	var response struct {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
@@ -40,8 +40,8 @@ func TestCreateTransaction(t *testing.T) {
 
 func TestCreateTransactionBadInput(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -51,7 +51,7 @@ func TestCreateTransactionBadInput(t *testing.T) {
 		"label": "x",
 		"amount": "a lot"
 	}`
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	var response struct {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
@@ -67,9 +67,9 @@ func TestCreateTransactionBadInput(t *testing.T) {
 
 func TestGetSnapshot(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedTransactionData(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
+	util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	url := "/ledger/general"
@@ -102,9 +102,9 @@ func TestGetSnapshot(t *testing.T) {
 
 func TestGetSnapshotWithParams(t *testing.T) {
 
-	util.SetupTestDB(t)
-	start, end := util.SeedTransactionData(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
+	start, end := util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	startQ := start.Format("2006-01-02")
@@ -139,8 +139,8 @@ func TestGetSnapshotWithParams(t *testing.T) {
 
 func TestGetSnapshotBadParams(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// get snapshot
 	url := "/ledger/general?since=bad-date&until=2025-01-01"
@@ -155,9 +155,9 @@ func TestGetSnapshotBadParams(t *testing.T) {
 
 func TestGetTransactions(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedTransactionData(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
+	util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	url := "/ledger/general/transactions"
@@ -182,9 +182,9 @@ func TestGetTransactions(t *testing.T) {
 
 func TestGetTransactionsPaginated(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedTransactionData(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
+	util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	url := "/ledger/general/transactions?offset=1"
@@ -223,8 +223,8 @@ func TestGetTransactionsPaginated(t *testing.T) {
 
 func TestGetTransactionsBadQuery(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// get snapshot
 	url := "/ledger/general/transactions?limit=bad&offset=-1"

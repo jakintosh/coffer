@@ -4,15 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestLedgerSnapshotAndTransactions(t *testing.T) {
 
-	util.SetupTestDB(t)
-	start, end := util.SeedTransactionData(t)
-	store := database.NewLedgerStore()
+	env := util.SetupTestEnv(t)
+	start, end := util.SeedTransactionData(t, env.Service)
+	store := env.DB.LedgerStore()
 
 	// snapshot from start to end
 	snapStart := start.Add(time.Second).Unix()
@@ -43,9 +42,9 @@ func TestLedgerSnapshotAndTransactions(t *testing.T) {
 
 func TestLedgerTransactionsLimitOffset(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedTransactionData(t)
-	store := database.NewLedgerStore()
+	env := util.SetupTestEnv(t)
+	util.SeedTransactionData(t, env.Service)
+	store := env.DB.LedgerStore()
 
 	txs, err := store.GetTransactions("general", 1, 1)
 	if err != nil {

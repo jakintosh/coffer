@@ -2,22 +2,20 @@ package api
 
 import (
 	"net/http"
-
-	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func buildMetricsRouter(
+func (a *API) buildMetricsRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /metrics", withCORS(handleGetMetrics))
-	mux.HandleFunc("OPTIONS /metrics", withCORS(handleGetMetrics))
+	mux.HandleFunc("GET /metrics", a.withCORS(a.handleGetMetrics))
+	mux.HandleFunc("OPTIONS /metrics", a.withCORS(a.handleGetMetrics))
 }
 
-func handleGetMetrics(
+func (a *API) handleGetMetrics(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	metrics, err := service.GetMetrics()
+	metrics, err := a.svc.GetMetrics()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 	} else {

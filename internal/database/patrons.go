@@ -14,18 +14,20 @@ type DBCustomer struct {
 	Updated sql.NullInt64
 }
 
-type PatronStore struct{}
+type PatronStore struct {
+	db *DB
+}
 
-func NewPatronStore() PatronStore { return PatronStore{} }
+func (db *DB) PatronStore() *PatronStore { return &PatronStore{db: db} }
 
-func (PatronStore) GetCustomers(
+func (s *PatronStore) GetCustomers(
 	limit int,
 	offset int,
 ) (
 	[]service.Patron,
 	error,
 ) {
-	rows, err := db.Query(`
+	rows, err := s.db.conn.Query(`
 		SELECT id, name, created, updated
 		FROM customer
 		ORDER BY COALESCE(updated, created) DESC

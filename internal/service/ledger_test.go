@@ -11,14 +11,15 @@ import (
 
 func TestAddTransactionSuccess(t *testing.T) {
 
-	util.SetupTestDB(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 	t1 := util.MakeDate(2025, 1, 1)
 
-	if err := service.AddTransaction("", "general", 100, t1, "test"); err != nil {
+	if err := svc.AddTransaction("", "general", 100, t1, "test"); err != nil {
 		t.Fatalf("add transaction: %v", err)
 	}
 
-	txs, err := service.GetTransactions("general", 10, 0)
+	txs, err := svc.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +33,8 @@ func TestAddTransactionNoStore(t *testing.T) {
 	// no db/store setup — will fail to run service
 
 	t1 := util.MakeDate(2025, 1, 1)
-	err := service.AddTransaction("", "gen", 1, t1, "")
+	svc := &service.Service{}
+	err := svc.AddTransaction("", "gen", 1, t1, "")
 	if !errors.Is(err, service.ErrNoLedgerStore) {
 		t.Fatalf("expected ErrNoLedgerStore, got %v", err)
 	}
@@ -40,10 +42,11 @@ func TestAddTransactionNoStore(t *testing.T) {
 
 func TestGetSnapshotSuccess(t *testing.T) {
 
-	util.SetupTestDB(t)
-	start, end := util.SeedTransactionData(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
+	start, end := util.SeedTransactionData(t, svc)
 
-	snap, err := service.GetSnapshot("general", start.Add(time.Second), end)
+	snap, err := svc.GetSnapshot("general", start.Add(time.Second), end)
 	if err != nil {
 		t.Fatalf("GetSnapshot: %v", err)
 	}
@@ -63,10 +66,11 @@ func TestGetSnapshotSuccess(t *testing.T) {
 
 func TestGetTransactionsSuccess(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedTransactionData(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
+	util.SeedTransactionData(t, svc)
 
-	txs, err := service.GetTransactions("general", 10, 0)
+	txs, err := svc.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatalf("GetTransactions: %v", err)
 	}
@@ -80,11 +84,12 @@ func TestGetTransactionsSuccess(t *testing.T) {
 
 func TestGetTransactionsNegativePagination(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedTransactionData(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
+	util.SeedTransactionData(t, svc)
 
 	// pass negative pagination values
-	txs, err := service.GetTransactions("general", -5, -3)
+	txs, err := svc.GetTransactions("general", -5, -3)
 	if err != nil {
 		t.Fatalf("GetTransactions: %v", err)
 	}

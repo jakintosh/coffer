@@ -2,17 +2,15 @@ package api
 
 import (
 	"net/http"
-
-	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-func buildPatronsRouter(
+func (a *API) buildPatronsRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /patrons", withAuth(handleListPatrons))
+	mux.HandleFunc("GET /patrons", a.withAuth(a.handleListPatrons))
 }
 
-func handleListPatrons(
+func (a *API) handleListPatrons(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -22,7 +20,7 @@ func handleListPatrons(
 		return
 	}
 
-	patrons, err := service.ListPatrons(limit, offset)
+	patrons, err := a.svc.ListPatrons(limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 	} else {

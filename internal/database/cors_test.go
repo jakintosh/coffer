@@ -5,13 +5,18 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestCORSStore(t *testing.T) {
 
-	util.SetupTestDB(t)
-	store := database.NewCORSStore()
+	db, err := database.Open(":memory:", database.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+	store := db.CORSStore()
 
 	count, err := store.CountOrigins()
 	if err != nil {

@@ -3,18 +3,17 @@ package service_test
 import (
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestCreatePaymentDefault(t *testing.T) {
 
-	util.SetupTestDB(t)
-	service.SetStripeStore(database.NewStripeStore())
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
 	ts := util.MakeDateUnix(2025, 1, 1)
-	if err := service.CreatePayment(
+	if err := svc.CreatePayment(
 		"pi_def",
 		ts,
 		"succeeded",
@@ -25,7 +24,7 @@ func TestCreatePaymentDefault(t *testing.T) {
 		t.Fatalf("failed to create payment: %v", err)
 	}
 
-	txs, err := service.GetTransactions("general", 10, 0)
+	txs, err := svc.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,8 +38,8 @@ func TestCreatePaymentDefault(t *testing.T) {
 
 func TestCreatePaymentAllocated(t *testing.T) {
 
-	util.SetupTestDB(t)
-	service.SetStripeStore(database.NewStripeStore())
+	env := util.SetupTestEnv(t)
+	svc := env.Service
 
 	rules := []service.AllocationRule{
 		{
@@ -54,13 +53,13 @@ func TestCreatePaymentAllocated(t *testing.T) {
 			Percentage: 75,
 		},
 	}
-	if err := service.SetAllocations(rules); err != nil {
+	if err := svc.SetAllocations(rules); err != nil {
 		t.Fatalf("failed to set allocations: %v", err)
 	}
 
 	amount := int64(777)
 	ts := util.MakeDateUnix(2025, 1, 1)
-	if err := service.CreatePayment(
+	if err := svc.CreatePayment(
 		"pi_alloc",
 		ts,
 		"succeeded",
@@ -71,11 +70,11 @@ func TestCreatePaymentAllocated(t *testing.T) {
 		t.Fatalf("CreatePayment: %v", err)
 	}
 
-	gTx, err := service.GetTransactions("general", 10, 0)
+	gTx, err := svc.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to get transactions for 'general': %v", err)
 	}
-	cTx, err := service.GetTransactions("community", 10, 0)
+	cTx, err := svc.GetTransactions("community", 10, 0)
 	if err != nil {
 		t.Fatalf("failed to get transactions for 'community': %v", err)
 	}

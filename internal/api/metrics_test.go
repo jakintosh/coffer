@@ -11,10 +11,10 @@ import (
 
 func TestGetMetrics(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedSubscriberData(t)
+	env := setupRouter(t)
+	util.SeedSubscriberData(t, env.Service)
 
-	router := setupRouter()
+	router := env.Router
 
 	// get metrics
 	url := "/metrics"

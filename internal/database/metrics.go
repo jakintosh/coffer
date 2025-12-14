@@ -6,11 +6,13 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-type MetricsStore struct{}
+type MetricsStore struct {
+	db *DB
+}
 
-func NewMetricsStore() MetricsStore { return MetricsStore{} }
+func (db *DB) MetricsStore() *MetricsStore { return &MetricsStore{db: db} }
 
-func (MetricsStore) GetSubscriptionSummary() (
+func (s *MetricsStore) GetSubscriptionSummary() (
 	*service.SubscriptionSummary,
 	error,
 ) {
@@ -20,7 +22,7 @@ func (MetricsStore) GetSubscriptionSummary() (
 		Tiers: map[int]int{},
 	}
 
-	row := db.QueryRow(`
+	row := s.db.conn.QueryRow(`
 		SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
 		FROM subscription
 		WHERE status='active'
@@ -31,7 +33,7 @@ func (MetricsStore) GetSubscriptionSummary() (
 	}
 	summary.Total /= 100
 
-	rows, err := db.Query(`
+	rows, err := s.db.conn.Query(`
 		SELECT amount, COUNT(*) as count
 		FROM subscription
 		WHERE status='active'

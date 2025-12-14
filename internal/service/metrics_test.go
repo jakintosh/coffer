@@ -10,10 +10,11 @@ import (
 
 func TestGetMetrics(t *testing.T) {
 
-	util.SetupTestDB(t)
-	util.SeedSubscriberData(t)
+	env := util.SetupTestEnv(t)
+	svc := env.Service
+	util.SeedSubscriberData(t, svc)
 
-	metrics, err := service.GetMetrics()
+	metrics, err := svc.GetMetrics()
 	if err != nil {
 		t.Fatalf("GetMetrics: %v", err)
 	}
@@ -29,7 +30,8 @@ func TestGetMetricsNoStore(t *testing.T) {
 
 	// no db/store set — service call should fail
 
-	_, err := service.GetMetrics()
+	svc := &service.Service{}
+	_, err := svc.GetMetrics()
 	if !errors.Is(err, service.ErrNoMetricsStore) {
 		t.Fatalf("expected ErrNoMetricsStore, got %v", err)
 	}

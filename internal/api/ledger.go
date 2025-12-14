@@ -17,19 +17,19 @@ type CreateTransactionRequest struct {
 	Label  string `json:"label"`
 }
 
-func buildLedgerRouter(
+func (a *API) buildLedgerRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /ledger/{ledger}", withCORS(handleGetLedger))
-	mux.HandleFunc("OPTIONS /ledger/{ledger}", withCORS(handleGetLedger))
+	mux.HandleFunc("GET /ledger/{ledger}", a.withCORS(a.handleGetLedger))
+	mux.HandleFunc("OPTIONS /ledger/{ledger}", a.withCORS(a.handleGetLedger))
 
-	mux.HandleFunc("GET /ledger/{ledger}/transactions", withCORS(handleGetLedgerTransactions))
-	mux.HandleFunc("OPTIONS /ledger/{ledger}/transactions", withCORS(handleGetLedgerTransactions))
+	mux.HandleFunc("GET /ledger/{ledger}/transactions", a.withCORS(a.handleGetLedgerTransactions))
+	mux.HandleFunc("OPTIONS /ledger/{ledger}/transactions", a.withCORS(a.handleGetLedgerTransactions))
 
-	mux.HandleFunc("POST /ledger/{ledger}/transactions", withAuth(handlePostLedgerTransaction))
+	mux.HandleFunc("POST /ledger/{ledger}/transactions", a.withAuth(a.handlePostLedgerTransaction))
 }
 
-func handleGetLedger(
+func (a *API) handleGetLedger(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -61,7 +61,7 @@ func handleGetLedger(
 		until = time.Now()
 	}
 
-	snapshot, err := service.GetSnapshot(ledger, since, until)
+	snapshot, err := a.svc.GetSnapshot(ledger, since, until)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch {
@@ -76,7 +76,7 @@ func handleGetLedger(
 	writeData(w, http.StatusOK, snapshot)
 }
 
-func handleGetLedgerTransactions(
+func (a *API) handleGetLedgerTransactions(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -87,7 +87,7 @@ func handleGetLedgerTransactions(
 		return
 	}
 
-	transactions, err := service.GetTransactions(f, limit, offset)
+	transactions, err := a.svc.GetTransactions(f, limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch err.(type) {
@@ -102,7 +102,7 @@ func handleGetLedgerTransactions(
 	writeData(w, http.StatusOK, transactions)
 }
 
-func handlePostLedgerTransaction(
+func (a *API) handlePostLedgerTransaction(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -122,7 +122,7 @@ func handlePostLedgerTransaction(
 		writeError(w, http.StatusBadRequest, "Invalid RFC3339 Date")
 	}
 
-	err = service.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)
+	err = a.svc.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch {

@@ -6,21 +6,19 @@ import (
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
-	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
 func TestCreateAPIKeyEndpoint(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// post create key
 	var response struct {
 		Error api.APIError `json:"error"`
 		Token string       `json:"data"`
 	}
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := post(router, "/settings/keys", "", &response, auth)
 
 	// validate result
@@ -34,7 +32,7 @@ func TestCreateAPIKeyEndpoint(t *testing.T) {
 	}
 
 	// validate resource creation
-	ok, err := service.VerifyAPIKey(response.Token)
+	ok, err := env.Service.VerifyAPIKey(response.Token)
 	if err != nil || !ok {
 		t.Fatalf("token verification failed: %v", err)
 	}
@@ -42,18 +40,18 @@ func TestCreateAPIKeyEndpoint(t *testing.T) {
 
 func TestDeleteAPIKeyEndpoint(t *testing.T) {
 
-	util.SetupTestDB(t)
-	router := setupRouter()
+	env := setupRouter(t)
+	router := env.Router
 
 	// create API key
-	token, err := service.CreateAPIKey()
+	token, err := env.Service.CreateAPIKey()
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := strings.Split(token, ".")[0]
 
 	// del key id
-	auth := makeTestAuthHeader(t)
+	auth := makeTestAuthHeader(t, env)
 	result := del(router, "/settings/keys/"+id, nil, auth)
 
 	// validate result
@@ -62,7 +60,7 @@ func TestDeleteAPIKeyEndpoint(t *testing.T) {
 	}
 
 	// validate resource deletion
-	_, err = service.VerifyAPIKey(token)
+	_, err = env.Service.VerifyAPIKey(token)
 	if err == nil {
 		t.Fatalf("VerifyAPIKey should fail after deletion")
 	}

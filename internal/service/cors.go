@@ -14,20 +14,14 @@ type CORSStore interface {
 	SetOrigins([]AllowedOrigin) error
 }
 
-var corsStore CORSStore
-
-func SetCORSStore(s CORSStore) {
-	corsStore = s
-}
-
-func InitCORS(
+func (s *Service) InitCORS(
 	origins []string,
 ) error {
-	if corsStore == nil {
+	if s == nil || s.CORS == nil {
 		return ErrNoCORSStore
 	}
 
-	count, err := corsStore.CountOrigins()
+	count, err := s.CORS.CountOrigins()
 	if err != nil {
 		return DatabaseError{err}
 	}
@@ -45,21 +39,21 @@ func InitCORS(
 		return nil
 	}
 
-	if err := corsStore.SetOrigins(list); err != nil {
+	if err := s.CORS.SetOrigins(list); err != nil {
 		return DatabaseError{err}
 	}
 	return nil
 }
 
-func GetAllowedOrigins() (
+func (s *Service) GetAllowedOrigins() (
 	[]AllowedOrigin,
 	error,
 ) {
-	if corsStore == nil {
+	if s == nil || s.CORS == nil {
 		return nil, ErrNoCORSStore
 	}
 
-	origins, err := corsStore.GetOrigins()
+	origins, err := s.CORS.GetOrigins()
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
@@ -67,10 +61,10 @@ func GetAllowedOrigins() (
 	return origins, nil
 }
 
-func SetAllowedOrigins(
+func (s *Service) SetAllowedOrigins(
 	origins []AllowedOrigin,
 ) error {
-	if corsStore == nil {
+	if s == nil || s.CORS == nil {
 		return ErrNoCORSStore
 	}
 
@@ -84,23 +78,23 @@ func SetAllowedOrigins(
 		return ErrInvalidOrigin
 	}
 
-	if err := corsStore.SetOrigins(origins); err != nil {
+	if err := s.CORS.SetOrigins(origins); err != nil {
 		return DatabaseError{err}
 	}
 	return nil
 }
 
-func IsAllowedOrigin(
+func (s *Service) IsAllowedOrigin(
 	origin string,
 ) (
 	bool,
 	error,
 ) {
-	if corsStore == nil {
+	if s == nil || s.CORS == nil {
 		return false, ErrNoCORSStore
 	}
 
-	origins, err := corsStore.GetOrigins()
+	origins, err := s.CORS.GetOrigins()
 	if err != nil {
 		return false, DatabaseError{err}
 	}
