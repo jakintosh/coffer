@@ -81,8 +81,9 @@ func writeError(
 	code int,
 	message string,
 ) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	writeJSON(w, APIResponse{
+	json.NewEncoder(w).Encode(APIResponse{
 		Error: &APIError{code, message},
 		Data:  nil,
 	})
@@ -94,22 +95,13 @@ func writeData(
 	data any,
 ) {
 	if data != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
-		writeJSON(w, APIResponse{
+		json.NewEncoder(w).Encode(APIResponse{
 			Error: nil,
 			Data:  data,
 		})
 	} else {
 		w.WriteHeader(code)
-	}
-}
-
-func writeJSON(
-	w http.ResponseWriter,
-	data any,
-) {
-	if data != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(data)
 	}
 }

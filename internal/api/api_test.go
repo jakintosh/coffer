@@ -14,8 +14,10 @@ import (
 )
 
 type httpResult struct {
-	Code  int
-	Error error
+	Code    int
+	Error   error
+	Headers http.Header
+	Body    []byte
 }
 
 type header struct {
@@ -61,6 +63,9 @@ func expectStatus(
 	code int,
 	result httpResult,
 ) error {
+	if result.Error != nil {
+		return result.Error
+	}
 	if result.Code == code {
 		return nil
 	}
@@ -81,14 +86,18 @@ func get(
 	router.ServeHTTP(res, req)
 
 	// decode response
-	if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
-		return httpResult{
-			Code:  res.Code,
-			Error: fmt.Errorf("Failed to decode JSON: %v\n%s", err, res.Body.String()),
+	if response != nil && res.Body.Len() > 0 {
+		if err := json.Unmarshal(res.Body.Bytes(), response); err != nil {
+			return httpResult{
+				Code:    res.Code,
+				Error:   fmt.Errorf("failed to decode JSON: %v\n%s", err, res.Body.String()),
+				Headers: res.Header(),
+				Body:    res.Body.Bytes(),
+			}
 		}
 	}
 
-	return httpResult{res.Code, nil}
+	return httpResult{Code: res.Code, Error: nil, Headers: res.Header(), Body: res.Body.Bytes()}
 }
 
 func post(
@@ -105,16 +114,18 @@ func post(
 	}
 	router.ServeHTTP(res, req)
 
-	if res.Body != nil {
-		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+	if response != nil && res.Body.Len() > 0 {
+		if err := json.Unmarshal(res.Body.Bytes(), response); err != nil {
 			return httpResult{
-				Code:  res.Code,
-				Error: fmt.Errorf("Failed to decode JSON body: %v", err),
+				Code:    res.Code,
+				Error:   fmt.Errorf("failed to decode JSON body: %v\n%s", err, res.Body.String()),
+				Headers: res.Header(),
+				Body:    res.Body.Bytes(),
 			}
 		}
 	}
 
-	return httpResult{res.Code, nil}
+	return httpResult{Code: res.Code, Error: nil, Headers: res.Header(), Body: res.Body.Bytes()}
 }
 
 func put(
@@ -131,16 +142,18 @@ func put(
 	}
 	router.ServeHTTP(res, req)
 
-	if res.Body != nil {
-		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+	if response != nil && res.Body.Len() > 0 {
+		if err := json.Unmarshal(res.Body.Bytes(), response); err != nil {
 			return httpResult{
-				Code:  res.Code,
-				Error: fmt.Errorf("Failed to decode JSON body: %v", err),
+				Code:    res.Code,
+				Error:   fmt.Errorf("failed to decode JSON body: %v\n%s", err, res.Body.String()),
+				Headers: res.Header(),
+				Body:    res.Body.Bytes(),
 			}
 		}
 	}
 
-	return httpResult{res.Code, nil}
+	return httpResult{Code: res.Code, Error: nil, Headers: res.Header(), Body: res.Body.Bytes()}
 }
 
 func del(
@@ -156,14 +169,16 @@ func del(
 	}
 	router.ServeHTTP(res, req)
 
-	if res.Body != nil {
-		if err := json.Unmarshal(res.Body.Bytes(), &response); err != nil {
+	if response != nil && res.Body.Len() > 0 {
+		if err := json.Unmarshal(res.Body.Bytes(), response); err != nil {
 			return httpResult{
-				Code:  res.Code,
-				Error: fmt.Errorf("Failed to decode JSON body: %v", err),
+				Code:    res.Code,
+				Error:   fmt.Errorf("failed to decode JSON body: %v\n%s", err, res.Body.String()),
+				Headers: res.Header(),
+				Body:    res.Body.Bytes(),
 			}
 		}
 	}
 
-	return httpResult{res.Code, nil}
+	return httpResult{Code: res.Code, Error: nil, Headers: res.Header(), Body: res.Body.Bytes()}
 }

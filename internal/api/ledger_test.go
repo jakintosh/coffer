@@ -24,16 +24,12 @@ func TestCreateTransaction(t *testing.T) {
 		"amount": 50
 	}`
 	auth := makeTestAuthHeader(t, env)
-	var response struct {
-		Error api.APIError `json:"error"`
-		Data  any          `json:"data"`
-	}
-	result := post(env.Router, url, body, &response, auth)
+	result := post(env.Router, url, body, nil, auth)
 
 	// verify result
 	err := expectStatus(http.StatusCreated, result)
 	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
+		t.Fatal(err)
 	}
 }
 
@@ -60,6 +56,40 @@ func TestCreateTransactionBadInput(t *testing.T) {
 	err := expectStatus(http.StatusBadRequest, result)
 	if err != nil {
 		t.Fatalf("%v\n%v", err, response)
+	}
+}
+
+func TestCreateTransactionBadDateDoesNotCreate(t *testing.T) {
+
+	env := setupTestEnv(t)
+
+	// post transaction with bad RFC3339 date but valid JSON types
+	url := "/ledger/general/transactions"
+	body := `
+	{
+		"date": "bad",
+		"label": "x",
+		"amount": 50
+	}`
+	auth := makeTestAuthHeader(t, env)
+	result := post(env.Router, url, body, nil, auth)
+
+	// verify result
+	if err := expectStatus(http.StatusBadRequest, result); err != nil {
+		t.Fatal(err)
+	}
+
+	// verify transaction did not get created
+	var list struct {
+		Error        api.APIError          `json:"error"`
+		Transactions []service.Transaction `json:"data"`
+	}
+	result = get(env.Router, "/ledger/general/transactions", &list)
+	if err := expectStatus(http.StatusOK, result); err != nil {
+		t.Fatalf("%v\n%v", err, list)
+	}
+	if len(list.Transactions) != 0 {
+		t.Fatalf("expected 0 transactions, got %d", len(list.Transactions))
 	}
 }
 

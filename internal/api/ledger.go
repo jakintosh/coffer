@@ -3,7 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -118,8 +118,9 @@ func (a *API) handlePostLedgerTransaction(
 	// validate date as RFC3339
 	date, err := time.Parse(time.RFC3339, req.Date)
 	if err != nil {
-		fmt.Printf("Invalid date: %v", err)
+		log.Printf("invalid RFC3339 date: %v", err)
 		writeError(w, http.StatusBadRequest, "Invalid RFC3339 Date")
+		return
 	}
 
 	err = a.svc.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)

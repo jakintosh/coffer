@@ -63,3 +63,32 @@ func TestDeleteAPIKeyEndpoint(t *testing.T) {
 		t.Fatalf("VerifyAPIKey should fail after deletion")
 	}
 }
+
+func TestUnauthorizedReturnsJSONError(t *testing.T) {
+
+	env := setupTestEnv(t)
+
+	var response api.APIResponse
+	result := post(env.Router, "/settings/keys", "", &response)
+
+	if err := expectStatus(http.StatusUnauthorized, result); err != nil {
+		t.Fatalf("%v\n%v", err, response)
+	}
+
+	if got := result.Headers.Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected application/json content-type, got %q", got)
+	}
+
+	if response.Error == nil {
+		t.Fatalf("expected error object")
+	}
+	if response.Error.Code != http.StatusUnauthorized {
+		t.Fatalf("expected error code %d, got %d", http.StatusUnauthorized, response.Error.Code)
+	}
+	if strings.TrimSpace(response.Error.Message) == "" {
+		t.Fatalf("expected error message")
+	}
+	if response.Data != nil {
+		t.Fatalf("expected null data, got %#v", response.Data)
+	}
+}
