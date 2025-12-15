@@ -11,9 +11,8 @@ import (
 
 func TestListPatrons(t *testing.T) {
 
-	env := setupRouter(t)
+	env := setupTestEnv(t)
 	util.SeedCustomerData(t, env.Service)
-	router := env.Router
 
 	url := "/patrons"
 	var response struct {
@@ -21,7 +20,7 @@ func TestListPatrons(t *testing.T) {
 		Patrons []service.Patron `json:"data"`
 	}
 	auth := makeTestAuthHeader(t, env)
-	result := get(router, url, &response, auth)
+	result := get(env.Router, url, &response, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -46,9 +45,8 @@ func TestListPatrons(t *testing.T) {
 
 func TestListPatronsPagination(t *testing.T) {
 
-	env := setupRouter(t)
+	env := setupTestEnv(t)
 	util.SeedCustomerData(t, env.Service)
-	router := env.Router
 
 	url := "/patrons?limit=2&offset=0"
 	var response struct {
@@ -56,7 +54,7 @@ func TestListPatronsPagination(t *testing.T) {
 		Patrons []service.Patron `json:"data"`
 	}
 	auth := makeTestAuthHeader(t, env)
-	result := get(router, url, &response, auth)
+	result := get(env.Router, url, &response, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -77,12 +75,11 @@ func TestListPatronsPagination(t *testing.T) {
 
 func TestListPatronsNegativeQuery(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	url := "/patrons?limit=-1&offset=-1"
 	auth := makeTestAuthHeader(t, env)
-	result := get(router, url, nil, auth)
+	result := get(env.Router, url, nil, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -92,12 +89,11 @@ func TestListPatronsNegativeQuery(t *testing.T) {
 
 func TestListPatronsInvalidQuery(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	url := "/patrons?limit=bad&offset=-1"
 	auth := makeTestAuthHeader(t, env)
-	result := get(router, url, nil, auth)
+	result := get(env.Router, url, nil, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusBadRequest, result); err != nil {

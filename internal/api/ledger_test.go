@@ -13,8 +13,7 @@ import (
 
 func TestCreateTransaction(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -29,7 +28,7 @@ func TestCreateTransaction(t *testing.T) {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
 	}
-	result := post(router, url, body, &response, auth)
+	result := post(env.Router, url, body, &response, auth)
 
 	// verify result
 	err := expectStatus(http.StatusCreated, result)
@@ -40,8 +39,7 @@ func TestCreateTransaction(t *testing.T) {
 
 func TestCreateTransactionBadInput(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -56,7 +54,7 @@ func TestCreateTransactionBadInput(t *testing.T) {
 		Error api.APIError `json:"error"`
 		Data  any          `json:"data"`
 	}
-	result := post(router, url, body, &response, auth)
+	result := post(env.Router, url, body, &response, auth)
 
 	// verify result
 	err := expectStatus(http.StatusBadRequest, result)
@@ -67,8 +65,7 @@ func TestCreateTransactionBadInput(t *testing.T) {
 
 func TestGetSnapshot(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 	util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
@@ -77,7 +74,7 @@ func TestGetSnapshot(t *testing.T) {
 		Error    api.APIError           `json:"error"`
 		Snapshot service.LedgerSnapshot `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// verify result
 	err := expectStatus(http.StatusOK, result)
@@ -102,8 +99,7 @@ func TestGetSnapshot(t *testing.T) {
 
 func TestGetSnapshotWithParams(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 	start, end := util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
@@ -114,7 +110,7 @@ func TestGetSnapshotWithParams(t *testing.T) {
 		Error    api.APIError           `json:"error"`
 		Snapshot service.LedgerSnapshot `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// verify result
 	err := expectStatus(http.StatusOK, result)
@@ -139,12 +135,11 @@ func TestGetSnapshotWithParams(t *testing.T) {
 
 func TestGetSnapshotBadParams(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// get snapshot
 	url := "/ledger/general?since=bad-date&until=2025-01-01"
-	result := get(router, url, nil)
+	result := get(env.Router, url, nil)
 
 	// verify result
 	err := expectStatus(http.StatusBadRequest, result)
@@ -155,8 +150,7 @@ func TestGetSnapshotBadParams(t *testing.T) {
 
 func TestGetTransactions(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 	util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
@@ -165,7 +159,7 @@ func TestGetTransactions(t *testing.T) {
 		Error        api.APIError          `json:"error"`
 		Transactions []service.Transaction `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// verify result
 	err := expectStatus(http.StatusOK, result)
@@ -182,8 +176,7 @@ func TestGetTransactions(t *testing.T) {
 
 func TestGetTransactionsPaginated(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 	util.SeedTransactionData(t, env.Service)
 
 	// get snapshot
@@ -192,7 +185,7 @@ func TestGetTransactionsPaginated(t *testing.T) {
 		Error        api.APIError          `json:"error"`
 		Transactions []service.Transaction `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// verify result
 	err := expectStatus(http.StatusOK, result)
@@ -223,8 +216,7 @@ func TestGetTransactionsPaginated(t *testing.T) {
 
 func TestGetTransactionsBadQuery(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// get snapshot
 	url := "/ledger/general/transactions?limit=bad&offset=-1"
@@ -232,7 +224,7 @@ func TestGetTransactionsBadQuery(t *testing.T) {
 		Error        api.APIError          `json:"error"`
 		Transactions []service.Transaction `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// verify result
 	err := expectStatus(http.StatusBadRequest, result)

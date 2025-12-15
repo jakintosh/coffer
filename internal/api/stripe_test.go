@@ -17,8 +17,7 @@ func signPayload(body string) string {
 
 func TestWebhookOK(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	url := "/stripe/webhook"
 	body := `
@@ -29,7 +28,7 @@ func TestWebhookOK(t *testing.T) {
 		key:   "Stripe-Signature",
 		value: signPayload(body),
 	}
-	result := post(router, url, body, nil, header)
+	result := post(env.Router, url, body, nil, header)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -39,8 +38,7 @@ func TestWebhookOK(t *testing.T) {
 
 func TestWebhookBadSignature(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	url := "/stripe/webhook"
 	body := `{}`
@@ -48,7 +46,7 @@ func TestWebhookBadSignature(t *testing.T) {
 		key:   "Stripe-Signature",
 		value: "bad",
 	}
-	result := post(router, url, body, nil, header)
+	result := post(env.Router, url, body, nil, header)
 
 	// validate result
 	if err := expectStatus(http.StatusBadRequest, result); err != nil {

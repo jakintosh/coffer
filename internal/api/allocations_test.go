@@ -10,15 +10,14 @@ import (
 
 func TestGetAllocations(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	url := "/settings/allocations"
 	var response struct {
 		Error       api.APIError             `json:"error"`
 		Allocations []service.AllocationRule `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// validate result
 	err := expectStatus(http.StatusOK, result)
@@ -35,8 +34,7 @@ func TestGetAllocations(t *testing.T) {
 
 func TestPutAllocations(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// put allocations
 	url := "/settings/allocations"
@@ -53,7 +51,7 @@ func TestPutAllocations(t *testing.T) {
 		}
     ]`
 	auth := makeTestAuthHeader(t, env)
-	result := put(router, url, body, nil, auth)
+	result := put(env.Router, url, body, nil, auth)
 
 	// validate result
 	err := expectStatus(http.StatusNoContent, result)
@@ -66,7 +64,7 @@ func TestPutAllocations(t *testing.T) {
 		Error       api.APIError             `json:"error"`
 		Allocations []service.AllocationRule `json:"data"`
 	}
-	get(router, url, &response)
+	get(env.Router, url, &response)
 
 	// validate response
 	allocations := response.Allocations
@@ -87,8 +85,7 @@ func TestPutAllocations(t *testing.T) {
 
 func TestPutAllocationsBad(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// put invalid allocations
 	body := `
@@ -101,7 +98,7 @@ func TestPutAllocationsBad(t *testing.T) {
 	]`
 	auth := makeTestAuthHeader(t, env)
 	response := api.APIResponse{}
-	result := put(router, "/settings/allocations", body, &response, auth)
+	result := put(env.Router, "/settings/allocations", body, &response, auth)
 
 	// validate error result
 	err := expectStatus(http.StatusBadRequest, result)

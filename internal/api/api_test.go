@@ -23,21 +23,32 @@ type header struct {
 	value string
 }
 
-func setupCORS(t *testing.T, env *util.TestEnv) {
-	if err := env.Service.SetAllowedOrigins([]service.AllowedOrigin{{URL: "http://test-default"}}); err != nil {
+func setupCORS(
+	t *testing.T,
+	env *util.TestEnv,
+) {
+	origins := []service.AllowedOrigin{
+		{URL: "http://test-default"},
+	}
+	if err := env.Service.SetAllowedOrigins(origins); err != nil {
 		t.Fatalf("failed to set cors: %v", err)
 	}
 }
 
-func setupRouter(t *testing.T) *util.TestEnv {
+func setupTestEnv(
+	t *testing.T,
+) *util.TestEnv {
 	t.Helper()
 	env := util.SetupTestEnv(t)
-	env.Router = api.New(env.Service).BuildRouter()
+	api := api.New(env.Service)
+	env.Router = api.BuildRouter()
 	return env
 }
 
-func makeTestAuthHeader(t *testing.T, env *util.TestEnv) header {
-
+func makeTestAuthHeader(
+	t *testing.T,
+	env *util.TestEnv,
+) header {
 	token, err := env.Service.CreateAPIKey()
 	if err != nil {
 		t.Fatal(err)

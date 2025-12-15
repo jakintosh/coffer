@@ -15,17 +15,15 @@ import (
 	"github.com/stripe/stripe-go/v82/webhook"
 )
 
-type StripeStore interface {
-	InsertCustomer(id string, created int64, publicName *string) error
-	InsertSubscription(id string, created int64, customer string, status string, amount int64, currency string) error
-	InsertPayment(id string, created int64, status string, customer string, amount int64, currency string) error
-	InsertPayout(id string, created int64, status string, amount int64, currency string) error
+type resourceUpdateRequest struct {
+	Type string
+	ID   string
 }
 
 type StripeProcessor struct {
 	EndpointSecret string
 	TestMode       bool
-	Requests       chan updateRequest
+	Requests       chan resourceUpdateRequest
 
 	done     chan struct{}
 	stopOnce sync.Once
@@ -33,9 +31,11 @@ type StripeProcessor struct {
 	service  *Service
 }
 
-type updateRequest struct {
-	Type string
-	ID   string
+type StripeStore interface {
+	InsertCustomer(id string, created int64, publicName *string) error
+	InsertSubscription(id string, created int64, customer string, status string, amount int64, currency string) error
+	InsertPayment(id string, created int64, status string, customer string, amount int64, currency string) error
+	InsertPayout(id string, created int64, status string, amount int64, currency string) error
 }
 
 func NewStripeProcessor(
@@ -47,7 +47,7 @@ func NewStripeProcessor(
 	return &StripeProcessor{
 		EndpointSecret: secret,
 		TestMode:       test,
-		Requests:       make(chan updateRequest, 8),
+		Requests:       make(chan resourceUpdateRequest, 8),
 		done:           make(chan struct{}),
 	}
 }
@@ -60,6 +60,7 @@ func (p *StripeProcessor) Start() {
 	if p == nil {
 		return
 	}
+
 	p.wg.Add(1)
 	go p.scheduleResourceUpdates()
 }
@@ -68,9 +69,8 @@ func (p *StripeProcessor) Stop() {
 	if p == nil {
 		return
 	}
-	p.stopOnce.Do(func() {
-		close(p.done)
-	})
+
+	p.stopOnce.Do(func() { close(p.done) })
 	p.wg.Wait()
 }
 
@@ -84,33 +84,15 @@ func (p *StripeProcessor) ParseEvent(
 	if p == nil {
 		return stripe.Event{}, ErrNoStripeProcessor
 	}
+
 	if p.TestMode {
-		opts := webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true}
+		opts := webhook.ConstructEventOptions{
+			IgnoreAPIVersionMismatch: true,
+		}
 		return webhook.ConstructEventWithOptions(payload, sig, p.EndpointSecret, opts)
 	}
+
 	return webhook.ConstructEvent(payload, sig, p.EndpointSecret)
-}
-
-func (s *Service) ParseEvent(
-	payload []byte,
-	sig string,
-) (
-	stripe.Event,
-	error,
-) {
-	if s == nil || s.StripeProcessor == nil {
-		return stripe.Event{}, ErrNoStripeProcessor
-	}
-	return s.StripeProcessor.ParseEvent(payload, sig)
-}
-
-func (s *Service) ProcessStripeEvent(
-	event stripe.Event,
-) error {
-	if s == nil || s.StripeProcessor == nil {
-		return ErrNoStripeProcessor
-	}
-	return s.StripeProcessor.processEvent(event)
 }
 
 func (p *StripeProcessor) processEvent(
@@ -120,7 +102,7 @@ func (p *StripeProcessor) processEvent(
 		return ErrNoStripeProcessor
 	}
 	log.Printf("<-  event %s %s", event.ID, event.Type)
-	var req updateRequest
+	var req resourceUpdateRequest
 	switch event.Type {
 	case "checkout.session.completed":
 		var s stripe.CheckoutSession
@@ -128,15 +110,20 @@ func (p *StripeProcessor) processEvent(
 			log.Printf("parse checkout.session event: %v", err)
 			return err
 		}
-		req = updateRequest{"checkout", s.ID}
+		req = resourceUpdateRequest{"checkout", s.ID}
 
-	case "customer.subscription.created", "customer.subscription.paused", "customer.subscription.resumed", "customer.subscription.deleted", "customer.subscription.updated":
+	case "customer.subscription.created",
+		"customer.subscription.paused",
+		"customer.subscription.resumed",
+		"customer.subscription.deleted",
+		"customer.subscription.updated":
+
 		var s stripe.Subscription
 		if err := json.Unmarshal(event.Data.Raw, &s); err != nil {
 			log.Printf("parse subscription event: %v", err)
 			return err
 		}
-		req = updateRequest{"subscription", s.ID}
+		req = resourceUpdateRequest{"subscription", s.ID}
 
 	case "payment_intent.succeeded":
 		var pmt stripe.PaymentIntent
@@ -144,15 +131,16 @@ func (p *StripeProcessor) processEvent(
 			log.Printf("parse payment event: %v", err)
 			return err
 		}
-		req = updateRequest{"payment", pmt.ID}
+		req = resourceUpdateRequest{"payment", pmt.ID}
 
-	case "payout.paid", "payout.failed":
+	case "payout.paid",
+		"payout.failed":
 		var pmt stripe.Payout
 		if err := json.Unmarshal(event.Data.Raw, &pmt); err != nil {
 			log.Printf("parse payout event: %v", err)
 			return err
 		}
-		req = updateRequest{"payout", pmt.ID}
+		req = resourceUpdateRequest{"payout", pmt.ID}
 
 	default:
 		return nil
@@ -167,10 +155,40 @@ func (p *StripeProcessor) processEvent(
 }
 
 func (p *StripeProcessor) scheduleResourceUpdates() {
+
+	queueResourceUpdate := func(
+		req resourceUpdateRequest,
+		ready chan<- resourceUpdateRequest,
+		reset <-chan int,
+		done <-chan struct{},
+	) {
+		duration := time.Millisecond * 500
+		timer := time.NewTimer(duration)
+		for {
+			select {
+			case <-done:
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return
+
+			case <-reset:
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(duration)
+
+			case <-timer.C:
+				ready <- req
+				return
+			}
+		}
+	}
+
 	defer p.wg.Done()
 
 	resets := make(map[string]chan int)
-	ready := make(chan updateRequest)
+	ready := make(chan resourceUpdateRequest)
 	for {
 		select {
 		case <-p.done:
@@ -207,33 +225,26 @@ func (p *StripeProcessor) scheduleResourceUpdates() {
 	}
 }
 
-func queueResourceUpdate(
-	req updateRequest,
-	ready chan<- updateRequest,
-	reset <-chan int,
-	done <-chan struct{},
+func (s *Service) ParseEvent(
+	payload []byte,
+	sig string,
+) (
+	stripe.Event,
+	error,
 ) {
-	duration := time.Millisecond * 500
-	timer := time.NewTimer(duration)
-	for {
-		select {
-		case <-done:
-			if !timer.Stop() {
-				<-timer.C
-			}
-			return
-
-		case <-reset:
-			if !timer.Stop() {
-				<-timer.C
-			}
-			timer.Reset(duration)
-
-		case <-timer.C:
-			ready <- req
-			return
-		}
+	if s == nil || s.StripeProcessor == nil {
+		return stripe.Event{}, ErrNoStripeProcessor
 	}
+	return s.StripeProcessor.ParseEvent(payload, sig)
+}
+
+func (s *Service) ProcessStripeEvent(
+	event stripe.Event,
+) error {
+	if s == nil || s.StripeProcessor == nil {
+		return ErrNoStripeProcessor
+	}
+	return s.StripeProcessor.processEvent(event)
 }
 
 func (s *Service) CreatePayment(

@@ -11,10 +11,8 @@ import (
 
 func TestGetMetrics(t *testing.T) {
 
-	env := setupRouter(t)
+	env := setupTestEnv(t)
 	util.SeedSubscriberData(t, env.Service)
-
-	router := env.Router
 
 	// get metrics
 	url := "/metrics"
@@ -22,7 +20,7 @@ func TestGetMetrics(t *testing.T) {
 		Error   api.APIError    `json:"error"`
 		Metrics service.Metrics `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {

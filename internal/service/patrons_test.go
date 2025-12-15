@@ -9,10 +9,9 @@ import (
 func TestListPatrons(t *testing.T) {
 
 	env := util.SetupTestEnv(t)
-	svc := env.Service
-	util.SeedCustomerData(t, svc)
+	util.SeedCustomerData(t, env.Service)
 
-	patrons, err := svc.ListPatrons(2, 0)
+	patrons, err := env.Service.ListPatrons(2, 0)
 	if err != nil {
 		t.Fatalf("ListPatrons: %v", err)
 	}

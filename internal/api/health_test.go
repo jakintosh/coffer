@@ -9,8 +9,7 @@ import (
 
 func TestHealthOK(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// get health
 	url := "/health"
@@ -18,7 +17,7 @@ func TestHealthOK(t *testing.T) {
 		Error  api.APIError       `json:"error"`
 		Health api.HealthResponse `json:"data"`
 	}
-	result := get(router, url, &response)
+	result := get(env.Router, url, &response)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {

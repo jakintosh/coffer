@@ -10,9 +10,8 @@ import (
 
 func TestGetCORS(t *testing.T) {
 
-	env := setupRouter(t)
+	env := setupTestEnv(t)
 	setupCORS(t, env)
-	router := env.Router
 
 	// get cors domains
 	var response struct {
@@ -20,7 +19,7 @@ func TestGetCORS(t *testing.T) {
 		Origins []service.AllowedOrigin `json:"data"`
 	}
 	auth := makeTestAuthHeader(t, env)
-	result := get(router, "/settings/cors", &response, auth)
+	result := get(env.Router, "/settings/cors", &response, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -35,9 +34,8 @@ func TestGetCORS(t *testing.T) {
 
 func TestPutCORS(t *testing.T) {
 
-	env := setupRouter(t)
+	env := setupTestEnv(t)
 	setupCORS(t, env)
-	router := env.Router
 
 	// put cors domains
 	body := `
@@ -46,7 +44,7 @@ func TestPutCORS(t *testing.T) {
 		{ "url":"https://test-second" }
 	]`
 	auth := makeTestAuthHeader(t, env)
-	result := put(router, "/settings/cors", body, nil, auth)
+	result := put(env.Router, "/settings/cors", body, nil, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusNoContent, result); err != nil {
@@ -58,7 +56,7 @@ func TestPutCORS(t *testing.T) {
 		Error   api.APIError            `json:"error"`
 		Origins []service.AllowedOrigin `json:"data"`
 	}
-	result = get(router, "/settings/cors", &response, auth)
+	result = get(env.Router, "/settings/cors", &response, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusOK, result); err != nil {
@@ -73,9 +71,8 @@ func TestPutCORS(t *testing.T) {
 
 func TestPutCORSBad(t *testing.T) {
 
-	env := setupRouter(t)
+	env := setupTestEnv(t)
 	setupCORS(t, env)
-	router := env.Router
 
 	// put bad cors domain
 	body := `
@@ -83,7 +80,7 @@ func TestPutCORSBad(t *testing.T) {
 		{"url":"ftp://bad"}
 	]`
 	auth := makeTestAuthHeader(t, env)
-	result := put(router, "/settings/cors", body, nil, auth)
+	result := put(env.Router, "/settings/cors", body, nil, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusBadRequest, result); err != nil {

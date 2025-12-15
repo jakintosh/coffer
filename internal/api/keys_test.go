@@ -10,8 +10,7 @@ import (
 
 func TestCreateAPIKeyEndpoint(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// post create key
 	var response struct {
@@ -19,7 +18,7 @@ func TestCreateAPIKeyEndpoint(t *testing.T) {
 		Token string       `json:"data"`
 	}
 	auth := makeTestAuthHeader(t, env)
-	result := post(router, "/settings/keys", "", &response, auth)
+	result := post(env.Router, "/settings/keys", "", &response, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusCreated, result); err != nil {
@@ -40,8 +39,7 @@ func TestCreateAPIKeyEndpoint(t *testing.T) {
 
 func TestDeleteAPIKeyEndpoint(t *testing.T) {
 
-	env := setupRouter(t)
-	router := env.Router
+	env := setupTestEnv(t)
 
 	// create API key
 	token, err := env.Service.CreateAPIKey()
@@ -52,7 +50,7 @@ func TestDeleteAPIKeyEndpoint(t *testing.T) {
 
 	// del key id
 	auth := makeTestAuthHeader(t, env)
-	result := del(router, "/settings/keys/"+id, nil, auth)
+	result := del(env.Router, "/settings/keys/"+id, nil, auth)
 
 	// validate result
 	if err := expectStatus(http.StatusNoContent, result); err != nil {
