@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	_ "modernc.org/sqlite"
 )
 
@@ -13,6 +14,18 @@ type Options struct {
 
 type DB struct {
 	conn *sql.DB
+}
+
+func (db *DB) Stores() service.Stores {
+	return service.Stores{
+		Allocations: db.AllocationsStore(),
+		CORS:        db.CORSStore(),
+		Keys:        db.KeyStore(),
+		Ledger:      db.LedgerStore(),
+		Metrics:     db.MetricsStore(),
+		Patrons:     db.PatronStore(),
+		Stripe:      db.StripeStore(),
+	}
 }
 
 func Open(

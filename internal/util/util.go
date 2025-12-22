@@ -49,15 +49,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("failed to open test database: %v", err)
 	}
 
-	stores := service.Stores{
-		Allocations: db.AllocationsStore(),
-		CORS:        db.CORSStore(),
-		Keys:        db.KeyStore(),
-		Ledger:      db.LedgerStore(),
-		Metrics:     db.MetricsStore(),
-		Patrons:     db.PatronStore(),
-		Stripe:      db.StripeStore(),
-	}
+	stores := db.Stores()
 
 	stripeProcessor := service.NewStripeProcessor("", STRIPE_TEST_KEY, true)
 	svc := service.New(stores, service.Options{

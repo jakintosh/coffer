@@ -63,10 +63,7 @@ var serveCmd = &args.Command{
 		dbPath := resolveOption(i, "db-file-path", "DB_FILE_PATH", DB_FILE_PATH)
 		port := ":" + resolveOption(i, "port", "PORT", PORT)
 		originsStr := resolveOption(i, "cors-allowed-origins", "CORS_ALLOWED_ORIGINS", CORS_ALLOWED_ORIGINS)
-		var origins []string
-		if originsStr != "" {
-			origins = strings.Split(originsStr, ",")
-		}
+		origins := strings.Split(originsStr, ",")
 
 		credsDir := resolveOption(i, "credentials-directory", "CREDENTIALS_DIRECTORY", CREDENTIALS_DIRECTORY)
 		stripeKey := loadCredential("stripe_key", credsDir)
@@ -79,23 +76,17 @@ var serveCmd = &args.Command{
 		}
 		defer db.Close()
 
-		stores := service.Stores{
-			Allocations: db.AllocationsStore(),
-			CORS:        db.CORSStore(),
-			Keys:        db.KeyStore(),
-			Ledger:      db.LedgerStore(),
-			Metrics:     db.MetricsStore(),
-			Patrons:     db.PatronStore(),
-			Stripe:      db.StripeStore(),
-		}
-
 		stripeProcessor := service.NewStripeProcessor(stripeKey, endpointSecret, false)
-		svc := service.New(stores, service.Options{
-			StripeProcessor: stripeProcessor,
-			HealthCheck:     db.HealthCheck,
-		})
 		stripeProcessor.Start()
 		defer stripeProcessor.Stop()
+
+		stores := db.Stores()
+		opts := service.Options{
+			StripeProcessor: stripeProcessor,
+			HealthCheck:     db.HealthCheck,
+		}
+
+		svc := service.New(stores, opts)
 
 		if err := svc.InitKeys(apiKey); err != nil {
 			log.Fatalf("failed to init keys: %v", err)
@@ -105,9 +96,11 @@ var serveCmd = &args.Command{
 			log.Fatalf("failed to init cors: %v", err)
 		}
 
-		apiHandler := api.New(svc).BuildRouter()
+		api := api.New(svc)
+		apiRouter := api.BuildRouter()
+
 		mux := http.NewServeMux()
-		mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiHandler))
+		mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiRouter))
 
 		return http.ListenAndServe(port, mux)
 	},
