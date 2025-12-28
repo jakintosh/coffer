@@ -90,8 +90,8 @@ func (a *API) handleGetLedgerTransactions(
 	transactions, err := a.svc.GetTransactions(f, limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Internal Server Error")
-		switch err.(type) {
-		case service.DatabaseError:
+		switch {
+		case errors.As(err, &service.DatabaseError{}):
 			// TODO: log?
 		default:
 			// TODO: log?

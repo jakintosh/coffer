@@ -11,13 +11,6 @@ var (
 	ErrInvalidDate   = errors.New("invalid date format")
 	ErrInvalidOrigin = errors.New("invalid allowed origin")
 
-	ErrNoAllocStore      = errors.New("allocation store not configured")
-	ErrNoCORSStore       = errors.New("cors store not configured")
-	ErrNoKeyStore        = errors.New("key store not configured")
-	ErrNoLedgerStore     = errors.New("ledger store not configured")
-	ErrNoMetricsStore    = errors.New("metrics store not configured")
-	ErrNoPatronStore     = errors.New("patron store not configured")
-	ErrNoStripeStore     = errors.New("stripe store not configured")
 	ErrNoStripeProcessor = errors.New("stripe processor not configured")
 )
 
@@ -57,6 +50,28 @@ type Service struct {
 }
 
 func New(stores Stores, opts Options) *Service {
+	if stores.Allocations == nil {
+		panic("service: allocations store required")
+	}
+	if stores.CORS == nil {
+		panic("service: cors store required")
+	}
+	if stores.Keys == nil {
+		panic("service: keys store required")
+	}
+	if stores.Ledger == nil {
+		panic("service: ledger store required")
+	}
+	if stores.Metrics == nil {
+		panic("service: metrics store required")
+	}
+	if stores.Patrons == nil {
+		panic("service: patrons store required")
+	}
+	if stores.Stripe == nil {
+		panic("service: stripe store required")
+	}
+
 	clock := opts.Clock
 	if clock == nil {
 		clock = time.Now

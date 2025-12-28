@@ -1,12 +1,8 @@
 package api
 
 import (
-	"errors"
-	"log"
 	"net/http"
 	"strings"
-
-	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
 func (a *API) withAuth(
@@ -24,12 +20,7 @@ func (a *API) withAuth(
 
 		ok, err := a.svc.VerifyAPIKey(token)
 		if err != nil {
-			if errors.Is(err, service.ErrNoKeyStore) {
-				log.Printf("missing key store")
-				writeError(w, http.StatusInternalServerError, "Internal Server Error")
-			} else {
-				writeError(w, http.StatusUnauthorized, "Unauthorized")
-			}
+			writeError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 		if !ok {

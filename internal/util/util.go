@@ -61,7 +61,6 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 	t.Cleanup(func() {
 		stripeProcessor.Stop()
-		svc.StripeProcessor = nil
 		db.Close()
 	})
 

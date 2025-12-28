@@ -6,13 +6,13 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-type MetricsStore struct {
+type DBMetricsStore struct {
 	db *DB
 }
 
-func (db *DB) MetricsStore() *MetricsStore { return &MetricsStore{db: db} }
+func (db *DB) MetricsStore() *DBMetricsStore { return &DBMetricsStore{db: db} }
 
-func (s *MetricsStore) GetSubscriptionSummary() (
+func (s *DBMetricsStore) GetSubscriptionSummary() (
 	*service.SubscriptionSummary,
 	error,
 ) {

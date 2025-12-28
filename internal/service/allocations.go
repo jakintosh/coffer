@@ -15,10 +15,6 @@ func (s *Service) GetAllocations() (
 	[]AllocationRule,
 	error,
 ) {
-	if s == nil || s.Allocations == nil {
-		return nil, ErrNoAllocStore
-	}
-
 	rules, err := s.Allocations.GetAllocations()
 	if err != nil {
 		return nil, DatabaseError{err}
@@ -30,10 +26,6 @@ func (s *Service) GetAllocations() (
 func (s *Service) SetAllocations(
 	rules []AllocationRule,
 ) error {
-	if s == nil || s.Allocations == nil {
-		return ErrNoAllocStore
-	}
-
 	// ensure total percentage adds to 100
 	total := 0
 	for _, r := range rules {

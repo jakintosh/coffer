@@ -17,10 +17,6 @@ type CORSStore interface {
 func (s *Service) InitCORS(
 	origins []string,
 ) error {
-	if s == nil || s.CORS == nil {
-		return ErrNoCORSStore
-	}
-
 	count, err := s.CORS.CountOrigins()
 	if err != nil {
 		return DatabaseError{err}
@@ -49,10 +45,6 @@ func (s *Service) GetAllowedOrigins() (
 	[]AllowedOrigin,
 	error,
 ) {
-	if s == nil || s.CORS == nil {
-		return nil, ErrNoCORSStore
-	}
-
 	origins, err := s.CORS.GetOrigins()
 	if err != nil {
 		return nil, DatabaseError{err}
@@ -64,10 +56,6 @@ func (s *Service) GetAllowedOrigins() (
 func (s *Service) SetAllowedOrigins(
 	origins []AllowedOrigin,
 ) error {
-	if s == nil || s.CORS == nil {
-		return ErrNoCORSStore
-	}
-
 	for _, o := range origins {
 		if strings.HasPrefix(o.URL, "http://") {
 			continue
@@ -90,10 +78,6 @@ func (s *Service) IsAllowedOrigin(
 	bool,
 	error,
 ) {
-	if s == nil || s.CORS == nil {
-		return false, ErrNoCORSStore
-	}
-
 	origins, err := s.CORS.GetOrigins()
 	if err != nil {
 		return false, DatabaseError{err}

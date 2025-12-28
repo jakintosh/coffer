@@ -255,11 +255,6 @@ func (s *Service) CreatePayment(
 	amount int64,
 	currency string,
 ) error {
-
-	if s == nil || s.Stripe == nil {
-		return ErrNoStripeStore
-	}
-
 	if err := s.Stripe.InsertPayment(
 		id,
 		created,
@@ -317,10 +312,6 @@ func (s *Service) CreatePayment(
 func (s *Service) processCheckoutSession(
 	id string,
 ) error {
-	if s == nil || s.Stripe == nil {
-		return ErrNoStripeStore
-	}
-
 	log.Printf(" -> session %s", id)
 	params := &stripe.CheckoutSessionParams{}
 	session, err := session.Get(id, params)
@@ -369,10 +360,6 @@ func (s *Service) processCheckoutSession(
 func (s *Service) processSubscription(
 	id string,
 ) error {
-	if s == nil || s.Stripe == nil {
-		return ErrNoStripeStore
-	}
-
 	log.Printf(" -> subscription %s", id)
 	params := &stripe.SubscriptionParams{}
 	subs, err := subscription.Get(id, params)
@@ -412,10 +399,6 @@ func (s *Service) processSubscription(
 func (s *Service) processPaymentIntent(
 	id string,
 ) error {
-	if s == nil || s.Stripe == nil {
-		return ErrNoStripeStore
-	}
-
 	log.Printf(" -> payment intent %s", id)
 	params := &stripe.PaymentIntentParams{}
 	intent, err := paymentintent.Get(id, params)
@@ -453,10 +436,6 @@ func (s *Service) processPaymentIntent(
 func (s *Service) processPayout(
 	id string,
 ) error {
-	if s == nil || s.Stripe == nil {
-		return ErrNoStripeStore
-	}
-
 	log.Printf(" -> payout %s", id)
 	params := &stripe.PayoutParams{}
 	p, err := payout.Get(id, params)

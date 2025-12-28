@@ -34,11 +34,6 @@ func (s *Service) AddTransaction(
 	date time.Time,
 	label string,
 ) error {
-
-	if s == nil || s.Ledger == nil {
-		return ErrNoLedgerStore
-	}
-
 	if id == "" {
 		id = uuid.NewString()
 	}
@@ -65,10 +60,6 @@ func (s *Service) GetSnapshot(
 	*LedgerSnapshot,
 	error,
 ) {
-	if s == nil || s.Ledger == nil {
-		return nil, ErrNoLedgerStore
-	}
-
 	snapshot, err := s.Ledger.GetLedgerSnapshot(
 		ledger,
 		since.Unix(),
@@ -89,10 +80,6 @@ func (s *Service) GetTransactions(
 	[]Transaction,
 	error,
 ) {
-	if s == nil || s.Ledger == nil {
-		return nil, ErrNoLedgerStore
-	}
-
 	if limit <= 0 {
 		limit = 100
 	}

@@ -14,13 +14,13 @@ type DBCustomer struct {
 	Updated sql.NullInt64
 }
 
-type PatronStore struct {
+type DBPatronStore struct {
 	db *DB
 }
 
-func (db *DB) PatronStore() *PatronStore { return &PatronStore{db: db} }
+func (db *DB) PatronStore() *DBPatronStore { return &DBPatronStore{db: db} }
 
-func (s *PatronStore) GetCustomers(
+func (s *DBPatronStore) GetCustomers(
 	limit int,
 	offset int,
 ) (

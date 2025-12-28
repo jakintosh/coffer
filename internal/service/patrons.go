@@ -22,10 +22,6 @@ func (s *Service) ListPatrons(
 	[]Patron,
 	error,
 ) {
-	if s == nil || s.Patrons == nil {
-		return nil, ErrNoPatronStore
-	}
-
 	if limit <= 0 {
 		limit = 100
 	}

@@ -1,11 +1,9 @@
 package service_test
 
 import (
-	"errors"
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
 
@@ -25,18 +23,6 @@ func TestAddTransactionSuccess(t *testing.T) {
 	}
 	if len(txs) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(txs))
-	}
-}
-
-func TestAddTransactionNoStore(t *testing.T) {
-
-	// no db/store setup — will fail to run service
-
-	t1 := util.MakeDate(2025, 1, 1)
-	svc := &service.Service{}
-	err := svc.AddTransaction("", "gen", 1, t1, "")
-	if !errors.Is(err, service.ErrNoLedgerStore) {
-		t.Fatalf("expected ErrNoLedgerStore, got %v", err)
 	}
 }
 

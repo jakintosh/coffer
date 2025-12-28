@@ -22,10 +22,6 @@ type KeyStore interface {
 func (s *Service) InitKeys(
 	apiKey string,
 ) error {
-	if s == nil || s.Keys == nil {
-		return ErrNoKeyStore
-	}
-
 	count, err := s.Keys.CountKeys()
 	if err != nil {
 		return DatabaseError{err}
@@ -63,10 +59,6 @@ func (s *Service) CreateAPIKey() (
 	string,
 	error,
 ) {
-	if s == nil || s.Keys == nil {
-		return "", ErrNoKeyStore
-	}
-
 	idBytes := make([]byte, 8)
 	if _, err := rand.Read(idBytes); err != nil {
 		return "", err
@@ -93,9 +85,6 @@ func (s *Service) CreateAPIKey() (
 func (s *Service) DeleteAPIKey(
 	id string,
 ) error {
-	if s == nil || s.Keys == nil {
-		return ErrNoKeyStore
-	}
 	if err := s.Keys.DeleteKey(id); err != nil {
 		return DatabaseError{err}
 	}
@@ -108,10 +97,6 @@ func (s *Service) VerifyAPIKey(
 	bool,
 	error,
 ) {
-	if s == nil || s.Keys == nil {
-		return false, ErrNoKeyStore
-	}
-
 	// get parts of key
 	parts := strings.Split(token, ".")
 	if len(parts) != 2 {

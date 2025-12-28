@@ -110,10 +110,3 @@ func (db *DB) HealthCheck() error {
 
 	return nil
 }
-
-func (db *DB) connOrNil() *sql.DB {
-	if db == nil {
-		return nil
-	}
-	return db.conn
-}
