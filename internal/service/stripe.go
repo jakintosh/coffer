@@ -15,7 +15,7 @@ import (
 	"github.com/stripe/stripe-go/v82/webhook"
 )
 
-type resourceUpdateRequest struct {
+type ResourceEvent struct {
 	Type string
 	ID   string
 }
@@ -23,12 +23,13 @@ type resourceUpdateRequest struct {
 type StripeProcessor struct {
 	EndpointSecret string
 	TestMode       bool
-	Requests       chan resourceUpdateRequest
+	DebounceWindow time.Duration
+	Events         chan ResourceEvent
 
+	requests chan ResourceEvent
 	done     chan struct{}
 	stopOnce sync.Once
 	wg       sync.WaitGroup
-	service  *Service
 }
 
 type StripeStore interface {
@@ -42,18 +43,17 @@ func NewStripeProcessor(
 	key string,
 	secret string,
 	test bool,
+	debounceWindow time.Duration,
 ) *StripeProcessor {
 	stripe.Key = key
 	return &StripeProcessor{
 		EndpointSecret: secret,
 		TestMode:       test,
-		Requests:       make(chan resourceUpdateRequest, 8),
+		DebounceWindow: debounceWindow,
+		Events:         make(chan ResourceEvent),
+		requests:       make(chan ResourceEvent, 8),
 		done:           make(chan struct{}),
 	}
-}
-
-func (p *StripeProcessor) AttachService(s *Service) {
-	p.service = s
 }
 
 func (p *StripeProcessor) Start() {
@@ -98,11 +98,11 @@ func (p *StripeProcessor) ParseEvent(
 func (p *StripeProcessor) processEvent(
 	event stripe.Event,
 ) error {
-	if p.service == nil {
+	if p == nil {
 		return ErrNoStripeProcessor
 	}
 	log.Printf("<-  event %s %s", event.ID, event.Type)
-	var req resourceUpdateRequest
+	var req ResourceEvent
 	switch event.Type {
 	case "checkout.session.completed":
 		var s stripe.CheckoutSession
@@ -110,7 +110,7 @@ func (p *StripeProcessor) processEvent(
 			log.Printf("parse checkout.session event: %v", err)
 			return err
 		}
-		req = resourceUpdateRequest{"checkout", s.ID}
+		req = ResourceEvent{"checkout", s.ID}
 
 	case "customer.subscription.created",
 		"customer.subscription.paused",
@@ -123,7 +123,7 @@ func (p *StripeProcessor) processEvent(
 			log.Printf("parse subscription event: %v", err)
 			return err
 		}
-		req = resourceUpdateRequest{"subscription", s.ID}
+		req = ResourceEvent{"subscription", s.ID}
 
 	case "payment_intent.succeeded":
 		var pmt stripe.PaymentIntent
@@ -131,7 +131,7 @@ func (p *StripeProcessor) processEvent(
 			log.Printf("parse payment event: %v", err)
 			return err
 		}
-		req = resourceUpdateRequest{"payment", pmt.ID}
+		req = ResourceEvent{"payment", pmt.ID}
 
 	case "payout.paid",
 		"payout.failed":
@@ -140,111 +140,141 @@ func (p *StripeProcessor) processEvent(
 			log.Printf("parse payout event: %v", err)
 			return err
 		}
-		req = resourceUpdateRequest{"payout", pmt.ID}
+		req = ResourceEvent{"payout", pmt.ID}
 
 	default:
 		return nil
 	}
 
 	select {
-	case p.Requests <- req:
+	case p.requests <- req:
+		return nil
 	case <-p.done:
 		return ErrNoStripeProcessor
 	}
-	return nil
 }
 
+// scheduleResourceUpdates debounces incoming resource events.
+// Prevents duplicate processing when Stripe sends rapid-fire webhooks.
 func (p *StripeProcessor) scheduleResourceUpdates() {
-
-	queueResourceUpdate := func(
-		req resourceUpdateRequest,
-		ready chan<- resourceUpdateRequest,
-		reset <-chan int,
-		done <-chan struct{},
-	) {
-		duration := time.Millisecond * 500
-		timer := time.NewTimer(duration)
-		for {
-			select {
-			case <-done:
-				if !timer.Stop() {
-					<-timer.C
-				}
-				return
-
-			case <-reset:
-				if !timer.Stop() {
-					<-timer.C
-				}
-				timer.Reset(duration)
-
-			case <-timer.C:
-				ready <- req
-				return
-			}
-		}
-	}
-
 	defer p.wg.Done()
+	defer close(p.Events)
 
-	resets := make(map[string]chan int)
-	ready := make(chan resourceUpdateRequest)
+	debouncer := newEventDebouncer(p.DebounceWindow, p.Events, p.done)
+	defer debouncer.stop()
+
 	for {
 		select {
 		case <-p.done:
-			for _, reset := range resets {
-				close(reset)
-			}
 			return
-
-		case req, ok := <-p.Requests:
+		case req, ok := <-p.requests:
 			if !ok {
 				return
 			}
-			if reset, ok := resets[req.ID]; ok {
-				reset <- 0
-			} else {
-				reset := make(chan int, 1)
-				resets[req.ID] = reset
-				go queueResourceUpdate(req, ready, reset, p.done)
-			}
-
-		case req := <-ready:
-			delete(resets, req.ID)
-			switch req.Type {
-			case "checkout":
-				go p.service.processCheckoutSession(req.ID)
-			case "subscription":
-				go p.service.processSubscription(req.ID)
-			case "payment":
-				go p.service.processPaymentIntent(req.ID)
-			case "payout":
-				go p.service.processPayout(req.ID)
-			}
+			debouncer.submit(req)
 		}
 	}
 }
 
-func (s *Service) ParseEvent(
+func (s *Service) ParseStripeEvent(
 	payload []byte,
 	sig string,
 ) (
 	stripe.Event,
 	error,
 ) {
-	if s == nil || s.StripeProcessor == nil {
+	if s == nil || s.stripeProcessor == nil {
 		return stripe.Event{}, ErrNoStripeProcessor
 	}
-	return s.StripeProcessor.ParseEvent(payload, sig)
+	return s.stripeProcessor.ParseEvent(payload, sig)
 }
 
 func (s *Service) ProcessStripeEvent(
 	event stripe.Event,
 ) error {
-	if s == nil || s.StripeProcessor == nil {
+	if s == nil || s.stripeProcessor == nil {
 		return ErrNoStripeProcessor
 	}
-	return s.StripeProcessor.processEvent(event)
+	return s.stripeProcessor.processEvent(event)
+}
+
+// HandleStripeResource is the callback target for the stripe processor
+func (s *Service) HandleStripeResource(
+	eventType string,
+	resourceID string,
+) {
+	var err error
+	switch eventType {
+	case "checkout":
+		err = s.processCheckoutSession(resourceID)
+	case "subscription":
+		err = s.processSubscription(resourceID)
+	case "payment":
+		err = s.processPaymentIntent(resourceID)
+	case "payout":
+		err = s.processPayout(resourceID)
+	}
+	if err != nil {
+		log.Printf("Error processing %s %s: %v", eventType, resourceID, err)
+	}
+}
+
+// AddCustomer adds a customer to the database
+func (s *Service) AddCustomer(
+	id string,
+	created int64,
+	publicName *string,
+) error {
+	if err := s.stripe.InsertCustomer(
+		id,
+		created,
+		publicName,
+	); err != nil {
+		return DatabaseError{err}
+	}
+	return nil
+}
+
+// AddSubscription adds a subscription to the database
+func (s *Service) AddSubscription(
+	id string,
+	created int64,
+	customer string,
+	status string,
+	amount int64,
+	currency string,
+) error {
+	if err := s.stripe.InsertSubscription(
+		id,
+		created,
+		customer,
+		status,
+		amount,
+		currency,
+	); err != nil {
+		return DatabaseError{err}
+	}
+	return nil
+}
+
+// AddPayout adds a payout to the database
+func (s *Service) AddPayout(
+	id string,
+	created int64,
+	status string,
+	amount int64,
+	currency string,
+) error {
+	if err := s.stripe.InsertPayout(
+		id,
+		created,
+		status,
+		amount,
+		currency,
+	); err != nil {
+		return DatabaseError{err}
+	}
+	return nil
 }
 
 func (s *Service) CreatePayment(
@@ -255,7 +285,7 @@ func (s *Service) CreatePayment(
 	amount int64,
 	currency string,
 ) error {
-	if err := s.Stripe.InsertPayment(
+	if err := s.stripe.InsertPayment(
 		id,
 		created,
 		status,
@@ -345,11 +375,7 @@ func (s *Service) processCheckoutSession(
 		return nil
 	}
 
-	if err = s.Stripe.InsertCustomer(
-		custID,
-		s.Clock().Unix(),
-		publicName,
-	); err != nil {
+	if err = s.AddCustomer(custID, s.Clock().Unix(), publicName); err != nil {
 		log.Printf("DB ERROR session %s: %v", id, err)
 		return err
 	}
@@ -381,7 +407,7 @@ func (s *Service) processSubscription(
 		currency = string(price.Currency)
 	}
 
-	if err = s.Stripe.InsertSubscription(
+	if err = s.AddSubscription(
 		id,
 		subs.Created,
 		subs.Customer.ID,
@@ -449,16 +475,63 @@ func (s *Service) processPayout(
 	}
 	log.Printf("<-  payout %s", id)
 
-	if err = s.Stripe.InsertPayout(
-		id,
-		p.Created,
-		string(p.Status),
-		p.Amount,
-		string(p.Currency),
-	); err != nil {
+	if err = s.AddPayout(id, p.Created, string(p.Status), p.Amount, string(p.Currency)); err != nil {
 		log.Printf("DB ERROR payout %s: %v", id, err)
 		return err
 	}
 	log.Printf("OK payout %s", id)
 	return nil
+}
+
+// eventDebouncer coalesces rapid-fire events for the same resource.
+// When multiple events arrive within the window, only one fires.
+type eventDebouncer struct {
+	window time.Duration
+	out    chan<- ResourceEvent
+	done   <-chan struct{}
+
+	mu     sync.Mutex
+	timers map[string]*time.Timer
+}
+
+func newEventDebouncer(window time.Duration, out chan<- ResourceEvent, done <-chan struct{}) *eventDebouncer {
+	return &eventDebouncer{
+		window: window,
+		out:    out,
+		done:   done,
+		timers: make(map[string]*time.Timer),
+	}
+}
+
+// submit schedules an event to fire after the debounce window.
+// If an event for the same resource is already pending, it resets the timer.
+func (d *eventDebouncer) submit(event ResourceEvent) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	// Cancel existing timer for this resource
+	if t, exists := d.timers[event.ID]; exists {
+		t.Stop()
+	}
+
+	// Schedule new timer
+	d.timers[event.ID] = time.AfterFunc(d.window, func() {
+		d.mu.Lock()
+		delete(d.timers, event.ID)
+		d.mu.Unlock()
+
+		select {
+		case d.out <- event:
+		case <-d.done:
+		}
+	})
+}
+
+// stop cancels all pending timers
+func (d *eventDebouncer) stop() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, t := range d.timers {
+		t.Stop()
+	}
 }

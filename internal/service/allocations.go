@@ -15,7 +15,7 @@ func (s *Service) GetAllocations() (
 	[]AllocationRule,
 	error,
 ) {
-	rules, err := s.Allocations.GetAllocations()
+	rules, err := s.allocations.GetAllocations()
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
@@ -35,7 +35,7 @@ func (s *Service) SetAllocations(
 		return ErrInvalidAlloc
 	}
 
-	err := s.Allocations.SetAllocations(rules)
+	err := s.allocations.SetAllocations(rules)
 	if err != nil {
 		return DatabaseError{err}
 	}

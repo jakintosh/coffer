@@ -27,7 +27,7 @@ func (s *Service) ListPatrons(
 	}
 	offset = max(offset, 0)
 
-	patrons, err := s.Patrons.GetCustomers(limit, offset)
+	patrons, err := s.patrons.GetCustomers(limit, offset)
 	if err != nil {
 		return nil, DatabaseError{err}
 	}

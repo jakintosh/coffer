@@ -19,7 +19,8 @@ type DatabaseError struct{ Err error }
 func (e DatabaseError) Error() string { return fmt.Sprintf("database error: %v", e.Err) }
 func (e DatabaseError) Unwrap() error { return e.Err }
 
-type Stores struct {
+type Options struct {
+	// Required stores
 	Allocations AllocationsStore
 	CORS        CORSStore
 	Keys        KeyStore
@@ -27,49 +28,52 @@ type Stores struct {
 	Metrics     MetricsStore
 	Patrons     PatronStore
 	Stripe      StripeStore
-}
 
-type Options struct {
+	// Optional dependencies
 	Clock           func() time.Time
-	StripeProcessor *StripeProcessor
 	HealthCheck     func() error
+	StripeProcessor *StripeProcessor
+
+	// Initialization data
+	InitialAPIKey      string
+	InitialCORSOrigins []string
 }
 
 type Service struct {
-	Allocations AllocationsStore
-	CORS        CORSStore
-	Keys        KeyStore
-	Ledger      LedgerStore
-	Metrics     MetricsStore
-	Patrons     PatronStore
-	Stripe      StripeStore
+	allocations AllocationsStore
+	cors        CORSStore
+	keys        KeyStore
+	ledger      LedgerStore
+	metrics     MetricsStore
+	patrons     PatronStore
+	stripe      StripeStore
 
-	StripeProcessor *StripeProcessor
-	Clock           func() time.Time
+	stripeProcessor *StripeProcessor
+	clock           func() time.Time
 	healthCheck     func() error
 }
 
-func New(stores Stores, opts Options) *Service {
-	if stores.Allocations == nil {
-		panic("service: allocations store required")
+func New(opts Options) (*Service, error) {
+	if opts.Allocations == nil {
+		return nil, errors.New("service: allocations store required")
 	}
-	if stores.CORS == nil {
-		panic("service: cors store required")
+	if opts.CORS == nil {
+		return nil, errors.New("service: cors store required")
 	}
-	if stores.Keys == nil {
-		panic("service: keys store required")
+	if opts.Keys == nil {
+		return nil, errors.New("service: keys store required")
 	}
-	if stores.Ledger == nil {
-		panic("service: ledger store required")
+	if opts.Ledger == nil {
+		return nil, errors.New("service: ledger store required")
 	}
-	if stores.Metrics == nil {
-		panic("service: metrics store required")
+	if opts.Metrics == nil {
+		return nil, errors.New("service: metrics store required")
 	}
-	if stores.Patrons == nil {
-		panic("service: patrons store required")
+	if opts.Patrons == nil {
+		return nil, errors.New("service: patrons store required")
 	}
-	if stores.Stripe == nil {
-		panic("service: stripe store required")
+	if opts.Stripe == nil {
+		return nil, errors.New("service: stripe store required")
 	}
 
 	clock := opts.Clock
@@ -78,23 +82,46 @@ func New(stores Stores, opts Options) *Service {
 	}
 
 	svc := &Service{
-		Allocations:     stores.Allocations,
-		CORS:            stores.CORS,
-		Keys:            stores.Keys,
-		Ledger:          stores.Ledger,
-		Metrics:         stores.Metrics,
-		Patrons:         stores.Patrons,
-		Stripe:          stores.Stripe,
-		StripeProcessor: opts.StripeProcessor,
-		Clock:           clock,
+		allocations:     opts.Allocations,
+		cors:            opts.CORS,
+		keys:            opts.Keys,
+		ledger:          opts.Ledger,
+		metrics:         opts.Metrics,
+		patrons:         opts.Patrons,
+		stripe:          opts.Stripe,
+		stripeProcessor: opts.StripeProcessor,
+		clock:           clock,
 		healthCheck:     opts.HealthCheck,
 	}
 
-	if svc.StripeProcessor != nil {
-		svc.StripeProcessor.AttachService(svc)
+	if opts.InitialAPIKey != "" {
+		if err := svc.initKeys(opts.InitialAPIKey); err != nil {
+			return nil, fmt.Errorf("init keys: %w", err)
+		}
 	}
 
-	return svc
+	if len(opts.InitialCORSOrigins) > 0 {
+		if err := svc.initCORS(opts.InitialCORSOrigins); err != nil {
+			return nil, fmt.Errorf("init cors: %w", err)
+		}
+	}
+
+	// Start consuming stripe events if processor is configured
+	if svc.stripeProcessor != nil {
+		go svc.consumeStripeEvents()
+	}
+
+	return svc, nil
+}
+
+func (s *Service) consumeStripeEvents() {
+	for event := range s.stripeProcessor.Events {
+		s.HandleStripeResource(event.Type, event.ID)
+	}
+}
+
+func (s *Service) Clock() time.Time {
+	return s.clock()
 }
 
 func (s *Service) HealthCheck() error {

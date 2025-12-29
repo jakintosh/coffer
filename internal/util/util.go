@@ -49,15 +49,23 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("failed to open test database: %v", err)
 	}
 
-	stores := db.Stores()
-
-	stripeProcessor := service.NewStripeProcessor("", STRIPE_TEST_KEY, true)
-	svc := service.New(stores, service.Options{
-		StripeProcessor: stripeProcessor,
-		HealthCheck:     db.HealthCheck,
-	})
-
+	stripeProcessor := service.NewStripeProcessor("", STRIPE_TEST_KEY, true, 50*time.Millisecond)
 	stripeProcessor.Start()
+
+	svc, err := service.New(service.Options{
+		Allocations:     db.AllocationsStore(),
+		CORS:            db.CORSStore(),
+		Keys:            db.KeyStore(),
+		Ledger:          db.LedgerStore(),
+		Metrics:         db.MetricsStore(),
+		Patrons:         db.PatronStore(),
+		Stripe:          db.StripeStore(),
+		HealthCheck:     db.HealthCheck,
+		StripeProcessor: stripeProcessor,
+	})
+	if err != nil {
+		t.Fatalf("failed to create service: %v", err)
+	}
 
 	t.Cleanup(func() {
 		stripeProcessor.Stop()
@@ -76,17 +84,17 @@ func SeedCustomerData(t *testing.T, svc *service.Service) {
 	ts := MakeDateUnix(2025, 7, 1)
 	name := "Example Name"
 
-	if err := svc.Stripe.InsertCustomer("c1", ts, &name); err != nil {
+	if err := svc.AddCustomer("c1", ts, &name); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.Stripe.InsertCustomer("c2", ts+20, &name); err != nil {
+	if err := svc.AddCustomer("c2", ts+20, &name); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.Stripe.InsertCustomer("c3", ts+40, &name); err != nil {
+	if err := svc.AddCustomer("c3", ts+40, &name); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := svc.Stripe.InsertCustomer("c2", ts+20, nil); err != nil {
+	if err := svc.AddCustomer("c2", ts+20, nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -95,19 +103,19 @@ func SeedSubscriberData(t *testing.T, svc *service.Service) {
 	t.Helper()
 
 	t1 := MakeDateUnix(2025, 1, 1)
-	err := svc.Stripe.InsertSubscription("sub_123", t1, "cus_123", "active", 300, "usd")
+	err := svc.AddSubscription("sub_123", t1, "cus_123", "active", 300, "usd")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t2 := MakeDateUnix(2025, 2, 1)
-	err = svc.Stripe.InsertSubscription("sub_456", t2, "cus_456", "active", 800, "usd")
+	err = svc.AddSubscription("sub_456", t2, "cus_456", "active", 800, "usd")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t3 := MakeDateUnix(2025, 3, 1)
-	err = svc.Stripe.InsertSubscription("sub_789", t3, "cus_789", "active", 400, "usd")
+	err = svc.AddSubscription("sub_789", t3, "cus_789", "active", 400, "usd")
 	if err != nil {
 		t.Fatal(err)
 	}

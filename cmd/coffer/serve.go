@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
@@ -70,38 +71,52 @@ var serveCmd = &args.Command{
 		endpointSecret := loadCredential("endpoint_secret", credsDir)
 		apiKey := loadCredential("api_key", credsDir)
 
-		db, err := database.Open(dbPath, database.Options{WAL: true})
+		// setup db
+		dbOpts := database.Options{
+			WAL: true,
+		}
+		db, err := database.Open(dbPath, dbOpts)
 		if err != nil {
 			log.Fatalf("failed to open database: %v", err)
 		}
 		defer db.Close()
 
-		stripeProcessor := service.NewStripeProcessor(stripeKey, endpointSecret, false)
+		// setup stripe processor
+		stripeProcessor := service.NewStripeProcessor(
+			stripeKey,
+			endpointSecret,
+			false,
+			500*time.Millisecond,
+		)
 		stripeProcessor.Start()
 		defer stripeProcessor.Stop()
 
-		stores := db.Stores()
-		opts := service.Options{
-			StripeProcessor: stripeProcessor,
-			HealthCheck:     db.HealthCheck,
+		// setup service
+		svcOpts := service.Options{
+			Allocations:        db.AllocationsStore(),
+			CORS:               db.CORSStore(),
+			Keys:               db.KeyStore(),
+			Ledger:             db.LedgerStore(),
+			Metrics:            db.MetricsStore(),
+			Patrons:            db.PatronStore(),
+			Stripe:             db.StripeStore(),
+			HealthCheck:        db.HealthCheck,
+			StripeProcessor:    stripeProcessor,
+			InitialAPIKey:      apiKey,
+			InitialCORSOrigins: origins,
+		}
+		svc, err := service.New(svcOpts)
+		if err != nil {
+			log.Fatalf("failed to create service: %v", err)
 		}
 
-		svc := service.New(stores, opts)
-
-		if err := svc.InitKeys(apiKey); err != nil {
-			log.Fatalf("failed to init keys: %v", err)
-		}
-
-		if err := svc.InitCORS(origins); err != nil {
-			log.Fatalf("failed to init cors: %v", err)
-		}
-
+		// setup api
 		api := api.New(svc)
 		apiRouter := api.BuildRouter()
 
+		// setup router
 		mux := http.NewServeMux()
 		mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiRouter))
-
 		return http.ListenAndServe(port, mux)
 	},
 }

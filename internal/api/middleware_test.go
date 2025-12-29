@@ -109,10 +109,24 @@ func TestWithAuthError(t *testing.T) {
 
 	// use error key store - auth will fail with 401 due to store error
 	env := util.SetupTestEnv(t)
-	env.Service.Keys = errorKeyStore{}
+
+	// Create new service with error key store
+	svc, err := service.New(service.Options{
+		Allocations: env.DB.AllocationsStore(),
+		CORS:        env.DB.CORSStore(),
+		Keys:        errorKeyStore{},
+		Ledger:      env.DB.LedgerStore(),
+		Metrics:     env.DB.MetricsStore(),
+		Patrons:     env.DB.PatronStore(),
+		Stripe:      env.DB.StripeStore(),
+		HealthCheck: env.DB.HealthCheck,
+	})
+	if err != nil {
+		t.Fatalf("failed to create service: %v", err)
+	}
 
 	// setup middleware func
-	a := New(env.Service)
+	a := New(svc)
 	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

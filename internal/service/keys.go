@@ -16,13 +16,13 @@ type KeyStore interface {
 	InsertKey(id string, salt string, hash string) error
 }
 
-// InitKeys exists to check if the keystore is empty, and if so, to populate it with
+// initKeys checks if the keystore is empty, and if so, populates it with
 // a bootstrap key provided by the apiKey parameter. it exits early if there are any
 // existing keys in the store
-func (s *Service) InitKeys(
+func (s *Service) initKeys(
 	apiKey string,
 ) error {
-	count, err := s.Keys.CountKeys()
+	count, err := s.keys.CountKeys()
 	if err != nil {
 		return DatabaseError{err}
 	}
@@ -85,7 +85,7 @@ func (s *Service) CreateAPIKey() (
 func (s *Service) DeleteAPIKey(
 	id string,
 ) error {
-	if err := s.Keys.DeleteKey(id); err != nil {
+	if err := s.keys.DeleteKey(id); err != nil {
 		return DatabaseError{err}
 	}
 	return nil
@@ -106,7 +106,7 @@ func (s *Service) VerifyAPIKey(
 	secretHex := parts[1]
 
 	// get salt and hash
-	saltHex, hashHex, err := s.Keys.FetchKey(id)
+	saltHex, hashHex, err := s.keys.FetchKey(id)
 	if err != nil {
 		// couldn't fetch the key for some reason
 		return false, DatabaseError{err}
@@ -153,7 +153,7 @@ func (s *Service) registerKey(
 	salt := hex.EncodeToString(saltBytes)
 	hash := hex.EncodeToString(hashBytes[:])
 
-	if err := s.Keys.InsertKey(
+	if err := s.keys.InsertKey(
 		id,
 		salt,
 		hash,

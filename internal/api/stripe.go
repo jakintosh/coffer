@@ -26,7 +26,7 @@ func (a *API) handleStripeWebhook(
 	}
 
 	sig := r.Header.Get("Stripe-Signature")
-	event, err := a.svc.ParseEvent(payload, sig)
+	event, err := a.svc.ParseStripeEvent(payload, sig)
 	if err != nil {
 		log.Printf("Error verifying webhook signature: %v", err)
 		w.WriteHeader(http.StatusBadRequest)

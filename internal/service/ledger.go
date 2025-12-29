@@ -38,7 +38,7 @@ func (s *Service) AddTransaction(
 		id = uuid.NewString()
 	}
 
-	err := s.Ledger.InsertTransaction(
+	err := s.ledger.InsertTransaction(
 		id,
 		ledger,
 		amount,
@@ -60,7 +60,7 @@ func (s *Service) GetSnapshot(
 	*LedgerSnapshot,
 	error,
 ) {
-	snapshot, err := s.Ledger.GetLedgerSnapshot(
+	snapshot, err := s.ledger.GetLedgerSnapshot(
 		ledger,
 		since.Unix(),
 		until.Unix(),
@@ -85,7 +85,7 @@ func (s *Service) GetTransactions(
 	}
 	offset = max(offset, 0)
 
-	txs, err := s.Ledger.GetTransactions(
+	txs, err := s.ledger.GetTransactions(
 		ledger,
 		limit,
 		offset,

@@ -18,7 +18,7 @@ type SubscriptionSummary struct {
 }
 
 func (s *Service) GetMetrics() (*Metrics, error) {
-	sum, err := s.Metrics.GetSubscriptionSummary()
+	sum, err := s.metrics.GetSubscriptionSummary()
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
