@@ -1,12 +1,22 @@
 package util
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"math/rand"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	stripe "github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v82/webhook"
 )
 
 const STRIPE_TEST_KEY = "whsec_test"
@@ -145,4 +155,141 @@ func SeedTransactionData(
 	}
 
 	return ts1, ts3
+}
+
+// Scenario represents a captured Stripe event stream for testing
+type Scenario struct {
+	Name   string
+	Events []stripe.Event
+}
+
+// getTestDataPath returns the path to the testdata directory
+func getTestDataPath() string {
+	// Get the path relative to this source file
+	_, filename, _, _ := runtime.Caller(0)
+	// Go up from internal/util to repo root, then into testdata
+	return filepath.Join(filepath.Dir(filename), "..", "..", "testdata")
+}
+
+// LoadScenario loads all events from a scenario directory
+func LoadScenario(t *testing.T, name string) *Scenario {
+	t.Helper()
+
+	scenarioPath := filepath.Join(getTestDataPath(), "stripe", "scenarios", name, "events.jsonl")
+	file, err := os.Open(scenarioPath)
+	if err != nil {
+		t.Fatalf("failed to open scenario %s: %v", name, err)
+	}
+	defer file.Close()
+
+	var events []stripe.Event
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var event stripe.Event
+		if err := json.Unmarshal(line, &event); err != nil {
+			t.Fatalf("failed to parse event in scenario %s: %v", name, err)
+		}
+		events = append(events, event)
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("error reading scenario %s: %v", name, err)
+	}
+
+	if len(events) == 0 {
+		t.Fatalf("scenario %s has no events", name)
+	}
+
+	return &Scenario{
+		Name:   name,
+		Events: events,
+	}
+}
+
+// LoadScenarioShuffled loads events in random order (simulates real-world out-of-order delivery)
+func LoadScenarioShuffled(t *testing.T, name string, seed int64) *Scenario {
+	t.Helper()
+
+	scenario := LoadScenario(t, name)
+
+	// Create a copy and shuffle
+	shuffled := make([]stripe.Event, len(scenario.Events))
+	copy(shuffled, scenario.Events)
+
+	rng := rand.New(rand.NewSource(seed))
+	rng.Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+
+	return &Scenario{
+		Name:   name + "_shuffled",
+		Events: shuffled,
+	}
+}
+
+// SignPayload signs a webhook payload for testing
+func SignPayload(body string) string {
+	payload := webhook.UnsignedPayload{Payload: []byte(body), Secret: STRIPE_TEST_KEY}
+	signed := webhook.GenerateTestSignedPayload(&payload)
+	return signed.Header
+}
+
+// ReplayScenario sends all events through the webhook handler
+func ReplayScenario(t *testing.T, router http.Handler, scenario *Scenario) {
+	t.Helper()
+
+	for i, event := range scenario.Events {
+		body, err := json.Marshal(event)
+		if err != nil {
+			t.Fatalf("failed to marshal event %d: %v", i, err)
+		}
+
+		sig := SignPayload(string(body))
+		req := httptest.NewRequest(http.MethodPost, "/stripe/webhook", bytes.NewReader(body))
+		req.Header.Set("Stripe-Signature", sig)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("event %d returned status %d: %s", i, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// ReplayScenarioWithDelay adds realistic delays between events
+func ReplayScenarioWithDelay(t *testing.T, router http.Handler, scenario *Scenario, delay time.Duration) {
+	t.Helper()
+
+	for i, event := range scenario.Events {
+		if i > 0 {
+			time.Sleep(delay)
+		}
+
+		body, err := json.Marshal(event)
+		if err != nil {
+			t.Fatalf("failed to marshal event %d: %v", i, err)
+		}
+
+		sig := SignPayload(string(body))
+		req := httptest.NewRequest(http.MethodPost, "/stripe/webhook", bytes.NewReader(body))
+		req.Header.Set("Stripe-Signature", sig)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("event %d returned status %d: %s", i, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// WaitForDebounce waits for the debouncer to fire (test helper)
+func WaitForDebounce(d time.Duration) {
+	time.Sleep(d + 30*time.Millisecond) // Add margin for processing
 }

@@ -1,0 +1,6 @@
+{
+  "trigger": "customer.subscription.deleted",
+  "captured_at": "2025-12-29T23:44:21-05:00",
+  "event_count": 34,
+  "event_types": "charge.succeeded,customer.created,customer.subscription.created,customer.subscription.deleted,customer.updated,invoice.created,invoice.finalized,invoice.paid,invoice_payment.paid,invoice.payment_succeeded,payment_intent.created,payment_intent.succeeded,payment_method.attached,plan.created,price.created,product.created"
+}

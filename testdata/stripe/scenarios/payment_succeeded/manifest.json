@@ -1,0 +1,6 @@
+{
+  "trigger": "payment_intent.succeeded",
+  "captured_at": "2025-12-29T23:44:30-05:00",
+  "event_count": 8,
+  "event_types": "charge.succeeded,charge.updated,payment_intent.created,payment_intent.succeeded"
+}
