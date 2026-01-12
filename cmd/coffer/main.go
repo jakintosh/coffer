@@ -27,33 +27,23 @@ func main() {
 }
 
 var root = &args.Command{
-	Name:    BIN_NAME,
-	Author:  AUTHOR,
-	Version: VERSION,
-	Help:    "manage your coffer from the command line",
+	Name: BIN_NAME,
+	Config: &args.Config{
+		Author:  AUTHOR,
+		Version: VERSION,
+		HelpOption: &args.HelpOption{
+			Short: 'h',
+			Long:  "--help",
+		},
+	},
+	Help: "manage your coffer from the command line",
 	Subcommands: []*args.Command{
 		apiCmd,
 		envs.Command(DEFAULT_CFG),
 		serveCmd,
 		statusCmd,
 	},
-	Options: []args.Option{
-		{
-			Long: "url",
-			Type: args.OptionTypeParameter,
-			Help: "coffer API base url",
-		},
-		{
-			Long: "env",
-			Type: args.OptionTypeParameter,
-			Help: "environment name",
-		},
-		{
-			Long: "config-dir",
-			Type: args.OptionTypeParameter,
-			Help: "config directory",
-		},
-	},
+	Options: envs.ConfigOptions,
 }
 
 func loadCredential(
