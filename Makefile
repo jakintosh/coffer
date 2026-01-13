@@ -1,8 +1,9 @@
-.PHONY: help build install test test-integration test-all coverage clean fmt vet lint
+.PHONY: help build generate install test test-integration test-all coverage clean fmt vet lint
 
 help:
 	@echo "Available targets:"
 	@echo "  build            Build the coffer binary"
+	@echo "  generate         Generate version info"
 	@echo "  install          Install coffer to /usr/local/bin"
 	@echo "  test             Run unit tests"
 	@echo "  test-integration Run integration tests"
@@ -13,8 +14,11 @@ help:
 	@echo "  vet              Run static analysis"
 	@echo "  lint             Run fmt and vet"
 
-build:
+build: generate
 	go build -o ./bin/coffer ./cmd/coffer
+
+generate:
+	go generate ./...
 
 install: build
 	sudo cp ./bin/coffer /usr/local/bin/coffer

@@ -1,3 +1,4 @@
 bin/
 docs/
 secrets/
+version_generated.go

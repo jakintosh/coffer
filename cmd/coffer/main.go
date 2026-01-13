@@ -13,6 +13,7 @@ import (
 
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 	"git.sr.ht/~jakintosh/command-go/pkg/envs"
+	"git.sr.ht/~jakintosh/command-go/pkg/version"
 )
 
 const (
@@ -30,10 +31,10 @@ var root = &args.Command{
 	Name: BIN_NAME,
 	Config: &args.Config{
 		Author:  AUTHOR,
-		Version: VERSION,
+		Version: VersionInfo.Version,
 		HelpOption: &args.HelpOption{
 			Short: 'h',
-			Long:  "--help",
+			Long:  "help",
 		},
 	},
 	Help: "manage your coffer from the command line",
@@ -42,8 +43,14 @@ var root = &args.Command{
 		envs.Command(DEFAULT_CFG),
 		serveCmd,
 		statusCmd,
+		version.Command(VersionInfo),
 	},
-	Options: envs.ConfigOptions,
+	Options: envs.ConfigOptionsAnd(args.Option{
+		Short: 'v',
+		Long:  "verbose",
+		Type:  args.OptionTypeFlag,
+		Help:  "use verbose output",
+	}),
 }
 
 func loadCredential(

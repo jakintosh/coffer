@@ -11,13 +11,6 @@ import (
 var statusCmd = &args.Command{
 	Name: "status",
 	Help: "show environment and server health",
-	Options: []args.Option{
-		{
-			Long: "verbose",
-			Type: args.OptionTypeFlag,
-			Help: "show detailed output",
-		},
-	},
 	Handler: func(i *args.Input) error {
 
 		// load relevant info from active environment
