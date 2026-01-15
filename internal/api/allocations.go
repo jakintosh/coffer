@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func (a *API) buildAllocationsRouter(
@@ -22,10 +23,11 @@ func (a *API) handleGetAllocations(
 ) {
 	rules, err := a.svc.GetAllocations()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+
 		return
 	}
-	writeData(w, http.StatusOK, rules)
+	wire.WriteData(w, http.StatusOK, rules)
 }
 
 func (a *API) handlePutAllocations(
@@ -34,15 +36,16 @@ func (a *API) handlePutAllocations(
 ) {
 	var rules []service.AllocationRule
 	if err := json.NewDecoder(r.Body).Decode(&rules); err != nil {
-		writeError(w, http.StatusBadRequest, "Malformed JSON")
+		wire.WriteError(w, http.StatusBadRequest, "Malformed JSON")
 		return
 	}
 
 	if err := a.svc.SetAllocations(rules); err != nil {
 		if errors.Is(err, service.ErrInvalidAlloc) {
-			writeError(w, http.StatusBadRequest, "Invalid Allocation Percentage")
+			wire.WriteError(w, http.StatusBadRequest, "Invalid Allocation Percentage")
 		} else {
-			writeError(w, http.StatusInternalServerError, "Internal Server Error")
+			wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+
 		}
 		return
 	}

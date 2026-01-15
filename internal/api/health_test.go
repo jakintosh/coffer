@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/api"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func TestHealthOK(t *testing.T) {
@@ -13,22 +14,17 @@ func TestHealthOK(t *testing.T) {
 
 	// get health
 	url := "/health"
-	var response struct {
-		Error  api.APIError       `json:"error"`
-		Health api.HealthResponse `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[api.HealthResponse](env.Router, url)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	if response.Health.Status != "ok" {
-		t.Errorf("status want ok got %s", response.Health.Status)
+	health := result.Data
+	if health.Status != "ok" {
+		t.Errorf("status want ok got %s", health.Status)
 	}
-	if response.Health.DB != "ok" {
-		t.Errorf("db want ok got %s", response.Health.DB)
+	if health.DB != "ok" {
+		t.Errorf("db want ok got %s", health.DB)
 	}
 }

@@ -1,15 +1,13 @@
 package keys
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
+
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
-type APIResponse struct {
-	Data  any    `json:"data,omitempty"`
-	Error string `json:"error,omitempty"`
-}
+type APIResponse = wire.Response
 
 // Router registers key management routes and returns an auth middleware.
 // Routes added: POST {prefix}/keys, DELETE {prefix}/keys/{id}
@@ -28,10 +26,10 @@ func (s *Service) handleCreate(
 ) {
 	token, err := s.Create()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
-	writeData(w, http.StatusCreated, token)
+	wire.WriteData(w, http.StatusCreated, token)
 }
 
 func (s *Service) handleDelete(
@@ -40,11 +38,11 @@ func (s *Service) handleDelete(
 ) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "Missing Key ID")
+		wire.WriteError(w, http.StatusBadRequest, "Missing Key ID")
 		return
 	}
 	if err := s.Delete(id); err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -59,28 +57,16 @@ func (s *Service) WithAuth(
 			token = strings.TrimSpace(token[7:])
 		}
 		if token == "" {
-			writeError(w, http.StatusUnauthorized, "Missing Authorization")
+			wire.WriteError(w, http.StatusUnauthorized, "Missing Authorization")
 			return
 		}
 
 		ok, err := s.Verify(token)
 		if err != nil || !ok {
-			writeError(w, http.StatusUnauthorized, "Unauthorized")
+			wire.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 
 		next(w, r)
 	}
-}
-
-func writeData(w http.ResponseWriter, code int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(APIResponse{Data: data})
-}
-
-func writeError(w http.ResponseWriter, code int, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(APIResponse{Error: msg})
 }

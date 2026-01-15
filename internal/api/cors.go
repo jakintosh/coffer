@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func (a *API) buildCORSRouter(
@@ -21,10 +22,10 @@ func (a *API) handleGetCORS(
 ) {
 	origins, err := a.svc.GetAllowedOrigins()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
-	writeData(w, http.StatusOK, origins)
+	wire.WriteData(w, http.StatusOK, origins)
 }
 
 func (a *API) handlePutCORS(
@@ -33,15 +34,15 @@ func (a *API) handlePutCORS(
 ) {
 	var origins []service.AllowedOrigin
 	if err := json.NewDecoder(r.Body).Decode(&origins); err != nil {
-		writeError(w, http.StatusBadRequest, "Malformed JSON")
+		wire.WriteError(w, http.StatusBadRequest, "Malformed JSON")
 		return
 	}
 
 	if err := a.svc.SetAllowedOrigins(origins); err != nil {
 		if errors.Is(err, service.ErrInvalidOrigin) {
-			writeError(w, http.StatusBadRequest, "Invalid Origin URL")
+			wire.WriteError(w, http.StatusBadRequest, "Invalid Origin URL")
 		} else {
-			writeError(w, http.StatusInternalServerError, "Internal Server Error")
+			wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		}
 		return
 	}

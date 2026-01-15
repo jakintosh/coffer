@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func TestGetAllocations(t *testing.T) {
@@ -13,20 +13,13 @@ func TestGetAllocations(t *testing.T) {
 	env := setupTestEnv(t)
 
 	url := "/settings/allocations"
-	var response struct {
-		Error       api.APIError             `json:"error"`
-		Allocations []service.AllocationRule `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[[]service.AllocationRule](env.Router, url)
 
 	// validate result
-	err := expectStatus(http.StatusOK, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	allocations := response.Allocations
+	allocations := result.Data
 	if len(allocations) != 1 || allocations[0].Percentage != 100 {
 		t.Errorf("unexpected default allocations %+v", allocations)
 	}
@@ -51,23 +44,16 @@ func TestPutAllocations(t *testing.T) {
 		}
     ]`
 	auth := makeTestAuthHeader(t, env)
-	result := put(env.Router, url, body, nil, auth)
+	result := wire.TestPut[any](env.Router, url, body, auth)
 
 	// validate result
-	err := expectStatus(http.StatusNoContent, result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusNoContent)
 
 	// get allocations
-	var response struct {
-		Error       api.APIError             `json:"error"`
-		Allocations []service.AllocationRule `json:"data"`
-	}
-	get(env.Router, url, &response)
+	getResult := wire.TestGet[[]service.AllocationRule](env.Router, url)
 
 	// validate response
-	allocations := response.Allocations
+	allocations := getResult.Data
 	if len(allocations) != 2 {
 		t.Fatalf("want 2 rules got %d", len(allocations))
 	}
@@ -97,12 +83,8 @@ func TestPutAllocationsBad(t *testing.T) {
 		}
 	]`
 	auth := makeTestAuthHeader(t, env)
-	response := api.APIResponse{}
-	result := put(env.Router, "/settings/allocations", body, &response, auth)
+	result := wire.TestPut[any](env.Router, "/settings/allocations", body, auth)
 
 	// validate error result
-	err := expectStatus(http.StatusBadRequest, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 }

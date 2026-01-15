@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func TestCreateTransaction(t *testing.T) {
@@ -24,13 +24,10 @@ func TestCreateTransaction(t *testing.T) {
 		"amount": 50
 	}`
 	auth := makeTestAuthHeader(t, env)
-	result := post(env.Router, url, body, nil, auth)
+	result := wire.TestPost[any](env.Router, url, body, auth)
 
 	// verify result
-	err := expectStatus(http.StatusCreated, result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusCreated)
 }
 
 func TestCreateTransactionBadInput(t *testing.T) {
@@ -46,17 +43,10 @@ func TestCreateTransactionBadInput(t *testing.T) {
 		"amount": "a lot"
 	}`
 	auth := makeTestAuthHeader(t, env)
-	var response struct {
-		Error api.APIError `json:"error"`
-		Data  any          `json:"data"`
-	}
-	result := post(env.Router, url, body, &response, auth)
+	result := wire.TestPost[any](env.Router, url, body, auth)
 
 	// verify result
-	err := expectStatus(http.StatusBadRequest, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 }
 
 func TestCreateTransactionBadDateDoesNotCreate(t *testing.T) {
@@ -72,24 +62,17 @@ func TestCreateTransactionBadDateDoesNotCreate(t *testing.T) {
 		"amount": 50
 	}`
 	auth := makeTestAuthHeader(t, env)
-	result := post(env.Router, url, body, nil, auth)
+	result := wire.TestPost[any](env.Router, url, body, auth)
 
 	// verify result
-	if err := expectStatus(http.StatusBadRequest, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 
 	// verify transaction did not get created
-	var list struct {
-		Error        api.APIError          `json:"error"`
-		Transactions []service.Transaction `json:"data"`
-	}
-	result = get(env.Router, "/ledger/general/transactions", &list)
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatalf("%v\n%v", err, list)
-	}
-	if len(list.Transactions) != 0 {
-		t.Fatalf("expected 0 transactions, got %d", len(list.Transactions))
+	listResult := wire.TestGet[[]service.Transaction](env.Router, "/ledger/general/transactions")
+	listResult.ExpectStatus(t, http.StatusOK)
+	txs := listResult.Data
+	if len(txs) != 0 {
+		t.Fatalf("expected 0 transactions, got %d", len(txs))
 	}
 }
 
@@ -100,30 +83,24 @@ func TestGetSnapshot(t *testing.T) {
 
 	// get snapshot
 	url := "/ledger/general"
-	var response struct {
-		Error    api.APIError           `json:"error"`
-		Snapshot service.LedgerSnapshot `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[service.LedgerSnapshot](env.Router, url)
 
 	// verify result
-	err := expectStatus(http.StatusOK, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	if response.Snapshot.OpeningBalance != 0 {
-		t.Errorf("opening want 0 got %d", response.Snapshot.OpeningBalance)
+	snapshot := result.Data
+	if snapshot.OpeningBalance != 0 {
+		t.Errorf("opening want 0 got %d", snapshot.OpeningBalance)
 	}
-	if response.Snapshot.IncomingFunds != 300 {
-		t.Errorf("incoming want 300 got %d", response.Snapshot.IncomingFunds)
+	if snapshot.IncomingFunds != 300 {
+		t.Errorf("incoming want 300 got %d", snapshot.IncomingFunds)
 	}
-	if response.Snapshot.OutgoingFunds != -50 {
-		t.Errorf("outgoing want -50 got %d", response.Snapshot.OutgoingFunds)
+	if snapshot.OutgoingFunds != -50 {
+		t.Errorf("outgoing want -50 got %d", snapshot.OutgoingFunds)
 	}
-	if response.Snapshot.ClosingBalance != 250 {
-		t.Errorf("closing want 250 got %d", response.Snapshot.ClosingBalance)
+	if snapshot.ClosingBalance != 250 {
+		t.Errorf("closing want 250 got %d", snapshot.ClosingBalance)
 	}
 }
 
@@ -136,30 +113,24 @@ func TestGetSnapshotWithParams(t *testing.T) {
 	startQ := start.Format("2006-01-02")
 	endQ := end.Add(time.Hour * -24).Format("2006-01-02")
 	url := fmt.Sprintf("/ledger/general?since=%s&until=%s", startQ, endQ)
-	var response struct {
-		Error    api.APIError           `json:"error"`
-		Snapshot service.LedgerSnapshot `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[service.LedgerSnapshot](env.Router, url)
 
 	// verify result
-	err := expectStatus(http.StatusOK, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	if response.Snapshot.OpeningBalance != 0 {
-		t.Errorf("opening want 0 got %d", response.Snapshot.OpeningBalance)
+	snapshot := result.Data
+	if snapshot.OpeningBalance != 0 {
+		t.Errorf("opening want 0 got %d", snapshot.OpeningBalance)
 	}
-	if response.Snapshot.IncomingFunds != 300 {
-		t.Errorf("incoming want 300 got %d", response.Snapshot.IncomingFunds)
+	if snapshot.IncomingFunds != 300 {
+		t.Errorf("incoming want 300 got %d", snapshot.IncomingFunds)
 	}
-	if response.Snapshot.OutgoingFunds != 0 {
-		t.Errorf("outgoing want 0 got %d", response.Snapshot.OutgoingFunds)
+	if snapshot.OutgoingFunds != 0 {
+		t.Errorf("outgoing want 0 got %d", snapshot.OutgoingFunds)
 	}
-	if response.Snapshot.ClosingBalance != 300 {
-		t.Errorf("closing want 300 got %d", response.Snapshot.ClosingBalance)
+	if snapshot.ClosingBalance != 300 {
+		t.Errorf("closing want 300 got %d", snapshot.ClosingBalance)
 	}
 }
 
@@ -169,13 +140,10 @@ func TestGetSnapshotBadParams(t *testing.T) {
 
 	// get snapshot
 	url := "/ledger/general?since=bad-date&until=2025-01-01"
-	result := get(env.Router, url, nil)
+	result := wire.TestGet[any](env.Router, url)
 
 	// verify result
-	err := expectStatus(http.StatusBadRequest, result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 }
 
 func TestGetTransactions(t *testing.T) {
@@ -185,20 +153,13 @@ func TestGetTransactions(t *testing.T) {
 
 	// get snapshot
 	url := "/ledger/general/transactions"
-	var response struct {
-		Error        api.APIError          `json:"error"`
-		Transactions []service.Transaction `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[[]service.Transaction](env.Router, url)
 
 	// verify result
-	err := expectStatus(http.StatusOK, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	txs := response.Transactions
+	txs := result.Data
 	if len(txs) != 3 {
 		t.Fatalf("want 3 transactions, got %d", len(txs))
 	}
@@ -211,20 +172,13 @@ func TestGetTransactionsPaginated(t *testing.T) {
 
 	// get snapshot
 	url := "/ledger/general/transactions?offset=1"
-	var response struct {
-		Error        api.APIError          `json:"error"`
-		Transactions []service.Transaction `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[[]service.Transaction](env.Router, url)
 
 	// verify result
-	err := expectStatus(http.StatusOK, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	txs := response.Transactions
+	txs := result.Data
 	if len(txs) != 2 {
 		t.Fatalf("want 2 transactions, got %d", len(txs))
 	}
@@ -250,15 +204,8 @@ func TestGetTransactionsBadQuery(t *testing.T) {
 
 	// get snapshot
 	url := "/ledger/general/transactions?limit=bad&offset=-1"
-	var response struct {
-		Error        api.APIError          `json:"error"`
-		Transactions []service.Transaction `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[any](env.Router, url)
 
 	// verify result
-	err := expectStatus(http.StatusBadRequest, result)
-	if err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 }

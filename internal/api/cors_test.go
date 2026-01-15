@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func TestGetCORS(t *testing.T) {
@@ -14,21 +14,16 @@ func TestGetCORS(t *testing.T) {
 	setupCORS(t, env)
 
 	// get cors domains
-	var response struct {
-		Error   api.APIError            `json:"error"`
-		Origins []service.AllowedOrigin `json:"data"`
-	}
 	auth := makeTestAuthHeader(t, env)
-	result := get(env.Router, "/settings/cors", &response, auth)
+	result := wire.TestGet[[]service.AllowedOrigin](env.Router, "/settings/cors", auth)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatalf("%v\n%v", err, response)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	if len(response.Origins) != 1 || response.Origins[0].URL != "http://test-default" {
-		t.Fatalf("unexpected response %+v", response)
+	origins := result.Data
+	if len(origins) != 1 || origins[0].URL != "http://test-default" {
+		t.Fatalf("unexpected response %+v", origins)
 	}
 }
 
@@ -44,28 +39,21 @@ func TestPutCORS(t *testing.T) {
 		{ "url":"https://test-second" }
 	]`
 	auth := makeTestAuthHeader(t, env)
-	result := put(env.Router, "/settings/cors", body, nil, auth)
+	result := wire.TestPut[any](env.Router, "/settings/cors", body, auth)
 
 	// validate result
-	if err := expectStatus(http.StatusNoContent, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusNoContent)
 
 	// get cors domains
-	var response struct {
-		Error   api.APIError            `json:"error"`
-		Origins []service.AllowedOrigin `json:"data"`
-	}
-	result = get(env.Router, "/settings/cors", &response, auth)
+	getResult := wire.TestGet[[]service.AllowedOrigin](env.Router, "/settings/cors", auth)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatal(err)
-	}
+	getResult.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	if len(response.Origins) != 2 {
-		t.Fatalf("expected 2 origins got %d", len(response.Origins))
+	origins := getResult.Data
+	if len(origins) != 2 {
+		t.Fatalf("expected 2 origins got %d", len(origins))
 	}
 }
 
@@ -80,10 +68,8 @@ func TestPutCORSBad(t *testing.T) {
 		{"url":"ftp://bad"}
 	]`
 	auth := makeTestAuthHeader(t, env)
-	result := put(env.Router, "/settings/cors", body, nil, auth)
+	result := wire.TestPut[any](env.Router, "/settings/cors", body, auth)
 
 	// validate result
-	if err := expectStatus(http.StatusBadRequest, result); err != nil {
-		t.Fatalf("%v", err)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 }

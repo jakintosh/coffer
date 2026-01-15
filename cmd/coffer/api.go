@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 	"git.sr.ht/~jakintosh/command-go/pkg/envs"
 )
@@ -52,70 +50,20 @@ func request[T any](
 	body []byte,
 	response *T,
 ) error {
-	// load relevant info from active environment
 	cfg, err := envs.BuildConfig(DEFAULT_CFG, i)
 	if err != nil {
 		return fmt.Errorf("Failed to build config: %w", err)
 	}
-	url := cfg.GetBaseUrl() + API_BASE_URL + path
-	key := cfg.GetApiKey()
-
-	// create request
-	var reader io.Reader
-	if body != nil {
-		reader = bytes.NewReader(body)
-	}
-	req, err := http.NewRequest(method, url, reader)
-	if err != nil {
-		return err
+	baseURL := cfg.GetBaseUrl() + API_BASE_URL
+	client := wire.Client{
+		BaseURL: baseURL,
+		APIKey:  cfg.GetApiKey(),
 	}
 
-	// set content-type header
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+	if response == nil {
+		return client.Do(method, path, body, nil)
 	}
-
-	// set authorization header
-	if key != "" {
-		req.Header.Set("Authorization", "Bearer "+key)
-	} else {
-		return fmt.Errorf("failed to load api key")
-	}
-
-	// do request
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	// read body
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-
-	// if response expected, deserialize
-	if response != nil {
-
-		// unmarshal outer APIResponse
-		var m map[string]json.RawMessage
-		if err := json.Unmarshal(data, &m); err != nil {
-			return err
-		}
-
-		// unmarshal inner response
-		err := json.Unmarshal(m["data"], &response)
-		if err != nil {
-			return fmt.Errorf("failed to deserialize body response: %v", err)
-		}
-	}
-
-	if res.StatusCode >= 400 {
-		return fmt.Errorf("server returned %s", res.Status)
-	}
-
-	return nil
+	return client.Do(method, path, body, response)
 }
 
 func writeJSON(

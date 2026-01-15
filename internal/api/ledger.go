@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 type CreateTransactionRequest struct {
@@ -45,7 +46,7 @@ func (a *API) handleGetLedger(
 
 	if sinceQ != "" {
 		if since, err = time.Parse("2006-01-02", sinceQ); err != nil {
-			writeError(w, http.StatusBadRequest, "Malformed 'since' Query")
+			wire.WriteError(w, http.StatusBadRequest, "Malformed 'since' Query")
 			return
 		}
 	} else {
@@ -54,7 +55,7 @@ func (a *API) handleGetLedger(
 
 	if untilQ != "" {
 		if until, err = time.Parse("2006-01-02", untilQ); err != nil {
-			writeError(w, http.StatusBadRequest, "Malformed 'until' Query")
+			wire.WriteError(w, http.StatusBadRequest, "Malformed 'until' Query")
 			return
 		}
 	} else {
@@ -63,7 +64,7 @@ func (a *API) handleGetLedger(
 
 	snapshot, err := a.svc.GetSnapshot(ledger, since, until)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch {
 		case errors.As(err, &service.DatabaseError{}):
 			// TODO: log?
@@ -73,7 +74,7 @@ func (a *API) handleGetLedger(
 		return
 	}
 
-	writeData(w, http.StatusOK, snapshot)
+	wire.WriteData(w, http.StatusOK, snapshot)
 }
 
 func (a *API) handleGetLedgerTransactions(
@@ -81,15 +82,15 @@ func (a *API) handleGetLedgerTransactions(
 	r *http.Request,
 ) {
 	f := r.PathValue("ledger")
-	limit, offset, malformedQueryErr := parsePaginationQueries(r)
+	limit, offset, malformedQueryErr := wire.ParsePagination(r)
 	if malformedQueryErr != nil {
-		writeError(w, http.StatusBadRequest, malformedQueryErr.Error())
+		wire.WriteError(w, http.StatusBadRequest, malformedQueryErr.Error())
 		return
 	}
 
 	transactions, err := a.svc.GetTransactions(f, limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch {
 		case errors.As(err, &service.DatabaseError{}):
 			// TODO: log?
@@ -99,7 +100,7 @@ func (a *API) handleGetLedgerTransactions(
 		return
 	}
 
-	writeData(w, http.StatusOK, transactions)
+	wire.WriteData(w, http.StatusOK, transactions)
 }
 
 func (a *API) handlePostLedgerTransaction(
@@ -111,7 +112,7 @@ func (a *API) handlePostLedgerTransaction(
 	// decode body
 	var req CreateTransactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Malformed JSON")
+		wire.WriteError(w, http.StatusBadRequest, "Malformed JSON")
 		return
 	}
 
@@ -119,13 +120,13 @@ func (a *API) handlePostLedgerTransaction(
 	date, err := time.Parse(time.RFC3339, req.Date)
 	if err != nil {
 		log.Printf("invalid RFC3339 date: %v", err)
-		writeError(w, http.StatusBadRequest, "Invalid RFC3339 Date")
+		wire.WriteError(w, http.StatusBadRequest, "Invalid RFC3339 Date")
 		return
 	}
 
 	err = a.svc.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		switch {
 		case errors.As(err, &service.DatabaseError{}):
 			// TODO: log?

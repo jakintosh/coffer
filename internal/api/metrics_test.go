@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func TestGetMetrics(t *testing.T) {
@@ -16,22 +16,17 @@ func TestGetMetrics(t *testing.T) {
 
 	// get metrics
 	url := "/metrics"
-	var response struct {
-		Error   api.APIError    `json:"error"`
-		Metrics service.Metrics `json:"data"`
-	}
-	result := get(env.Router, url, &response)
+	result := wire.TestGet[service.Metrics](env.Router, url)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	if response.Metrics.PatronsActive != 3 {
-		t.Errorf("want patrons=3, got %d", response.Metrics.PatronsActive)
+	metrics := result.Data
+	if metrics.PatronsActive != 3 {
+		t.Errorf("want patrons=3, got %d", metrics.PatronsActive)
 	}
-	if response.Metrics.MRRCents != 1500 {
-		t.Errorf("want mrr=1500, got %d", response.Metrics.MRRCents)
+	if metrics.MRRCents != 1500 {
+		t.Errorf("want mrr=1500, got %d", metrics.MRRCents)
 	}
 }

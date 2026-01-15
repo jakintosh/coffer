@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func (a *API) buildMetricsRouter(
@@ -17,8 +19,8 @@ func (a *API) handleGetMetrics(
 ) {
 	metrics, err := a.svc.GetMetrics()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 	} else {
-		writeData(w, http.StatusOK, metrics)
+		wire.WriteData(w, http.StatusOK, metrics)
 	}
 }

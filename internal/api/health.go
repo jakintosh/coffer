@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 type HealthResponse struct {
@@ -29,7 +31,7 @@ func (a *API) handleGetHealth(
 		status = http.StatusServiceUnavailable
 	}
 
-	writeData(w, status, HealthResponse{
+	wire.WriteData(w, status, HealthResponse{
 		Status: "ok",
 		DB:     dbStatus,
 	})

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func TestListPatrons(t *testing.T) {
@@ -15,20 +15,14 @@ func TestListPatrons(t *testing.T) {
 	util.SeedCustomerData(t, env.Service)
 
 	url := "/patrons"
-	var response struct {
-		Error   api.APIError     `json:"error"`
-		Patrons []service.Patron `json:"data"`
-	}
 	auth := makeTestAuthHeader(t, env)
-	result := get(env.Router, url, &response, auth)
+	result := wire.TestGet[[]service.Patron](env.Router, url, auth)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	patrons := response.Patrons
+	patrons := result.Data
 	if len(patrons) != 3 {
 		t.Fatalf("want 2 patrons, got %d", len(patrons))
 	}
@@ -49,26 +43,21 @@ func TestListPatronsPagination(t *testing.T) {
 	util.SeedCustomerData(t, env.Service)
 
 	url := "/patrons?limit=2&offset=0"
-	var response struct {
-		Error   api.APIError     `json:"error"`
-		Patrons []service.Patron `json:"data"`
-	}
 	auth := makeTestAuthHeader(t, env)
-	result := get(env.Router, url, &response, auth)
+	result := wire.TestGet[[]service.Patron](env.Router, url, auth)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 
 	// validate response
-	if len(response.Patrons) != 2 {
-		t.Fatalf("want 2 patrons, got %d", len(response.Patrons))
+	patrons := result.Data
+	if len(patrons) != 2 {
+		t.Fatalf("want 2 patrons, got %d", len(patrons))
 	}
-	if response.Patrons[0].ID != "c2" {
+	if patrons[0].ID != "c2" {
 		t.Errorf("first patron should be updated customer c2")
 	}
-	if response.Patrons[1].ID != "c3" {
+	if patrons[1].ID != "c3" {
 		t.Errorf("second patron should be c3")
 	}
 }
@@ -79,12 +68,10 @@ func TestListPatronsNegativeQuery(t *testing.T) {
 
 	url := "/patrons?limit=-1&offset=-1"
 	auth := makeTestAuthHeader(t, env)
-	result := get(env.Router, url, nil, auth)
+	result := wire.TestGet[any](env.Router, url, auth)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 }
 
 func TestListPatronsInvalidQuery(t *testing.T) {
@@ -93,10 +80,8 @@ func TestListPatronsInvalidQuery(t *testing.T) {
 
 	url := "/patrons?limit=bad&offset=-1"
 	auth := makeTestAuthHeader(t, env)
-	result := get(env.Router, url, nil, auth)
+	result := wire.TestGet[any](env.Router, url, auth)
 
 	// validate result
-	if err := expectStatus(http.StatusBadRequest, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 }

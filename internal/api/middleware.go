@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func (a *API) withCORS(
@@ -14,7 +16,7 @@ func (a *API) withCORS(
 		if origin != "" {
 			allowed, err = a.svc.IsAllowedOrigin(origin)
 			if err != nil {
-				writeError(w, http.StatusInternalServerError, "Internal Server Error")
+				wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 				return
 			}
 		}

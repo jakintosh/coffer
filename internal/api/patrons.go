@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func (a *API) buildPatronsRouter(
@@ -14,16 +16,16 @@ func (a *API) handleListPatrons(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	limit, offset, malformedQueryErr := parsePaginationQueries(r)
+	limit, offset, malformedQueryErr := wire.ParsePagination(r)
 	if malformedQueryErr != nil {
-		writeError(w, http.StatusBadRequest, malformedQueryErr.Error())
+		wire.WriteError(w, http.StatusBadRequest, malformedQueryErr.Error())
 		return
 	}
 
 	patrons, err := a.svc.ListPatrons(limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal Server Error")
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 	} else {
-		writeData(w, http.StatusOK, patrons)
+		wire.WriteData(w, http.StatusOK, patrons)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 	"github.com/stripe/stripe-go/v82/webhook"
 )
 
@@ -24,16 +25,14 @@ func TestWebhookOK(t *testing.T) {
 	{
 		"id": "cus_1"
 	}`
-	header := header{
-		key:   "Stripe-Signature",
-		value: signPayload(body),
+	header := wire.TestHeader{
+		Key:   "Stripe-Signature",
+		Value: signPayload(body),
 	}
-	result := post(env.Router, url, body, nil, header)
+	result := wire.TestPost[any](env.Router, url, body, header)
 
 	// validate result
-	if err := expectStatus(http.StatusOK, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusOK)
 }
 
 func TestWebhookBadSignature(t *testing.T) {
@@ -42,14 +41,12 @@ func TestWebhookBadSignature(t *testing.T) {
 
 	url := "/stripe/webhook"
 	body := `{}`
-	header := header{
-		key:   "Stripe-Signature",
-		value: "bad",
+	header := wire.TestHeader{
+		Key:   "Stripe-Signature",
+		Value: "bad",
 	}
-	result := post(env.Router, url, body, nil, header)
+	result := wire.TestPost[any](env.Router, url, body, header)
 
 	// validate result
-	if err := expectStatus(http.StatusBadRequest, result); err != nil {
-		t.Fatal(err)
-	}
+	result.ExpectStatus(t, http.StatusBadRequest)
 }
