@@ -12,7 +12,7 @@ type Options struct {
 }
 
 type DB struct {
-	conn *sql.DB
+	Conn *sql.DB
 }
 
 func Open(
@@ -46,7 +46,7 @@ func Open(
 		return nil, fmt.Errorf("could not migrate database: %w", err)
 	}
 
-	db := &DB{conn: conn}
+	db := &DB{Conn: conn}
 	if err := ensureDefaultAllocations(conn); err != nil {
 		conn.Close()
 		return nil, err
@@ -56,19 +56,19 @@ func Open(
 }
 
 func (db *DB) Close() error {
-	if db == nil || db.conn == nil {
+	if db == nil || db.Conn == nil {
 		return nil
 	}
-	return db.conn.Close()
+	return db.Conn.Close()
 }
 
 func (db *DB) HealthCheck() error {
 
-	if db == nil || db.conn == nil {
+	if db == nil || db.Conn == nil {
 		return fmt.Errorf("db not initialized")
 	}
 
-	tx, err := db.conn.Begin()
+	tx, err := db.Conn.Begin()
 	if err != nil {
 		return err
 	}

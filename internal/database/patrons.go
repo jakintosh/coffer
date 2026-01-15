@@ -27,7 +27,7 @@ func (s *DBPatronStore) GetCustomers(
 	[]service.Patron,
 	error,
 ) {
-	rows, err := s.db.conn.Query(`
+	rows, err := s.db.Conn.Query(`
 		SELECT id, name, created, updated
 		FROM customer
 		ORDER BY COALESCE(updated, created) DESC

@@ -10,6 +10,7 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
@@ -72,9 +73,7 @@ var serveCmd = &args.Command{
 		apiKey := loadCredential("api_key", credsDir)
 
 		// setup db
-		dbOpts := database.Options{
-			WAL: true,
-		}
+		dbOpts := database.Options{WAL: true}
 		db, err := database.Open(dbPath, dbOpts)
 		if err != nil {
 			log.Fatalf("failed to open database: %v", err)
@@ -91,18 +90,27 @@ var serveCmd = &args.Command{
 		stripeProcessor.Start()
 		defer stripeProcessor.Stop()
 
+		// setup keys service
+		keysDb, err := keys.NewSQL(db.Conn) // reuse app db
+		if err != nil {
+			log.Fatalf("failed to create keys store: %v", err)
+		}
+
+		keysSvc, err := keys.New(keysDb, apiKey)
+		if err != nil {
+			log.Fatalf("failed to create keys service: %v", err)
+		}
+
 		// setup service
 		svcOpts := service.Options{
 			Allocations:        db.AllocationsStore(),
 			CORS:               db.CORSStore(),
-			Keys:               db.KeyStore(),
 			Ledger:             db.LedgerStore(),
 			Metrics:            db.MetricsStore(),
 			Patrons:            db.PatronStore(),
 			Stripe:             db.StripeStore(),
 			HealthCheck:        db.HealthCheck,
 			StripeProcessor:    stripeProcessor,
-			InitialAPIKey:      apiKey,
 			InitialCORSOrigins: origins,
 		}
 		svc, err := service.New(svcOpts)
@@ -111,7 +119,7 @@ var serveCmd = &args.Command{
 		}
 
 		// setup api
-		api := api.New(svc)
+		api := api.New(svc, keysSvc)
 		apiRouter := api.BuildRouter()
 
 		// setup router

@@ -20,7 +20,7 @@ func (s *DBStripeStore) InsertCustomer(
 		nameNullStr.Valid = true
 	}
 
-	_, err := s.db.conn.Exec(`
+	_, err := s.db.Conn.Exec(`
 		INSERT INTO customer (id, created, name)
 		VALUES(?1, ?2, ?3)
 		ON CONFLICT(id) DO UPDATE
@@ -40,7 +40,7 @@ func (s *DBStripeStore) InsertSubscription(
 	amount int64,
 	currency string,
 ) error {
-	_, err := s.db.conn.Exec(`
+	_, err := s.db.Conn.Exec(`
 		INSERT INTO subscription (id, created, customer, status, amount, currency)
 		VALUES(?1, ?2, ?3, ?4, ?5, ?6)
 		ON CONFLICT(id) DO UPDATE
@@ -65,7 +65,7 @@ func (s *DBStripeStore) InsertPayment(
 	amount int64,
 	currency string,
 ) error {
-	_, err := s.db.conn.Exec(`
+	_, err := s.db.Conn.Exec(`
 		INSERT INTO payment (id, created, status, customer, amount, currency)
 		VALUES(?1, ?2, ?3, ?4, ?5, ?6)
 		ON CONFLICT(id) DO UPDATE
@@ -88,7 +88,7 @@ func (s *DBStripeStore) InsertPayout(
 	amount int64,
 	currency string,
 ) error {
-	_, err := s.db.conn.Exec(`
+	_, err := s.db.Conn.Exec(`
 		INSERT INTO payout (id, created, status, amount, currency)
 		VALUES(?1, ?2, ?3, ?4, ?5)
 		ON CONFLICT(id) DO UPDATE

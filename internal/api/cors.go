@@ -11,8 +11,8 @@ import (
 func (a *API) buildCORSRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /settings/cors", a.withAuth(a.handleGetCORS))
-	mux.HandleFunc("PUT /settings/cors", a.withAuth(a.handlePutCORS))
+	mux.HandleFunc("GET /settings/cors", a.keys.WithAuth(a.handleGetCORS))
+	mux.HandleFunc("PUT /settings/cors", a.keys.WithAuth(a.handlePutCORS))
 }
 
 func (a *API) handleGetCORS(

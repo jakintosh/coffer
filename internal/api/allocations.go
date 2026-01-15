@@ -13,7 +13,7 @@ func (a *API) buildAllocationsRouter(
 ) {
 	mux.HandleFunc("GET /settings/allocations", a.withCORS(a.handleGetAllocations))
 	mux.HandleFunc("OPTIONS /settings/allocations", a.withCORS(a.handleGetAllocations))
-	mux.HandleFunc("PUT /settings/allocations", a.withAuth(a.handlePutAllocations))
+	mux.HandleFunc("PUT /settings/allocations", a.keys.WithAuth(a.handlePutAllocations))
 }
 
 func (a *API) handleGetAllocations(

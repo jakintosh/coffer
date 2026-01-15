@@ -15,6 +15,7 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 	stripe "github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/webhook"
 )
@@ -47,6 +48,7 @@ func MakeDate3339(
 
 type TestEnv struct {
 	DB      *database.DB
+	Keys    *keys.Service
 	Service *service.Service
 	Router  http.Handler
 }
@@ -59,13 +61,22 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		t.Fatalf("failed to open test database: %v", err)
 	}
 
+	keysStore, err := keys.NewSQL(db.Conn)
+	if err != nil {
+		t.Fatalf("failed to create keys store: %v", err)
+	}
+
+	keysSvc, err := keys.New(keysStore, "")
+	if err != nil {
+		t.Fatalf("failed to create keys service: %v", err)
+	}
+
 	stripeProcessor := service.NewStripeProcessor("", STRIPE_TEST_KEY, true, 50*time.Millisecond)
 	stripeProcessor.Start()
 
 	svc, err := service.New(service.Options{
 		Allocations:     db.AllocationsStore(),
 		CORS:            db.CORSStore(),
-		Keys:            db.KeyStore(),
 		Ledger:          db.LedgerStore(),
 		Metrics:         db.MetricsStore(),
 		Patrons:         db.PatronStore(),
@@ -84,6 +95,7 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 
 	return &TestEnv{
 		DB:      db,
+		Keys:    keysSvc,
 		Service: svc,
 	}
 }

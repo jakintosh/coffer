@@ -12,7 +12,7 @@ func (s *DBCORSStore) CountOrigins() (
 	int,
 	error,
 ) {
-	row := s.db.conn.QueryRow(`
+	row := s.db.Conn.QueryRow(`
 		SELECT COUNT(*)
 		FROM allowed_origin;
 	`)
@@ -27,7 +27,7 @@ func (s *DBCORSStore) GetOrigins() (
 	[]service.AllowedOrigin,
 	error,
 ) {
-	rows, err := s.db.conn.Query(`
+	rows, err := s.db.Conn.Query(`
 		SELECT url
 		FROM allowed_origin
 		ORDER BY rowid;
@@ -51,7 +51,7 @@ func (s *DBCORSStore) GetOrigins() (
 func (s *DBCORSStore) SetOrigins(
 	origins []service.AllowedOrigin,
 ) error {
-	tx, err := s.db.conn.Begin()
+	tx, err := s.db.Conn.Begin()
 	if err != nil {
 		return err
 	}

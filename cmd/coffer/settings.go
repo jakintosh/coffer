@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
@@ -16,7 +17,7 @@ var settingsCmd = &args.Command{
 	Subcommands: []*args.Command{
 		allocationsCmd,
 		corsCmd,
-		keysCmd,
+		keys.Command(DEFAULT_CFG, API_BASE_URL),
 	},
 }
 
@@ -110,40 +111,6 @@ var allocSetCmd = &args.Command{
 			return nil
 		}
 		return writeJSON(response)
-	},
-}
-
-var keysCmd = &args.Command{
-	Name: "keys",
-	Help: "manage api keys",
-	Subcommands: []*args.Command{
-		keysCreateCmd,
-		keysDeleteCmd,
-	},
-}
-
-var keysCreateCmd = &args.Command{
-	Name: "create",
-	Help: "create new api key",
-	Handler: func(i *args.Input) error {
-		return request[struct{}](i, http.MethodPost, "/settings/keys", nil, nil)
-	},
-}
-
-var keysDeleteCmd = &args.Command{
-	Name: "delete",
-	Help: "delete api key",
-	Operands: []args.Operand{
-		{
-			Name: "id",
-			Help: "api key id",
-		},
-	},
-	Handler: func(i *args.Input) error {
-
-		id := i.GetOperand("id")
-		path := fmt.Sprintf("/settings/keys/%s", id)
-		return request[struct{}](i, http.MethodDelete, path, nil, nil)
 	},
 }
 

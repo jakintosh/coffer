@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 )
 
 type ErrMalformedQuery struct {
@@ -28,11 +29,12 @@ type APIError struct {
 }
 
 type API struct {
-	svc *service.Service
+	svc  *service.Service
+	keys *keys.Service
 }
 
-func New(svc *service.Service) *API {
-	return &API{svc: svc}
+func New(svc *service.Service, keys *keys.Service) *API {
+	return &API{svc: svc, keys: keys}
 }
 
 func (a *API) BuildRouter() http.Handler {

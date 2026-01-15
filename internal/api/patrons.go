@@ -7,7 +7,7 @@ import (
 func (a *API) buildPatronsRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /patrons", a.withAuth(a.handleListPatrons))
+	mux.HandleFunc("GET /patrons", a.keys.WithAuth(a.handleListPatrons))
 }
 
 func (a *API) handleListPatrons(

@@ -43,7 +43,7 @@ func (s *DBAllocationsStore) GetAllocations() (
 	[]service.AllocationRule,
 	error,
 ) {
-	rows, err := s.db.conn.Query(`
+	rows, err := s.db.Conn.Query(`
 		SELECT id, ledger, percentage
 		FROM allocation
 		ORDER BY rowid;
@@ -73,7 +73,7 @@ func (s *DBAllocationsStore) SetAllocations(
 	rules []service.AllocationRule,
 ) error {
 	// begin db transaction
-	tx, err := s.db.conn.Begin()
+	tx, err := s.db.Conn.Begin()
 	if err != nil {
 		return err
 	}

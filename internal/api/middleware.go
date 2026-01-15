@@ -2,35 +2,7 @@ package api
 
 import (
 	"net/http"
-	"strings"
 )
-
-func (a *API) withAuth(
-	next http.HandlerFunc,
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("Authorization")
-		if strings.HasPrefix(strings.ToLower(token), "bearer ") {
-			token = strings.TrimSpace(token[7:])
-		}
-		if token == "" {
-			writeError(w, http.StatusUnauthorized, "Missing Authorization")
-			return
-		}
-
-		ok, err := a.svc.VerifyAPIKey(token)
-		if err != nil {
-			writeError(w, http.StatusUnauthorized, "Unauthorized")
-			return
-		}
-		if !ok {
-			writeError(w, http.StatusUnauthorized, "Unauthorized")
-			return
-		}
-
-		next(w, r)
-	}
-}
 
 func (a *API) withCORS(
 	next http.HandlerFunc,

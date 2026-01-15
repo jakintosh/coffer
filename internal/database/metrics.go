@@ -22,7 +22,7 @@ func (s *DBMetricsStore) GetSubscriptionSummary() (
 		Tiers: map[int]int{},
 	}
 
-	row := s.db.conn.QueryRow(`
+	row := s.db.Conn.QueryRow(`
 		SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
 		FROM subscription
 		WHERE status='active'
@@ -33,7 +33,7 @@ func (s *DBMetricsStore) GetSubscriptionSummary() (
 	}
 	summary.Total /= 100
 
-	rows, err := s.db.conn.Query(`
+	rows, err := s.db.Conn.Query(`
 		SELECT amount, COUNT(*) as count
 		FROM subscription
 		WHERE status='active'

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,13 +8,6 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/coffer/internal/util"
 )
-
-type errorKeyStore struct{}
-
-func (errorKeyStore) CountKeys() (int, error)                 { return 0, nil }
-func (errorKeyStore) DeleteKey(string) error                  { return nil }
-func (errorKeyStore) FetchKey(string) (string, string, error) { return "", "", fmt.Errorf("fail") }
-func (errorKeyStore) InsertKey(string, string, string) error  { return nil }
 
 func setAllowedOrigins(
 	t *testing.T,
@@ -36,15 +28,15 @@ func setAllowedOrigins(
 func TestWithAuthSuccess(t *testing.T) {
 
 	env := util.SetupTestEnv(t)
-	token, err := env.Service.CreateAPIKey()
+	token, err := env.Keys.Create()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// setup middleware func
 	called := false
-	a := New(env.Service)
-	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service, env.Keys)
+	handler := a.keys.WithAuth(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})
@@ -66,9 +58,11 @@ func TestWithAuthSuccess(t *testing.T) {
 
 func TestWithAuthMissing(t *testing.T) {
 
+	env := util.SetupTestEnv(t)
+
 	// setup middleware func
-	a := New(&service.Service{})
-	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service, env.Keys)
+	handler := a.keys.WithAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -88,8 +82,8 @@ func TestWithAuthInvalid(t *testing.T) {
 	env := util.SetupTestEnv(t)
 
 	// setup middleware func
-	a := New(env.Service)
-	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service, env.Keys)
+	handler := a.keys.WithAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -105,44 +99,6 @@ func TestWithAuthInvalid(t *testing.T) {
 	}
 }
 
-func TestWithAuthError(t *testing.T) {
-
-	// use error key store - auth will fail with 401 due to store error
-	env := util.SetupTestEnv(t)
-
-	// Create new service with error key store
-	svc, err := service.New(service.Options{
-		Allocations: env.DB.AllocationsStore(),
-		CORS:        env.DB.CORSStore(),
-		Keys:        errorKeyStore{},
-		Ledger:      env.DB.LedgerStore(),
-		Metrics:     env.DB.MetricsStore(),
-		Patrons:     env.DB.PatronStore(),
-		Stripe:      env.DB.StripeStore(),
-		HealthCheck: env.DB.HealthCheck,
-	})
-	if err != nil {
-		t.Fatalf("failed to create service: %v", err)
-	}
-
-	// setup middleware func
-	a := New(svc)
-	handler := a.withAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	// call dummy func
-	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("Authorization", "Bearer dead.beef")
-	res := httptest.NewRecorder()
-	handler(res, req)
-
-	// validate result - store error returns 401 Unauthorized
-	if res.Code != http.StatusUnauthorized {
-		t.Fatalf("want 401 got %d", res.Code)
-	}
-}
-
 func TestWithCORSAllowedSetsHeadersAndCallsNext(t *testing.T) {
 
 	env := util.SetupTestEnv(t)
@@ -150,7 +106,7 @@ func TestWithCORSAllowedSetsHeadersAndCallsNext(t *testing.T) {
 	setAllowedOrigins(t, env.Service, origin)
 
 	called := false
-	a := New(env.Service)
+	a := New(env.Service, env.Keys)
 	handler := a.withCORS(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
@@ -189,7 +145,7 @@ func TestWithCORSOptionsAllowedShortCircuits(t *testing.T) {
 	setAllowedOrigins(t, env.Service, origin)
 
 	called := false
-	a := New(env.Service)
+	a := New(env.Service, env.Keys)
 	handler := a.withCORS(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
@@ -217,7 +173,7 @@ func TestWithCORSOptionsDisallowedForbidden(t *testing.T) {
 	setAllowedOrigins(t, env.Service, "http://allowed")
 
 	called := false
-	a := New(env.Service)
+	a := New(env.Service, env.Keys)
 	handler := a.withCORS(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
@@ -245,7 +201,7 @@ func TestRouterCORSHeadersOnGET(t *testing.T) {
 	origin := "http://test-default"
 	setAllowedOrigins(t, env.Service, origin)
 
-	router := New(env.Service).BuildRouter()
+	router := New(env.Service, env.Keys).BuildRouter()
 	req := httptest.NewRequest(http.MethodGet, "/settings/allocations", nil)
 	req.Header.Set("Origin", origin)
 	res := httptest.NewRecorder()
@@ -265,7 +221,7 @@ func TestRouterCORSOptionsPreflight(t *testing.T) {
 	origin := "http://test-default"
 	setAllowedOrigins(t, env.Service, origin)
 
-	router := New(env.Service).BuildRouter()
+	router := New(env.Service, env.Keys).BuildRouter()
 	req := httptest.NewRequest(http.MethodOptions, "/settings/allocations", nil)
 	req.Header.Set("Origin", origin)
 	res := httptest.NewRecorder()

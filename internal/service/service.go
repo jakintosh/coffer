@@ -23,7 +23,6 @@ type Options struct {
 	// Required stores
 	Allocations AllocationsStore
 	CORS        CORSStore
-	Keys        KeyStore
 	Ledger      LedgerStore
 	Metrics     MetricsStore
 	Patrons     PatronStore
@@ -35,14 +34,12 @@ type Options struct {
 	StripeProcessor *StripeProcessor
 
 	// Initialization data
-	InitialAPIKey      string
 	InitialCORSOrigins []string
 }
 
 type Service struct {
 	allocations AllocationsStore
 	cors        CORSStore
-	keys        KeyStore
 	ledger      LedgerStore
 	metrics     MetricsStore
 	patrons     PatronStore
@@ -59,9 +56,6 @@ func New(opts Options) (*Service, error) {
 	}
 	if opts.CORS == nil {
 		return nil, errors.New("service: cors store required")
-	}
-	if opts.Keys == nil {
-		return nil, errors.New("service: keys store required")
 	}
 	if opts.Ledger == nil {
 		return nil, errors.New("service: ledger store required")
@@ -84,7 +78,6 @@ func New(opts Options) (*Service, error) {
 	svc := &Service{
 		allocations:     opts.Allocations,
 		cors:            opts.CORS,
-		keys:            opts.Keys,
 		ledger:          opts.Ledger,
 		metrics:         opts.Metrics,
 		patrons:         opts.Patrons,
@@ -92,12 +85,6 @@ func New(opts Options) (*Service, error) {
 		stripeProcessor: opts.StripeProcessor,
 		clock:           clock,
 		healthCheck:     opts.HealthCheck,
-	}
-
-	if opts.InitialAPIKey != "" {
-		if err := svc.initKeys(opts.InitialAPIKey); err != nil {
-			return nil, fmt.Errorf("init keys: %w", err)
-		}
 	}
 
 	if len(opts.InitialCORSOrigins) > 0 {
