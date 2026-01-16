@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/pkg/keys"
+	keyscmd "git.sr.ht/~jakintosh/coffer/pkg/keys/cmd"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
@@ -17,7 +17,7 @@ var settingsCmd = &args.Command{
 	Subcommands: []*args.Command{
 		allocationsCmd,
 		corsCmd,
-		keys.Command(DEFAULT_CFG, API_BASE_URL),
+		keyscmd.Command(DEFAULT_CFG, API_BASE_URL),
 	},
 }
 

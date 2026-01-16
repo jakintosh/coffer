@@ -18,11 +18,12 @@ func TestNew_RequiresAllocationsStore(t *testing.T) {
 
 	_, err = service.New(service.Options{
 		// Allocations: nil,
-		CORS:    db.CORSStore(),
-		Ledger:  db.LedgerStore(),
-		Metrics: db.MetricsStore(),
-		Patrons: db.PatronStore(),
-		Stripe:  db.StripeStore(),
+		CORS:      db.CORSStore(),
+		Ledger:    db.LedgerStore(),
+		Metrics:   db.MetricsStore(),
+		Patrons:   db.PatronStore(),
+		Stripe:    db.StripeStore(),
+		KeysStore: db.KeysStore,
 	})
 	if err == nil {
 		t.Error("expected error for nil Allocations store")
@@ -42,10 +43,11 @@ func TestNew_RequiresCORSStore(t *testing.T) {
 	_, err = service.New(service.Options{
 		Allocations: db.AllocationsStore(),
 		// CORS: nil,
-		Ledger:  db.LedgerStore(),
-		Metrics: db.MetricsStore(),
-		Patrons: db.PatronStore(),
-		Stripe:  db.StripeStore(),
+		Ledger:    db.LedgerStore(),
+		Metrics:   db.MetricsStore(),
+		Patrons:   db.PatronStore(),
+		Stripe:    db.StripeStore(),
+		KeysStore: db.KeysStore,
 	})
 	if err == nil {
 		t.Error("expected error for nil CORS store")
@@ -66,9 +68,10 @@ func TestNew_RequiresLedgerStore(t *testing.T) {
 		Allocations: db.AllocationsStore(),
 		CORS:        db.CORSStore(),
 		// Ledger: nil,
-		Metrics: db.MetricsStore(),
-		Patrons: db.PatronStore(),
-		Stripe:  db.StripeStore(),
+		Metrics:   db.MetricsStore(),
+		Patrons:   db.PatronStore(),
+		Stripe:    db.StripeStore(),
+		KeysStore: db.KeysStore,
 	})
 	if err == nil {
 		t.Error("expected error for nil Ledger store")
@@ -90,8 +93,9 @@ func TestNew_RequiresMetricsStore(t *testing.T) {
 		CORS:        db.CORSStore(),
 		Ledger:      db.LedgerStore(),
 		// Metrics: nil,
-		Patrons: db.PatronStore(),
-		Stripe:  db.StripeStore(),
+		Patrons:   db.PatronStore(),
+		Stripe:    db.StripeStore(),
+		KeysStore: db.KeysStore,
 	})
 	if err == nil {
 		t.Error("expected error for nil Metrics store")
@@ -114,7 +118,8 @@ func TestNew_RequiresPatronsStore(t *testing.T) {
 		Ledger:      db.LedgerStore(),
 		Metrics:     db.MetricsStore(),
 		// Patrons: nil,
-		Stripe: db.StripeStore(),
+		Stripe:    db.StripeStore(),
+		KeysStore: db.KeysStore,
 	})
 	if err == nil {
 		t.Error("expected error for nil Patrons store")
@@ -138,6 +143,7 @@ func TestNew_RequiresStripeStore(t *testing.T) {
 		Metrics:     db.MetricsStore(),
 		Patrons:     db.PatronStore(),
 		// Stripe: nil,
+		KeysStore: db.KeysStore,
 	})
 	if err == nil {
 		t.Error("expected error for nil Stripe store")
@@ -161,6 +167,7 @@ func TestNew_DefaultClock(t *testing.T) {
 		Metrics:     db.MetricsStore(),
 		Patrons:     db.PatronStore(),
 		Stripe:      db.StripeStore(),
+		KeysStore:   db.KeysStore,
 		// Clock: nil - should default to time.Now
 	})
 	if err != nil {
@@ -192,6 +199,7 @@ func TestNew_CustomClock(t *testing.T) {
 		Metrics:     db.MetricsStore(),
 		Patrons:     db.PatronStore(),
 		Stripe:      db.StripeStore(),
+		KeysStore:   db.KeysStore,
 		Clock:       func() time.Time { return fixedTime },
 	})
 	if err != nil {
@@ -227,6 +235,7 @@ func TestNew_InitialCORSOrigins(t *testing.T) {
 		Metrics:            db.MetricsStore(),
 		Patrons:            db.PatronStore(),
 		Stripe:             db.StripeStore(),
+		KeysStore:          db.KeysStore,
 		InitialCORSOrigins: []string{"https://example.com", "https://test.com"},
 	})
 	if err != nil {
@@ -266,6 +275,7 @@ func TestHealthCheck_NilChecker(t *testing.T) {
 		Metrics:     db.MetricsStore(),
 		Patrons:     db.PatronStore(),
 		Stripe:      db.StripeStore(),
+		KeysStore:   db.KeysStore,
 		// HealthCheck: nil
 	})
 	if err != nil {
@@ -293,6 +303,7 @@ func TestHealthCheck_WithChecker(t *testing.T) {
 		Metrics:     db.MetricsStore(),
 		Patrons:     db.PatronStore(),
 		Stripe:      db.StripeStore(),
+		KeysStore:   db.KeysStore,
 		HealthCheck: db.HealthCheck,
 	})
 	if err != nil {

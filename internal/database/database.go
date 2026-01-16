@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 	_ "modernc.org/sqlite"
 )
 
@@ -12,7 +13,8 @@ type Options struct {
 }
 
 type DB struct {
-	Conn *sql.DB
+	Conn      *sql.DB
+	KeysStore *keys.SQLStore
 }
 
 func Open(
@@ -46,7 +48,13 @@ func Open(
 		return nil, fmt.Errorf("could not migrate database: %w", err)
 	}
 
-	db := &DB{Conn: conn}
+	keysStore, err := keys.NewSQL(conn)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to create keys store: %w", err)
+	}
+
+	db := &DB{Conn: conn, KeysStore: keysStore}
 	if err := ensureDefaultAllocations(conn); err != nil {
 		conn.Close()
 		return nil, err

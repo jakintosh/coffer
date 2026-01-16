@@ -7,5 +7,5 @@ func (a *API) buildSettingsRouter(
 ) {
 	a.buildAllocationsRouter(mux)
 	a.buildCORSRouter(mux)
-	a.keys.Router(mux, "/settings")
+	a.svc.KeysService().Router(mux, "/settings")
 }

@@ -28,15 +28,15 @@ func setAllowedOrigins(
 func TestWithAuthSuccess(t *testing.T) {
 
 	env := util.SetupTestEnv(t)
-	token, err := env.Keys.Create()
+	token, err := env.Service.KeysService().Create()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// setup middleware func
 	called := false
-	a := New(env.Service, env.Keys)
-	handler := a.keys.WithAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service)
+	handler := a.svc.KeysService().WithAuth(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})
@@ -61,8 +61,8 @@ func TestWithAuthMissing(t *testing.T) {
 	env := util.SetupTestEnv(t)
 
 	// setup middleware func
-	a := New(env.Service, env.Keys)
-	handler := a.keys.WithAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service)
+	handler := a.svc.KeysService().WithAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -82,8 +82,8 @@ func TestWithAuthInvalid(t *testing.T) {
 	env := util.SetupTestEnv(t)
 
 	// setup middleware func
-	a := New(env.Service, env.Keys)
-	handler := a.keys.WithAuth(func(w http.ResponseWriter, r *http.Request) {
+	a := New(env.Service)
+	handler := a.svc.KeysService().WithAuth(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -106,7 +106,7 @@ func TestWithCORSAllowedSetsHeadersAndCallsNext(t *testing.T) {
 	setAllowedOrigins(t, env.Service, origin)
 
 	called := false
-	a := New(env.Service, env.Keys)
+	a := New(env.Service)
 	handler := a.withCORS(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
@@ -145,7 +145,7 @@ func TestWithCORSOptionsAllowedShortCircuits(t *testing.T) {
 	setAllowedOrigins(t, env.Service, origin)
 
 	called := false
-	a := New(env.Service, env.Keys)
+	a := New(env.Service)
 	handler := a.withCORS(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
@@ -173,7 +173,7 @@ func TestWithCORSOptionsDisallowedForbidden(t *testing.T) {
 	setAllowedOrigins(t, env.Service, "http://allowed")
 
 	called := false
-	a := New(env.Service, env.Keys)
+	a := New(env.Service)
 	handler := a.withCORS(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
@@ -201,7 +201,7 @@ func TestRouterCORSHeadersOnGET(t *testing.T) {
 	origin := "http://test-default"
 	setAllowedOrigins(t, env.Service, origin)
 
-	router := New(env.Service, env.Keys).BuildRouter()
+	router := New(env.Service).BuildRouter()
 	req := httptest.NewRequest(http.MethodGet, "/settings/allocations", nil)
 	req.Header.Set("Origin", origin)
 	res := httptest.NewRecorder()
@@ -221,7 +221,7 @@ func TestRouterCORSOptionsPreflight(t *testing.T) {
 	origin := "http://test-default"
 	setAllowedOrigins(t, env.Service, origin)
 
-	router := New(env.Service, env.Keys).BuildRouter()
+	router := New(env.Service).BuildRouter()
 	req := httptest.NewRequest(http.MethodOptions, "/settings/allocations", nil)
 	req.Header.Set("Origin", origin)
 	res := httptest.NewRecorder()

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 )
 
 var (
@@ -27,6 +29,7 @@ type Options struct {
 	Metrics     MetricsStore
 	Patrons     PatronStore
 	Stripe      StripeStore
+	KeysStore   keys.Store
 
 	// Optional dependencies
 	Clock           func() time.Time
@@ -35,6 +38,7 @@ type Options struct {
 
 	// Initialization data
 	InitialCORSOrigins []string
+	APIKey             string
 }
 
 type Service struct {
@@ -44,6 +48,7 @@ type Service struct {
 	metrics     MetricsStore
 	patrons     PatronStore
 	stripe      StripeStore
+	keys        *keys.Service
 
 	stripeProcessor *StripeProcessor
 	clock           func() time.Time
@@ -69,10 +74,18 @@ func New(opts Options) (*Service, error) {
 	if opts.Stripe == nil {
 		return nil, errors.New("service: stripe store required")
 	}
+	if opts.KeysStore == nil {
+		return nil, errors.New("service: keys store required")
+	}
 
 	clock := opts.Clock
 	if clock == nil {
 		clock = time.Now
+	}
+
+	keysSvc, err := keys.New(opts.KeysStore, opts.APIKey)
+	if err != nil {
+		return nil, fmt.Errorf("init keys service: %w", err)
 	}
 
 	svc := &Service{
@@ -82,6 +95,7 @@ func New(opts Options) (*Service, error) {
 		metrics:         opts.Metrics,
 		patrons:         opts.Patrons,
 		stripe:          opts.Stripe,
+		keys:            keysSvc,
 		stripeProcessor: opts.StripeProcessor,
 		clock:           clock,
 		healthCheck:     opts.HealthCheck,
@@ -116,4 +130,8 @@ func (s *Service) HealthCheck() error {
 		return nil
 	}
 	return s.healthCheck()
+}
+
+func (s *Service) KeysService() *keys.Service {
+	return s.keys
 }

@@ -10,7 +10,6 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/api"
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
@@ -90,17 +89,6 @@ var serveCmd = &args.Command{
 		stripeProcessor.Start()
 		defer stripeProcessor.Stop()
 
-		// setup keys service
-		keysDb, err := keys.NewSQL(db.Conn) // reuse app db
-		if err != nil {
-			log.Fatalf("failed to create keys store: %v", err)
-		}
-
-		keysSvc, err := keys.New(keysDb, apiKey)
-		if err != nil {
-			log.Fatalf("failed to create keys service: %v", err)
-		}
-
 		// setup service
 		svcOpts := service.Options{
 			Allocations:        db.AllocationsStore(),
@@ -109,9 +97,11 @@ var serveCmd = &args.Command{
 			Metrics:            db.MetricsStore(),
 			Patrons:            db.PatronStore(),
 			Stripe:             db.StripeStore(),
+			KeysStore:          db.KeysStore,
 			HealthCheck:        db.HealthCheck,
 			StripeProcessor:    stripeProcessor,
 			InitialCORSOrigins: origins,
+			APIKey:             apiKey,
 		}
 		svc, err := service.New(svcOpts)
 		if err != nil {
@@ -119,7 +109,7 @@ var serveCmd = &args.Command{
 		}
 
 		// setup api
-		api := api.New(svc, keysSvc)
+		api := api.New(svc)
 		apiRouter := api.BuildRouter()
 
 		// setup router

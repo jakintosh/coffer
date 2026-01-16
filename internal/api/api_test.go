@@ -26,7 +26,7 @@ func setupTestEnv(
 ) *util.TestEnv {
 	t.Helper()
 	env := util.SetupTestEnv(t)
-	api := api.New(env.Service, env.Keys)
+	api := api.New(env.Service)
 	env.Router = api.BuildRouter()
 	return env
 }
@@ -35,7 +35,7 @@ func makeTestAuthHeader(
 	t *testing.T,
 	env *util.TestEnv,
 ) wire.TestHeader {
-	token, err := env.Keys.Create()
+	token, err := env.Service.KeysService().Create()
 	if err != nil {
 		t.Fatal(err)
 	}

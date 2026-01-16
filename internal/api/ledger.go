@@ -27,7 +27,7 @@ func (a *API) buildLedgerRouter(
 	mux.HandleFunc("GET /ledger/{ledger}/transactions", a.withCORS(a.handleGetLedgerTransactions))
 	mux.HandleFunc("OPTIONS /ledger/{ledger}/transactions", a.withCORS(a.handleGetLedgerTransactions))
 
-	mux.HandleFunc("POST /ledger/{ledger}/transactions", a.keys.WithAuth(a.handlePostLedgerTransaction))
+	mux.HandleFunc("POST /ledger/{ledger}/transactions", a.svc.KeysService().WithAuth(a.handlePostLedgerTransaction))
 }
 
 func (a *API) handleGetLedger(
