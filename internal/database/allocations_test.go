@@ -8,17 +8,13 @@ import (
 )
 
 func TestAllocationsStore(t *testing.T) {
-
-	db, err := database.Open(":memory:", database.Options{})
+	db, err := database.Open(database.Options{Path: ":memory:"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = db.Close()
-	})
-	store := db.AllocationsStore()
+	t.Cleanup(func() { _ = db.Close() })
 
-	rules, err := store.GetAllocations()
+	rules, err := db.GetAllocations()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,12 +35,12 @@ func TestAllocationsStore(t *testing.T) {
 			Percentage: 20,
 		},
 	}
-	if err := store.SetAllocations(newRules); err != nil {
+	if err := db.SetAllocations(newRules); err != nil {
 		t.Fatalf("failed to set allocations: %v", err)
 	}
 
 	// retrieve and check allocation rules
-	allocations, err := store.GetAllocations()
+	allocations, err := db.GetAllocations()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,33 +1,34 @@
-package api_test
+package service_test
 
 import (
 	"net/http"
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
-func TestGetAllocations(t *testing.T) {
+func TestAPIGetAllocations(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	url := "/settings/allocations"
-	result := wire.TestGet[[]service.AllocationRule](env.Router, url)
+	result := wire.TestGet[[]service.AllocationRule](router, url)
 
 	// validate result
-	result.ExpectStatus(t, http.StatusOK)
-
 	// validate response
-	allocations := result.Data
+	allocations := result.ExpectOK(t)
 	if len(allocations) != 1 || allocations[0].Percentage != 100 {
 		t.Errorf("unexpected default allocations %+v", allocations)
 	}
 }
 
-func TestPutAllocations(t *testing.T) {
+func TestAPIPutAllocations(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	// put allocations
 	url := "/settings/allocations"
@@ -43,14 +44,14 @@ func TestPutAllocations(t *testing.T) {
 			"percentage": 40
 		}
     ]`
-	auth := makeTestAuthHeader(t, env)
-	result := wire.TestPut[any](env.Router, url, body, auth)
+	auth := testutil.MakeAuthHeader(t, env.Service)
+	result := wire.TestPut[any](router, url, body, auth)
 
 	// validate result
 	result.ExpectStatus(t, http.StatusNoContent)
 
 	// get allocations
-	getResult := wire.TestGet[[]service.AllocationRule](env.Router, url)
+	getResult := wire.TestGet[[]service.AllocationRule](router, url)
 
 	// validate response
 	allocations := getResult.Data
@@ -69,9 +70,10 @@ func TestPutAllocations(t *testing.T) {
 	}
 }
 
-func TestPutAllocationsBad(t *testing.T) {
+func TestAPIPutAllocationsBad(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	// put invalid allocations
 	body := `
@@ -82,8 +84,8 @@ func TestPutAllocationsBad(t *testing.T) {
 			"percentage": 10
 		}
 	]`
-	auth := makeTestAuthHeader(t, env)
-	result := wire.TestPut[any](env.Router, "/settings/allocations", body, auth)
+	auth := testutil.MakeAuthHeader(t, env.Service)
+	result := wire.TestPut[any](router, "/settings/allocations", body, auth)
 
 	// validate error result
 	result.ExpectStatus(t, http.StatusBadRequest)

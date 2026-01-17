@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"git.sr.ht/~jakintosh/coffer/internal/api"
+	"git.sr.ht/~jakintosh/coffer/internal/service"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 	"git.sr.ht/~jakintosh/command-go/pkg/envs"
 )
@@ -34,7 +34,7 @@ var statusCmd = &args.Command{
 			fmt.Println("API Key: present")
 		}
 
-		response := &api.HealthResponse{}
+		response := &service.HealthResponse{}
 		err = request(i, "GET", "/health", nil, response)
 		if err != nil {
 			fmt.Println("Health: down")

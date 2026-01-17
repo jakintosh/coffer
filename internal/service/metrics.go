@@ -1,8 +1,10 @@
 package service
 
-type MetricsStore interface {
-	GetSubscriptionSummary() (*SubscriptionSummary, error)
-}
+import (
+	"net/http"
+
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
+)
 
 type Metrics struct {
 	PatronsActive         int     `json:"patrons_active"`
@@ -18,7 +20,7 @@ type SubscriptionSummary struct {
 }
 
 func (s *Service) GetMetrics() (*Metrics, error) {
-	sum, err := s.metrics.GetSubscriptionSummary()
+	sum, err := s.store.GetSubscriptionSummary()
 	if err != nil {
 		return nil, DatabaseError{err}
 	}
@@ -34,4 +36,24 @@ func (s *Service) GetMetrics() (*Metrics, error) {
 	}
 
 	return metrics, nil
+}
+
+func (s *Service) buildMetricsRouter(
+	mux *http.ServeMux,
+	mw Middleware,
+) {
+	mux.HandleFunc("GET /metrics", mw.CORS(s.handleGetMetrics))
+	mux.HandleFunc("OPTIONS /metrics", mw.CORS(s.handleGetMetrics))
+}
+
+func (s *Service) handleGetMetrics(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	metrics, err := s.GetMetrics()
+	if err != nil {
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+	} else {
+		wire.WriteData(w, http.StatusOK, metrics)
+	}
 }

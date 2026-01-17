@@ -58,3 +58,18 @@ func loadCredential(
 	}
 	return string(cred)
 }
+
+func resolveOption(
+	i *args.Input,
+	opt string,
+	env string,
+	def string,
+) string {
+	if v := i.GetParameter(opt); v != nil && *v != "" {
+		return *v
+	}
+	if v := os.Getenv(env); v != "" {
+		return v
+	}
+	return def
+}

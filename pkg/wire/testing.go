@@ -73,6 +73,11 @@ func TestDelete[T any](handler http.Handler, url string, headers ...TestHeader) 
 	return testRequest[T](handler, http.MethodDelete, url, "", headers...)
 }
 
+// TestOptions issues a test OPTIONS request and decodes the envelope.
+func TestOptions[T any](handler http.Handler, url string, headers ...TestHeader) TestResult[T] {
+	return testRequest[T](handler, http.MethodOptions, url, "", headers...)
+}
+
 func testRequest[T any](
 	handler http.Handler,
 	method string,

@@ -1,4 +1,4 @@
-package util
+package testutil
 
 import (
 	"bufio"
@@ -15,6 +15,9 @@ import (
 
 	"git.sr.ht/~jakintosh/coffer/internal/database"
 	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/cors"
+	"git.sr.ht/~jakintosh/coffer/pkg/keys"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 	stripe "github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/webhook"
 )
@@ -48,38 +51,39 @@ func MakeDate3339(
 type TestEnv struct {
 	DB      *database.DB
 	Service *service.Service
-	Router  http.Handler
 }
 
 func SetupTestEnv(t *testing.T) *TestEnv {
 	t.Helper()
 
-	db, err := database.Open(":memory:", database.Options{})
+	db, err := database.Open(database.Options{Path: ":memory:"})
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}
 
-	stripeProcessor := service.NewStripeProcessor("", STRIPE_TEST_KEY, true, 50*time.Millisecond)
-	stripeProcessor.Start()
-
 	svc, err := service.New(service.Options{
-		Allocations:     db.AllocationsStore(),
-		CORS:            db.CORSStore(),
-		Ledger:          db.LedgerStore(),
-		Metrics:         db.MetricsStore(),
-		Patrons:         db.PatronStore(),
-		Stripe:          db.StripeStore(),
-		KeysStore:       db.KeysStore,
-		HealthCheck:     db.HealthCheck,
-		StripeProcessor: stripeProcessor,
-		APIKey:          "",
+		Store:       db,
+		HealthCheck: db.HealthCheck,
+		StripeProcessorOptions: &service.StripeProcessorOptions{
+			Key:            "",
+			EndpointSecret: STRIPE_TEST_KEY,
+			TestMode:       true,
+			DebounceWindow: 50 * time.Millisecond,
+		},
+		KeysOptions: &keys.Options{
+			Store: db.KeysStore,
+		},
+		CORSOptions: &cors.Options{
+			Store: db.CORSStore,
+		},
 	})
 	if err != nil {
 		t.Fatalf("failed to create service: %v", err)
 	}
+	svc.Start()
 
 	t.Cleanup(func() {
-		stripeProcessor.Stop()
+		svc.Stop()
 		db.Close()
 	})
 
@@ -87,6 +91,15 @@ func SetupTestEnv(t *testing.T) *TestEnv {
 		DB:      db,
 		Service: svc,
 	}
+}
+
+func MakeAuthHeader(t *testing.T, svc *service.Service) wire.TestHeader {
+	t.Helper()
+	token, err := svc.KeysService().Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return wire.TestHeader{Key: "Authorization", Value: "Bearer " + token}
 }
 
 func SeedCustomerData(t *testing.T, svc *service.Service) {

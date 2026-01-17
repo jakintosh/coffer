@@ -7,7 +7,8 @@ import (
 	"os"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	keyscmd "git.sr.ht/~jakintosh/coffer/pkg/keys/cmd"
+	cors "git.sr.ht/~jakintosh/coffer/pkg/cors/cmd"
+	keys "git.sr.ht/~jakintosh/coffer/pkg/keys/cmd"
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
 )
 
@@ -16,8 +17,8 @@ var settingsCmd = &args.Command{
 	Help: "manage settings",
 	Subcommands: []*args.Command{
 		allocationsCmd,
-		corsCmd,
-		keyscmd.Command(DEFAULT_CFG, API_BASE_URL),
+		cors.Command(DEFAULT_CFG, API_BASE_URL+"/settings"),
+		keys.Command(DEFAULT_CFG, API_BASE_URL+"/settings"),
 	},
 }
 
@@ -111,55 +112,5 @@ var allocSetCmd = &args.Command{
 			return nil
 		}
 		return writeJSON(response)
-	},
-}
-
-var corsCmd = &args.Command{
-	Name: "cors",
-	Help: "manage cors whitelist",
-	Subcommands: []*args.Command{
-		corsGetCmd,
-		corsSetCmd,
-	},
-}
-
-var corsGetCmd = &args.Command{
-	Name: "get",
-	Help: "show existing cors whitelist",
-	Handler: func(i *args.Input) error {
-
-		response := &[]service.AllowedOrigin{}
-		if err := request(i, http.MethodGet, "/settings/cors", nil, response); err != nil {
-			return err
-		}
-		return writeJSON(response)
-	},
-}
-
-var corsSetCmd = &args.Command{
-	Name: "set",
-	Help: "set cors whitelist",
-	Options: []args.Option{
-		{
-			Long: "url",
-			Type: args.OptionTypeArray,
-			Help: "url in cors whitelist",
-		},
-	},
-	Handler: func(i *args.Input) error {
-
-		urls := i.GetArray("url")
-
-		var list []service.AllowedOrigin
-		for _, u := range urls {
-			list = append(list, service.AllowedOrigin{URL: u})
-		}
-
-		body, err := json.Marshal(list)
-		if err != nil {
-			return err
-		}
-
-		return request[struct{}](i, http.MethodPut, "/settings/cors", body, nil)
 	},
 }

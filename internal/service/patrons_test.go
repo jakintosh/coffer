@@ -3,13 +3,13 @@ package service_test
 import (
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 func TestListPatrons(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
-	util.SeedCustomerData(t, env.Service)
+	env := testutil.SetupTestEnv(t)
+	testutil.SeedCustomerData(t, env.Service)
 
 	patrons, err := env.Service.ListPatrons(2, 0)
 	if err != nil {

@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 func TestGetAllocationsDefault(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
 
 	// get allocations
@@ -30,7 +30,7 @@ func TestGetAllocationsDefault(t *testing.T) {
 
 func TestSetAllocationsInvalid(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
 
 	// set invalid new rules
@@ -48,7 +48,7 @@ func TestSetAllocationsInvalid(t *testing.T) {
 
 func TestSetAllocationsValid(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
 
 	// set new rules

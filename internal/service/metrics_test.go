@@ -3,14 +3,14 @@ package service_test
 import (
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 func TestGetMetrics(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
-	util.SeedSubscriberData(t, svc)
+	testutil.SeedSubscriberData(t, svc)
 
 	metrics, err := svc.GetMetrics()
 	if err != nil {

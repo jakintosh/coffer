@@ -7,17 +7,15 @@ import (
 	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
-type APIResponse = wire.Response
-
-// Router registers key management routes and returns an auth middleware.
+// Router registers key management routes.
 // Routes added: POST {prefix}/keys, DELETE {prefix}/keys/{id}
-// The returned middleware can be used to protect other routes with key authentication.
 func (s *Service) Router(
 	mux *http.ServeMux,
 	prefix string,
+	auth func(http.HandlerFunc) http.HandlerFunc,
 ) {
-	mux.HandleFunc("POST "+prefix+"/keys", s.WithAuth(s.handleCreate))
-	mux.HandleFunc("DELETE "+prefix+"/keys/{id}", s.WithAuth(s.handleDelete))
+	mux.HandleFunc("POST "+prefix+"/keys", auth(s.handleCreate))
+	mux.HandleFunc("DELETE "+prefix+"/keys/{id}", auth(s.handleDelete))
 }
 
 func (s *Service) handleCreate(

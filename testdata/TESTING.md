@@ -191,7 +191,7 @@ Constructor tests that need specific `service.Options` may create the database d
 
 ```go
 func TestNew_SomeOption(t *testing.T) {
-    db, err := database.Open(":memory:", database.Options{})
+    db, err := database.Open(database.Options{Path: ":memory:"})
     if err != nil {
         t.Fatal(err)
     }

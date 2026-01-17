@@ -76,6 +76,22 @@ func TestTestDelete(t *testing.T) {
 	result.ExpectStatus(t, http.StatusNoContent)
 }
 
+func TestTestOptions(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodOptions {
+			t.Fatalf("expected OPTIONS got %s", r.Method)
+		}
+		if r.Header.Get("X-Test") != "yes" {
+			t.Fatalf("missing test header")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	header := wire.TestHeader{Key: "X-Test", Value: "yes"}
+	result := wire.TestOptions[any](handler, "/", header)
+	result.ExpectStatus(t, http.StatusNoContent)
+}
+
 func TestExpectOK(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		wire.WriteData(w, http.StatusOK, "ok")

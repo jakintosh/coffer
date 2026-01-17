@@ -20,18 +20,30 @@ type Store interface {
 	Insert(id, salt, hash string) error
 }
 
+// Options configures a keys Service.
+type Options struct {
+	Store          Store
+	BootstrapToken string
+}
+
 // Service provides API key operations.
 type Service struct {
 	store Store
 }
 
-// New creates a Service with a custom store.
-func New(store Store, bootstrapToken string) (*Service, error) {
-	service := &Service{
-		store: store,
+// New creates a Service with the provided options.
+func New(opts Options) (
+	*Service,
+	error,
+) {
+	if opts.Store == nil {
+		return nil, fmt.Errorf("keys: store required")
 	}
-	if bootstrapToken != "" {
-		if err := service.initFromToken(bootstrapToken); err != nil {
+	service := &Service{
+		store: opts.Store,
+	}
+	if opts.BootstrapToken != "" {
+		if err := service.initFromToken(opts.BootstrapToken); err != nil {
 			return nil, err
 		}
 	}

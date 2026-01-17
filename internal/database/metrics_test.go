@@ -4,16 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 func TestEmptySubscriptionSummary(t *testing.T) {
+	env := testutil.SetupTestEnv(t)
 
-	env := util.SetupTestEnv(t)
-	store := env.DB.MetricsStore()
-
-	// no data → zero
-	sum, err := store.GetSubscriptionSummary()
+	sum, err := env.DB.GetSubscriptionSummary()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,17 +22,14 @@ func TestEmptySubscriptionSummary(t *testing.T) {
 }
 
 func TestSimpleSubscriptionSummary(t *testing.T) {
-
-	env := util.SetupTestEnv(t)
-	metricsStore := env.DB.MetricsStore()
-	stripeStore := env.DB.StripeStore()
+	env := testutil.SetupTestEnv(t)
 
 	// insert one active USD subscription @ $5.00
-	if err := stripeStore.InsertSubscription("s1", time.Now().Unix(), "c1", "active", 500, "usd"); err != nil {
+	if err := env.DB.InsertSubscription("s1", time.Now().Unix(), "c1", "active", 500, "usd"); err != nil {
 		t.Fatal(err)
 	}
 
-	sum, err := metricsStore.GetSubscriptionSummary()
+	sum, err := env.DB.GetSubscriptionSummary()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,29 +41,23 @@ func TestSimpleSubscriptionSummary(t *testing.T) {
 }
 
 func TestSubscriptionSummaryFilters(t *testing.T) {
-
-	env := util.SetupTestEnv(t)
-	metricsStore := env.DB.MetricsStore()
-	stripeStore := env.DB.StripeStore()
-
+	env := testutil.SetupTestEnv(t)
 	now := time.Now().Unix()
 
 	// active USD subscription
-	if err := stripeStore.InsertSubscription("s1", now, "c1", "active", 500, "usd"); err != nil {
+	if err := env.DB.InsertSubscription("s1", now, "c1", "active", 500, "usd"); err != nil {
 		t.Fatal(err)
 	}
-
 	// cancelled subscription should be ignored
-	if err := stripeStore.InsertSubscription("s2", now, "c2", "canceled", 800, "usd"); err != nil {
+	if err := env.DB.InsertSubscription("s2", now, "c2", "canceled", 800, "usd"); err != nil {
 		t.Fatal(err)
 	}
-
 	// non-USD currency should be ignored
-	if err := stripeStore.InsertSubscription("s3", now, "c3", "active", 700, "eur"); err != nil {
+	if err := env.DB.InsertSubscription("s3", now, "c3", "active", 700, "eur"); err != nil {
 		t.Fatal(err)
 	}
 
-	sum, err := metricsStore.GetSubscriptionSummary()
+	sum, err := env.DB.GetSubscriptionSummary()
 	if err != nil {
 		t.Fatalf("summary: %v", err)
 	}

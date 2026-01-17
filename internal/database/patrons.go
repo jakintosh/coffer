@@ -7,67 +7,47 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-type DBCustomer struct {
-	ID      string
-	Name    sql.NullString
-	Created int64
-	Updated sql.NullInt64
-}
-
-type DBPatronStore struct {
-	db *DB
-}
-
-func (db *DB) PatronStore() *DBPatronStore { return &DBPatronStore{db: db} }
-
-func (s *DBPatronStore) GetCustomers(
-	limit int,
-	offset int,
-) (
-	[]service.Patron,
-	error,
-) {
-	rows, err := s.db.Conn.Query(`
+func (db *DB) GetCustomers(limit, offset int) ([]service.Patron, error) {
+	rows, err := db.Conn.Query(`
 		SELECT id, name, created, updated
 		FROM customer
 		ORDER BY COALESCE(updated, created) DESC
-		LIMIT ?1 OFFSET ?2;
-		`,
+		LIMIT ?1 OFFSET ?2;`,
 		limit,
 		offset,
 	)
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
+
 	var patrons []service.Patron
 	for rows.Next() {
-		var c DBCustomer
+		var (
+			id      string
+			name    sql.NullString
+			created int64
+			updated sql.NullInt64
+		)
 		if err := rows.Scan(
-			&c.ID,
-			&c.Name,
-			&c.Created,
-			&c.Updated,
+			&id,
+			&name,
+			&created,
+			&updated,
 		); err != nil {
 			return nil, err
 		}
 
-		updated := c.Created
-		if c.Updated.Valid {
-			updated = c.Updated.Int64
-		}
-
-		name := ""
-		if c.Name.Valid {
-			name = c.Name.String
+		updatedAt := created
+		if updated.Valid {
+			updatedAt = updated.Int64
 		}
 
 		patrons = append(patrons, service.Patron{
-			ID:        c.ID,
-			Name:      name,
-			CreatedAt: time.Unix(c.Created, 0),
-			UpdatedAt: time.Unix(updated, 0),
+			ID:        id,
+			Name:      name.String,
+			CreatedAt: time.Unix(created, 0),
+			UpdatedAt: time.Unix(updatedAt, 0),
 		})
 	}
 	return patrons, nil

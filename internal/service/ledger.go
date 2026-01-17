@@ -1,16 +1,15 @@
 package service
 
 import (
+	"encoding/json"
+	"errors"
+	"log"
+	"net/http"
 	"time"
 
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 	"github.com/google/uuid"
 )
-
-type LedgerStore interface {
-	InsertTransaction(id string, ledger string, amount int, date int64, label string) error
-	GetLedgerSnapshot(ledger string, since, until int64) (*LedgerSnapshot, error)
-	GetTransactions(ledger string, limit, offset int) ([]Transaction, error)
-}
 
 type LedgerSnapshot struct {
 	OpeningBalance int `json:"opening_balance"`
@@ -38,7 +37,7 @@ func (s *Service) AddTransaction(
 		id = uuid.NewString()
 	}
 
-	err := s.ledger.InsertTransaction(
+	err := s.store.InsertTransaction(
 		id,
 		ledger,
 		amount,
@@ -60,7 +59,7 @@ func (s *Service) GetSnapshot(
 	*LedgerSnapshot,
 	error,
 ) {
-	snapshot, err := s.ledger.GetLedgerSnapshot(
+	snapshot, err := s.store.GetLedgerSnapshot(
 		ledger,
 		since.Unix(),
 		until.Unix(),
@@ -85,7 +84,7 @@ func (s *Service) GetTransactions(
 	}
 	offset = max(offset, 0)
 
-	txs, err := s.ledger.GetTransactions(
+	txs, err := s.store.GetTransactions(
 		ledger,
 		limit,
 		offset,
@@ -95,4 +94,133 @@ func (s *Service) GetTransactions(
 	}
 
 	return txs, nil
+}
+
+type CreateTransactionRequest struct {
+	ID     string `json:"id"`
+	Date   string `json:"date"`
+	Amount int    `json:"amount"`
+	Label  string `json:"label"`
+}
+
+func (s *Service) buildLedgerRouter(
+	mux *http.ServeMux,
+	mw Middleware,
+) {
+	mux.HandleFunc("GET /ledger/{ledger}", mw.CORS(s.handleGetLedger))
+	mux.HandleFunc("OPTIONS /ledger/{ledger}", mw.CORS(s.handleGetLedger))
+
+	mux.HandleFunc("GET /ledger/{ledger}/transactions", mw.CORS(s.handleGetLedgerTransactions))
+	mux.HandleFunc("OPTIONS /ledger/{ledger}/transactions", mw.CORS(s.handleGetLedgerTransactions))
+
+	mux.HandleFunc("POST /ledger/{ledger}/transactions", mw.Auth(s.handlePostLedgerTransaction))
+}
+
+func (s *Service) handleGetLedger(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	ledger := r.PathValue("ledger")
+	sinceQ := r.URL.Query().Get("since")
+	untilQ := r.URL.Query().Get("until")
+
+	var (
+		err   error
+		since time.Time
+		until time.Time
+	)
+
+	if sinceQ != "" {
+		if since, err = time.Parse("2006-01-02", sinceQ); err != nil {
+			wire.WriteError(w, http.StatusBadRequest, "Malformed 'since' Query")
+			return
+		}
+	} else {
+		since = time.Unix(0, 0)
+	}
+
+	if untilQ != "" {
+		if until, err = time.Parse("2006-01-02", untilQ); err != nil {
+			wire.WriteError(w, http.StatusBadRequest, "Malformed 'until' Query")
+			return
+		}
+	} else {
+		until = time.Now()
+	}
+
+	snapshot, err := s.GetSnapshot(ledger, since, until)
+	if err != nil {
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		switch {
+		case errors.As(err, &DatabaseError{}):
+			// TODO: log?
+		default:
+			// TODO: log?
+		}
+		return
+	}
+
+	wire.WriteData(w, http.StatusOK, snapshot)
+}
+
+func (s *Service) handleGetLedgerTransactions(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	f := r.PathValue("ledger")
+	limit, offset, malformedQueryErr := wire.ParsePagination(r)
+	if malformedQueryErr != nil {
+		wire.WriteError(w, http.StatusBadRequest, malformedQueryErr.Error())
+		return
+	}
+
+	transactions, err := s.GetTransactions(f, limit, offset)
+	if err != nil {
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		switch {
+		case errors.As(err, &DatabaseError{}):
+			// TODO: log?
+		default:
+			// TODO: log?
+		}
+		return
+	}
+
+	wire.WriteData(w, http.StatusOK, transactions)
+}
+
+func (s *Service) handlePostLedgerTransaction(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	ledger := r.PathValue("ledger")
+
+	// decode body
+	var req CreateTransactionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		wire.WriteError(w, http.StatusBadRequest, "Malformed JSON")
+		return
+	}
+
+	// validate date as RFC3339
+	date, err := time.Parse(time.RFC3339, req.Date)
+	if err != nil {
+		log.Printf("invalid RFC3339 date: %v", err)
+		wire.WriteError(w, http.StatusBadRequest, "Invalid RFC3339 Date")
+		return
+	}
+
+	err = s.AddTransaction(req.ID, ledger, req.Amount, date, req.Label)
+	if err != nil {
+		wire.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		switch {
+		case errors.As(err, &DatabaseError{}):
+			// TODO: log?
+		default:
+			// TODO: log?
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }

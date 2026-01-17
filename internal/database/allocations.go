@@ -7,14 +7,6 @@ import (
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-type DBAllocationsStore struct {
-	db *DB
-}
-
-func (db *DB) AllocationsStore() *DBAllocationsStore {
-	return &DBAllocationsStore{db: db}
-}
-
 func ensureDefaultAllocations(conn *sql.DB) error {
 
 	// get current allocation count
@@ -39,11 +31,11 @@ func ensureDefaultAllocations(conn *sql.DB) error {
 	return nil
 }
 
-func (s *DBAllocationsStore) GetAllocations() (
+func (db *DB) GetAllocations() (
 	[]service.AllocationRule,
 	error,
 ) {
-	rows, err := s.db.Conn.Query(`
+	rows, err := db.Conn.Query(`
 		SELECT id, ledger, percentage
 		FROM allocation
 		ORDER BY rowid;
@@ -51,8 +43,8 @@ func (s *DBAllocationsStore) GetAllocations() (
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
+
 	var allocations []service.AllocationRule
 	for rows.Next() {
 		a := service.AllocationRule{}
@@ -69,11 +61,10 @@ func (s *DBAllocationsStore) GetAllocations() (
 	return allocations, nil
 }
 
-func (s *DBAllocationsStore) SetAllocations(
+func (db *DB) SetAllocations(
 	rules []service.AllocationRule,
 ) error {
-	// begin db transaction
-	tx, err := s.db.Conn.Begin()
+	tx, err := db.Conn.Begin()
 	if err != nil {
 		return err
 	}
@@ -102,6 +93,7 @@ func (s *DBAllocationsStore) SetAllocations(
 
 	// run batch of allocation inserts
 	defer stmt.Close()
+
 	for _, r := range rules {
 		_, err = stmt.Exec(r.ID, r.LedgerName, r.Percentage)
 		if err != nil {

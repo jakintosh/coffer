@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"git.sr.ht/~jakintosh/coffer/pkg/keys"
+	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
 func TestRouter_Create(t *testing.T) {
 	svc := testService(t)
 	mux := http.NewServeMux()
-	svc.Router(mux, "/api")
+	svc.Router(mux, "/api", svc.WithAuth)
 
 	// First create a key to use for auth
 	token, err := svc.Create()
@@ -31,7 +31,7 @@ func TestRouter_Create(t *testing.T) {
 		t.Errorf("expected 201, got %d", rec.Code)
 	}
 
-	var resp keys.APIResponse
+	var resp wire.Response
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestRouter_Create(t *testing.T) {
 func TestRouter_Delete(t *testing.T) {
 	svc := testService(t)
 	mux := http.NewServeMux()
-	svc.Router(mux, "/api")
+	svc.Router(mux, "/api", svc.WithAuth)
 
 	// Create two keys - one for auth, one to delete
 	authToken, err := svc.Create()
@@ -93,7 +93,7 @@ func TestRouter_Delete(t *testing.T) {
 func TestRouter_DeleteBadID(t *testing.T) {
 	svc := testService(t)
 	mux := http.NewServeMux()
-	svc.Router(mux, "/api")
+	svc.Router(mux, "/api", svc.WithAuth)
 
 	token, err := svc.Create()
 	if err != nil {
@@ -115,7 +115,7 @@ func TestRouter_DeleteBadID(t *testing.T) {
 func TestAuth_MissingHeader(t *testing.T) {
 	svc := testService(t)
 	mux := http.NewServeMux()
-	svc.Router(mux, "/api")
+	svc.Router(mux, "/api", svc.WithAuth)
 
 	req := httptest.NewRequest("POST", "/api/keys", nil)
 	// No Authorization header
@@ -131,7 +131,7 @@ func TestAuth_MissingHeader(t *testing.T) {
 func TestAuth_BadToken(t *testing.T) {
 	svc := testService(t)
 	mux := http.NewServeMux()
-	svc.Router(mux, "/api")
+	svc.Router(mux, "/api", svc.WithAuth)
 
 	req := httptest.NewRequest("POST", "/api/keys", nil)
 	req.Header.Set("Authorization", "Bearer invalid.token")
@@ -147,7 +147,7 @@ func TestAuth_BadToken(t *testing.T) {
 func TestAuth_GoodToken(t *testing.T) {
 	svc := testService(t)
 	mux := http.NewServeMux()
-	svc.Router(mux, "/api")
+	svc.Router(mux, "/api", svc.WithAuth)
 
 	token, err := svc.Create()
 	if err != nil {
@@ -178,7 +178,7 @@ func TestAuth_GoodToken(t *testing.T) {
 func TestAuth_ProtectsCustomRoutes(t *testing.T) {
 	svc := testService(t)
 	mux := http.NewServeMux()
-	svc.Router(mux, "/api")
+	svc.Router(mux, "/api", svc.WithAuth)
 
 	// Use auth middleware without valid token
 	called := false

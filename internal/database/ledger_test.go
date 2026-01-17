@@ -4,19 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 func TestLedgerSnapshotAndTransactions(t *testing.T) {
-
-	env := util.SetupTestEnv(t)
-	start, end := util.SeedTransactionData(t, env.Service)
-	store := env.DB.LedgerStore()
+	env := testutil.SetupTestEnv(t)
+	start, end := testutil.SeedTransactionData(t, env.Service)
 
 	// snapshot from start to end
 	snapStart := start.Add(time.Second).Unix()
 	snapEnd := end.Unix()
-	snapshot, err := store.GetLedgerSnapshot("general", snapStart, snapEnd)
+	snapshot, err := env.DB.GetLedgerSnapshot("general", snapStart, snapEnd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +29,7 @@ func TestLedgerSnapshotAndTransactions(t *testing.T) {
 	}
 
 	// list transactions
-	rows, err := store.GetTransactions("general", 10, 0)
+	rows, err := env.DB.GetTransactions("general", 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,12 +39,10 @@ func TestLedgerSnapshotAndTransactions(t *testing.T) {
 }
 
 func TestLedgerTransactionsLimitOffset(t *testing.T) {
+	env := testutil.SetupTestEnv(t)
+	testutil.SeedTransactionData(t, env.Service)
 
-	env := util.SetupTestEnv(t)
-	util.SeedTransactionData(t, env.Service)
-	store := env.DB.LedgerStore()
-
-	txs, err := store.GetTransactions("general", 1, 1)
+	txs, err := env.DB.GetTransactions("general", 1, 1)
 	if err != nil {
 		t.Fatalf("GetTransactions: %v", err)
 	}
@@ -56,7 +52,7 @@ func TestLedgerTransactionsLimitOffset(t *testing.T) {
 		t.Fatalf("unexpected txs %+v", txs)
 	}
 
-	empty, err := store.GetTransactions("general", 10, 5)
+	empty, err := env.DB.GetTransactions("general", 10, 5)
 	if err != nil {
 		t.Fatal(err)
 	}

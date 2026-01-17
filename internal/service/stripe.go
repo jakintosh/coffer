@@ -3,7 +3,9 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -32,24 +34,19 @@ type StripeProcessor struct {
 	wg       sync.WaitGroup
 }
 
-type StripeStore interface {
-	InsertCustomer(id string, created int64, publicName *string) error
-	InsertSubscription(id string, created int64, customer string, status string, amount int64, currency string) error
-	InsertPayment(id string, created int64, status string, customer string, amount int64, currency string) error
-	InsertPayout(id string, created int64, status string, amount int64, currency string) error
+type StripeProcessorOptions struct {
+	Key            string
+	EndpointSecret string
+	TestMode       bool
+	DebounceWindow time.Duration
 }
 
-func NewStripeProcessor(
-	key string,
-	secret string,
-	test bool,
-	debounceWindow time.Duration,
-) *StripeProcessor {
-	stripe.Key = key
+func NewStripeProcessor(opts StripeProcessorOptions) *StripeProcessor {
+	stripe.Key = opts.Key
 	return &StripeProcessor{
-		EndpointSecret: secret,
-		TestMode:       test,
-		DebounceWindow: debounceWindow,
+		EndpointSecret: opts.EndpointSecret,
+		TestMode:       opts.TestMode,
+		DebounceWindow: opts.DebounceWindow,
 		Events:         make(chan ResourceEvent),
 		requests:       make(chan ResourceEvent, 8),
 		done:           make(chan struct{}),
@@ -225,7 +222,7 @@ func (s *Service) AddCustomer(
 	created int64,
 	publicName *string,
 ) error {
-	if err := s.stripe.InsertCustomer(
+	if err := s.store.InsertCustomer(
 		id,
 		created,
 		publicName,
@@ -244,7 +241,7 @@ func (s *Service) AddSubscription(
 	amount int64,
 	currency string,
 ) error {
-	if err := s.stripe.InsertSubscription(
+	if err := s.store.InsertSubscription(
 		id,
 		created,
 		customer,
@@ -265,7 +262,7 @@ func (s *Service) AddPayout(
 	amount int64,
 	currency string,
 ) error {
-	if err := s.stripe.InsertPayout(
+	if err := s.store.InsertPayout(
 		id,
 		created,
 		status,
@@ -285,7 +282,7 @@ func (s *Service) CreatePayment(
 	amount int64,
 	currency string,
 ) error {
-	if err := s.stripe.InsertPayment(
+	if err := s.store.InsertPayment(
 		id,
 		created,
 		status,
@@ -534,4 +531,40 @@ func (d *eventDebouncer) stop() {
 	for _, t := range d.timers {
 		t.Stop()
 	}
+}
+
+func (s *Service) buildStripeRouter(
+	mux *http.ServeMux,
+) {
+	mux.HandleFunc("POST /stripe/webhook", s.handleStripeWebhook)
+}
+
+func (s *Service) handleStripeWebhook(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	const MaxBodyBytes = int64(65536)
+	r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes)
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	sig := r.Header.Get("Stripe-Signature")
+	event, err := s.ParseStripeEvent(payload, sig)
+	if err != nil {
+		log.Printf("Error verifying webhook signature: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.ProcessStripeEvent(event); err != nil {
+		log.Printf("Error processing stripe event: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

@@ -1,4 +1,4 @@
-package api_test
+package service_test
 
 import (
 	"fmt"
@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
-func TestCreateTransaction(t *testing.T) {
+func TestAPICreateTransaction(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -23,16 +24,17 @@ func TestCreateTransaction(t *testing.T) {
 		"label": "base",
 		"amount": 50
 	}`
-	auth := makeTestAuthHeader(t, env)
-	result := wire.TestPost[any](env.Router, url, body, auth)
+	auth := testutil.MakeAuthHeader(t, env.Service)
+	result := wire.TestPost[any](router, url, body, auth)
 
 	// verify result
 	result.ExpectStatus(t, http.StatusCreated)
 }
 
-func TestCreateTransactionBadInput(t *testing.T) {
+func TestAPICreateTransactionBadInput(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	// post transaction
 	url := "/ledger/general/transactions"
@@ -42,16 +44,17 @@ func TestCreateTransactionBadInput(t *testing.T) {
 		"label": "x",
 		"amount": "a lot"
 	}`
-	auth := makeTestAuthHeader(t, env)
-	result := wire.TestPost[any](env.Router, url, body, auth)
+	auth := testutil.MakeAuthHeader(t, env.Service)
+	result := wire.TestPost[any](router, url, body, auth)
 
 	// verify result
 	result.ExpectStatus(t, http.StatusBadRequest)
 }
 
-func TestCreateTransactionBadDateDoesNotCreate(t *testing.T) {
+func TestAPICreateTransactionBadDateDoesNotCreate(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	// post transaction with bad RFC3339 date but valid JSON types
 	url := "/ledger/general/transactions"
@@ -61,35 +64,33 @@ func TestCreateTransactionBadDateDoesNotCreate(t *testing.T) {
 		"label": "x",
 		"amount": 50
 	}`
-	auth := makeTestAuthHeader(t, env)
-	result := wire.TestPost[any](env.Router, url, body, auth)
+	auth := testutil.MakeAuthHeader(t, env.Service)
+	result := wire.TestPost[any](router, url, body, auth)
 
 	// verify result
 	result.ExpectStatus(t, http.StatusBadRequest)
 
 	// verify transaction did not get created
-	listResult := wire.TestGet[[]service.Transaction](env.Router, "/ledger/general/transactions")
-	listResult.ExpectStatus(t, http.StatusOK)
-	txs := listResult.Data
+	listResult := wire.TestGet[[]service.Transaction](router, "/ledger/general/transactions")
+	txs := listResult.ExpectOK(t)
 	if len(txs) != 0 {
 		t.Fatalf("expected 0 transactions, got %d", len(txs))
 	}
 }
 
-func TestGetSnapshot(t *testing.T) {
+func TestAPIGetSnapshot(t *testing.T) {
 
-	env := setupTestEnv(t)
-	util.SeedTransactionData(t, env.Service)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
+	testutil.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	url := "/ledger/general"
-	result := wire.TestGet[service.LedgerSnapshot](env.Router, url)
+	result := wire.TestGet[service.LedgerSnapshot](router, url)
 
 	// verify result
-	result.ExpectStatus(t, http.StatusOK)
-
 	// validate response
-	snapshot := result.Data
+	snapshot := result.ExpectOK(t)
 	if snapshot.OpeningBalance != 0 {
 		t.Errorf("opening want 0 got %d", snapshot.OpeningBalance)
 	}
@@ -104,22 +105,21 @@ func TestGetSnapshot(t *testing.T) {
 	}
 }
 
-func TestGetSnapshotWithParams(t *testing.T) {
+func TestAPIGetSnapshotWithParams(t *testing.T) {
 
-	env := setupTestEnv(t)
-	start, end := util.SeedTransactionData(t, env.Service)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
+	start, end := testutil.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	startQ := start.Format("2006-01-02")
 	endQ := end.Add(time.Hour * -24).Format("2006-01-02")
 	url := fmt.Sprintf("/ledger/general?since=%s&until=%s", startQ, endQ)
-	result := wire.TestGet[service.LedgerSnapshot](env.Router, url)
+	result := wire.TestGet[service.LedgerSnapshot](router, url)
 
 	// verify result
-	result.ExpectStatus(t, http.StatusOK)
-
 	// validate response
-	snapshot := result.Data
+	snapshot := result.ExpectOK(t)
 	if snapshot.OpeningBalance != 0 {
 		t.Errorf("opening want 0 got %d", snapshot.OpeningBalance)
 	}
@@ -134,51 +134,50 @@ func TestGetSnapshotWithParams(t *testing.T) {
 	}
 }
 
-func TestGetSnapshotBadParams(t *testing.T) {
+func TestAPIGetSnapshotBadParams(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	// get snapshot
 	url := "/ledger/general?since=bad-date&until=2025-01-01"
-	result := wire.TestGet[any](env.Router, url)
+	result := wire.TestGet[any](router, url)
 
 	// verify result
 	result.ExpectStatus(t, http.StatusBadRequest)
 }
 
-func TestGetTransactions(t *testing.T) {
+func TestAPIGetTransactions(t *testing.T) {
 
-	env := setupTestEnv(t)
-	util.SeedTransactionData(t, env.Service)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
+	testutil.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	url := "/ledger/general/transactions"
-	result := wire.TestGet[[]service.Transaction](env.Router, url)
+	result := wire.TestGet[[]service.Transaction](router, url)
 
 	// verify result
-	result.ExpectStatus(t, http.StatusOK)
-
 	// validate response
-	txs := result.Data
+	txs := result.ExpectOK(t)
 	if len(txs) != 3 {
 		t.Fatalf("want 3 transactions, got %d", len(txs))
 	}
 }
 
-func TestGetTransactionsPaginated(t *testing.T) {
+func TestAPIGetTransactionsPaginated(t *testing.T) {
 
-	env := setupTestEnv(t)
-	util.SeedTransactionData(t, env.Service)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
+	testutil.SeedTransactionData(t, env.Service)
 
 	// get snapshot
 	url := "/ledger/general/transactions?offset=1"
-	result := wire.TestGet[[]service.Transaction](env.Router, url)
+	result := wire.TestGet[[]service.Transaction](router, url)
 
 	// verify result
-	result.ExpectStatus(t, http.StatusOK)
-
 	// validate response
-	txs := result.Data
+	txs := result.ExpectOK(t)
 	if len(txs) != 2 {
 		t.Fatalf("want 2 transactions, got %d", len(txs))
 	}
@@ -198,13 +197,14 @@ func TestGetTransactionsPaginated(t *testing.T) {
 	}
 }
 
-func TestGetTransactionsBadQuery(t *testing.T) {
+func TestAPIGetTransactionsBadQuery(t *testing.T) {
 
-	env := setupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
 
 	// get snapshot
 	url := "/ledger/general/transactions?limit=bad&offset=-1"
-	result := wire.TestGet[any](env.Router, url)
+	result := wire.TestGet[any](router, url)
 
 	// verify result
 	result.ExpectStatus(t, http.StatusBadRequest)

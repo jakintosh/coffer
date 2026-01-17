@@ -1,28 +1,26 @@
-package api_test
+package service_test
 
 import (
-	"net/http"
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 	"git.sr.ht/~jakintosh/coffer/pkg/wire"
 )
 
-func TestGetMetrics(t *testing.T) {
+func TestAPIGetMetrics(t *testing.T) {
 
-	env := setupTestEnv(t)
-	util.SeedSubscriberData(t, env.Service)
+	env := testutil.SetupTestEnv(t)
+	router := env.Service.BuildRouter()
+	testutil.SeedSubscriberData(t, env.Service)
 
 	// get metrics
 	url := "/metrics"
-	result := wire.TestGet[service.Metrics](env.Router, url)
+	result := wire.TestGet[service.Metrics](router, url)
 
 	// validate result
-	result.ExpectStatus(t, http.StatusOK)
-
 	// validate response
-	metrics := result.Data
+	metrics := result.ExpectOK(t)
 	if metrics.PatronsActive != 3 {
 		t.Errorf("want patrons=3, got %d", metrics.PatronsActive)
 	}

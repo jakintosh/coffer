@@ -1,4 +1,4 @@
-package api
+package service
 
 import (
 	"net/http"
@@ -11,18 +11,18 @@ type HealthResponse struct {
 	DB     string `json:"db"`
 }
 
-func (a *API) buildHealthRouter(
+func (s *Service) buildHealthRouter(
 	mux *http.ServeMux,
 ) {
-	mux.HandleFunc("GET /health", a.handleGetHealth)
+	mux.HandleFunc("GET /health", s.handleGetHealth)
 }
 
-func (a *API) handleGetHealth(
+func (s *Service) handleGetHealth(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
 	dbStatus := "ok"
-	if err := a.svc.HealthCheck(); err != nil {
+	if err := s.HealthCheck(); err != nil {
 		dbStatus = "unreachable"
 	}
 

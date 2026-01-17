@@ -1,21 +1,36 @@
-package database
+package cors
 
-import "git.sr.ht/~jakintosh/coffer/internal/service"
+import (
+	"database/sql"
+)
 
-type DBCORSStore struct {
-	db *DB
+// SQLStore implements Store using SQL database.
+type SQLStore struct {
+	db *sql.DB
 }
 
-func (db *DB) CORSStore() *DBCORSStore { return &DBCORSStore{db: db} }
+// NewSQL creates a SQLStore with SQL storage.
+// It automatically runs migrations to create the allowed_origin table if needed.
+func NewSQL(
+	db *sql.DB,
+) (
+	*SQLStore,
+	error,
+) {
+	if err := migrate(db); err != nil {
+		return nil, err
+	}
+	return &SQLStore{db: db}, nil
+}
 
-func (s *DBCORSStore) CountOrigins() (
+func (s *SQLStore) Count() (
 	int,
 	error,
 ) {
-	row := s.db.Conn.QueryRow(`
+	row := s.db.QueryRow(`
 		SELECT COUNT(*)
-		FROM allowed_origin;
-	`)
+		FROM allowed_origin;`,
+	)
 	var count int
 	if err := row.Scan(&count); err != nil {
 		return 0, err
@@ -23,11 +38,11 @@ func (s *DBCORSStore) CountOrigins() (
 	return count, nil
 }
 
-func (s *DBCORSStore) GetOrigins() (
-	[]service.AllowedOrigin,
+func (s *SQLStore) Get() (
+	[]AllowedOrigin,
 	error,
 ) {
-	rows, err := s.db.Conn.Query(`
+	rows, err := s.db.Query(`
 		SELECT url
 		FROM allowed_origin
 		ORDER BY rowid;
@@ -37,9 +52,9 @@ func (s *DBCORSStore) GetOrigins() (
 	}
 	defer rows.Close()
 
-	var origins []service.AllowedOrigin
+	var origins []AllowedOrigin
 	for rows.Next() {
-		var o service.AllowedOrigin
+		var o AllowedOrigin
 		if err := rows.Scan(&o.URL); err != nil {
 			return nil, err
 		}
@@ -48,10 +63,10 @@ func (s *DBCORSStore) GetOrigins() (
 	return origins, nil
 }
 
-func (s *DBCORSStore) SetOrigins(
-	origins []service.AllowedOrigin,
+func (s *SQLStore) Set(
+	origins []AllowedOrigin,
 ) error {
-	tx, err := s.db.Conn.Begin()
+	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
@@ -61,25 +76,22 @@ func (s *DBCORSStore) SetOrigins(
 		}
 	}()
 
-	// delete existing urls
 	_, err = tx.Exec(`DELETE FROM allowed_origin;`)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// prepare insert statement
 	stmt, err := tx.Prepare(`
 		INSERT INTO allowed_origin (url)
-		VALUES (?1);
-	`)
+		VALUES (?1);`,
+	)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 	defer stmt.Close()
 
-	// run insert batch on origins
 	for _, o := range origins {
 		_, err = stmt.Exec(o.URL)
 		if err != nil {
@@ -89,4 +101,13 @@ func (s *DBCORSStore) SetOrigins(
 	}
 
 	return tx.Commit()
+}
+
+func migrate(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS allowed_origin (
+			url TEXT NOT NULL PRIMARY KEY
+		);
+	`)
+	return err
 }

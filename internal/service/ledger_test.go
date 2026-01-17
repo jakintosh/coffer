@@ -4,14 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 func TestAddTransactionSuccess(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
-	t1 := util.MakeDate(2025, 1, 1)
+	t1 := testutil.MakeDate(2025, 1, 1)
 
 	if err := svc.AddTransaction("", "general", 100, t1, "test"); err != nil {
 		t.Fatalf("add transaction: %v", err)
@@ -28,9 +28,9 @@ func TestAddTransactionSuccess(t *testing.T) {
 
 func TestGetSnapshotSuccess(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
-	start, end := util.SeedTransactionData(t, svc)
+	start, end := testutil.SeedTransactionData(t, svc)
 
 	snap, err := svc.GetSnapshot("general", start.Add(time.Second), end)
 	if err != nil {
@@ -52,9 +52,9 @@ func TestGetSnapshotSuccess(t *testing.T) {
 
 func TestGetTransactionsSuccess(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
-	util.SeedTransactionData(t, svc)
+	testutil.SeedTransactionData(t, svc)
 
 	txs, err := svc.GetTransactions("general", 10, 0)
 	if err != nil {
@@ -70,9 +70,9 @@ func TestGetTransactionsSuccess(t *testing.T) {
 
 func TestGetTransactionsNegativePagination(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
-	util.SeedTransactionData(t, svc)
+	testutil.SeedTransactionData(t, svc)
 
 	// pass negative pagination values
 	txs, err := svc.GetTransactions("general", -5, -3)

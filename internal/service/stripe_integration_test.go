@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 // getFixturePath returns the path to a scenario fixture
@@ -29,9 +29,9 @@ func skipIfNoFixture(t *testing.T, name string) {
 
 func TestScenario_SubscriptionCreated(t *testing.T) {
 	skipIfNoFixture(t, "subscription_created")
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 
-	scenario := util.LoadScenario(t, "subscription_created")
+	scenario := testutil.LoadScenario(t, "subscription_created")
 	t.Logf("Loaded %d events for scenario %s", len(scenario.Events), scenario.Name)
 
 	// Process all events
@@ -42,7 +42,7 @@ func TestScenario_SubscriptionCreated(t *testing.T) {
 	}
 
 	// Wait for debouncing to complete
-	util.WaitForDebounce(50 * time.Millisecond)
+	testutil.WaitForDebounce(50 * time.Millisecond)
 
 	// Verify final state
 	// Note: Since events are processed through debouncer, actual processing
@@ -53,9 +53,9 @@ func TestScenario_SubscriptionCreated(t *testing.T) {
 
 func TestScenario_SubscriptionUpdated(t *testing.T) {
 	skipIfNoFixture(t, "subscription_updated")
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 
-	scenario := util.LoadScenario(t, "subscription_updated")
+	scenario := testutil.LoadScenario(t, "subscription_updated")
 	t.Logf("Loaded %d events for scenario %s", len(scenario.Events), scenario.Name)
 
 	for i, event := range scenario.Events {
@@ -64,15 +64,15 @@ func TestScenario_SubscriptionUpdated(t *testing.T) {
 		}
 	}
 
-	util.WaitForDebounce(50 * time.Millisecond)
+	testutil.WaitForDebounce(50 * time.Millisecond)
 	t.Log("All events processed successfully")
 }
 
 func TestScenario_CheckoutCompleted(t *testing.T) {
 	skipIfNoFixture(t, "checkout_completed")
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 
-	scenario := util.LoadScenario(t, "checkout_completed")
+	scenario := testutil.LoadScenario(t, "checkout_completed")
 	t.Logf("Loaded %d events for scenario %s", len(scenario.Events), scenario.Name)
 
 	for i, event := range scenario.Events {
@@ -81,7 +81,7 @@ func TestScenario_CheckoutCompleted(t *testing.T) {
 		}
 	}
 
-	util.WaitForDebounce(50 * time.Millisecond)
+	testutil.WaitForDebounce(50 * time.Millisecond)
 	t.Log("All events processed successfully")
 }
 
@@ -89,10 +89,10 @@ func TestScenario_CheckoutCompleted(t *testing.T) {
 
 func TestScenario_SubscriptionCreated_OutOfOrder(t *testing.T) {
 	skipIfNoFixture(t, "subscription_created")
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 
 	// Load with deterministic shuffle for reproducibility
-	scenario := util.LoadScenarioShuffled(t, "subscription_created", 12345)
+	scenario := testutil.LoadScenarioShuffled(t, "subscription_created", 12345)
 	t.Logf("Loaded %d events (shuffled) for scenario %s", len(scenario.Events), scenario.Name)
 
 	for i, event := range scenario.Events {
@@ -101,15 +101,15 @@ func TestScenario_SubscriptionCreated_OutOfOrder(t *testing.T) {
 		}
 	}
 
-	util.WaitForDebounce(50 * time.Millisecond)
+	testutil.WaitForDebounce(50 * time.Millisecond)
 	t.Log("All shuffled events processed successfully")
 }
 
 func TestScenario_CheckoutCompleted_OutOfOrder(t *testing.T) {
 	skipIfNoFixture(t, "checkout_completed")
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 
-	scenario := util.LoadScenarioShuffled(t, "checkout_completed", 67890)
+	scenario := testutil.LoadScenarioShuffled(t, "checkout_completed", 67890)
 	t.Logf("Loaded %d events (shuffled) for scenario %s", len(scenario.Events), scenario.Name)
 
 	for i, event := range scenario.Events {
@@ -118,7 +118,7 @@ func TestScenario_CheckoutCompleted_OutOfOrder(t *testing.T) {
 		}
 	}
 
-	util.WaitForDebounce(50 * time.Millisecond)
+	testutil.WaitForDebounce(50 * time.Millisecond)
 	t.Log("All shuffled events processed successfully")
 }
 
@@ -126,9 +126,9 @@ func TestScenario_CheckoutCompleted_OutOfOrder(t *testing.T) {
 
 func TestScenario_RapidFire(t *testing.T) {
 	skipIfNoFixture(t, "subscription_created")
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 
-	scenario := util.LoadScenario(t, "subscription_created")
+	scenario := testutil.LoadScenario(t, "subscription_created")
 
 	// Send all events as fast as possible (no delays)
 	for i, event := range scenario.Events {
@@ -138,15 +138,15 @@ func TestScenario_RapidFire(t *testing.T) {
 	}
 
 	// Wait for debouncing
-	util.WaitForDebounce(50 * time.Millisecond)
+	testutil.WaitForDebounce(50 * time.Millisecond)
 	t.Log("Rapid-fire events processed successfully")
 }
 
 func TestScenario_DuplicateEvents(t *testing.T) {
 	skipIfNoFixture(t, "subscription_created")
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 
-	scenario := util.LoadScenario(t, "subscription_created")
+	scenario := testutil.LoadScenario(t, "subscription_created")
 
 	// Process each event twice (simulating retries)
 	for i, event := range scenario.Events {
@@ -160,6 +160,6 @@ func TestScenario_DuplicateEvents(t *testing.T) {
 		}
 	}
 
-	util.WaitForDebounce(50 * time.Millisecond)
+	testutil.WaitForDebounce(50 * time.Millisecond)
 	t.Log("Duplicate events handled successfully")
 }

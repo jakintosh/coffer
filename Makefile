@@ -29,7 +29,7 @@ test:
 test-integration:
 	go test -tags=integration ./...
 
-test-all: test test-integration
+test-all: test-integration
 
 coverage:
 	go test -coverprofile=coverage.out ./...

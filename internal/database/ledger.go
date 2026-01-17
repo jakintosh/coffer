@@ -1,37 +1,20 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
 )
 
-type DBTransaction struct {
-	ID      string
-	Created int64
-	Updated sql.NullInt64
-	Date    int64
-	Ledger  string
-	Label   string
-	Amount  int
-}
-
-type DBLedgerStore struct {
-	db *DB
-}
-
-func (db *DB) LedgerStore() *DBLedgerStore { return &DBLedgerStore{db: db} }
-
-func (s *DBLedgerStore) InsertTransaction(
+func (db *DB) InsertTransaction(
 	id string,
 	ledger string,
 	amount int,
 	date int64,
 	label string,
 ) error {
-	_, err := s.db.Conn.Exec(`
+	_, err := db.Conn.Exec(`
 		INSERT INTO tx (id, created, date, amount, ledger, label)
 		VALUES(?1, unixepoch(), ?2, ?3, ?4, ?5)
 		ON CONFLICT(id) DO UPDATE
@@ -46,11 +29,10 @@ func (s *DBLedgerStore) InsertTransaction(
 		ledger,
 		label,
 	)
-
 	return err
 }
 
-func (s *DBLedgerStore) GetLedgerSnapshot(
+func (db *DB) GetLedgerSnapshot(
 	ledger string,
 	since int64,
 	until int64,
@@ -63,7 +45,8 @@ func (s *DBLedgerStore) GetLedgerSnapshot(
 		incoming int
 		outgoing int
 	)
-	row := s.db.Conn.QueryRow(`
+
+	row := db.Conn.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
 		WHERE ledger=?1
@@ -76,7 +59,7 @@ func (s *DBLedgerStore) GetLedgerSnapshot(
 		return nil, fmt.Errorf("failed to query opening balance: %w", err)
 	}
 
-	row = s.db.Conn.QueryRow(`
+	row = db.Conn.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
 		WHERE ledger=?1
@@ -92,7 +75,7 @@ func (s *DBLedgerStore) GetLedgerSnapshot(
 		return nil, fmt.Errorf("failed to query incoming funds: %w", err)
 	}
 
-	row = s.db.Conn.QueryRow(`
+	row = db.Conn.QueryRow(`
 		SELECT COALESCE(SUM(amount),0)
 		FROM tx
 		WHERE ledger=?1
@@ -117,7 +100,7 @@ func (s *DBLedgerStore) GetLedgerSnapshot(
 	return snapshot, nil
 }
 
-func (s *DBLedgerStore) GetTransactions(
+func (db *DB) GetTransactions(
 	ledger string,
 	limit int,
 	offset int,
@@ -125,7 +108,7 @@ func (s *DBLedgerStore) GetTransactions(
 	[]service.Transaction,
 	error,
 ) {
-	rows, err := s.db.Conn.Query(`
+	rows, err := db.Conn.Query(`
 		SELECT id, amount, date, label
 		FROM tx
 		WHERE ledger=?1
@@ -139,27 +122,23 @@ func (s *DBLedgerStore) GetTransactions(
 	if err != nil {
 		return nil, fmt.Errorf("failed to query transactions: %w", err)
 	}
-
 	defer rows.Close()
-	var (
-		id     string
-		amount int
-		date   int64
-		label  string
-	)
+
 	var txs []service.Transaction
 	for rows.Next() {
+		var id, label string
+		var amount int
+		var date int64
 		if err := rows.Scan(&id, &amount, &date, &label); err != nil {
 			return nil, err
 		}
-		tx := service.Transaction{
+		txs = append(txs, service.Transaction{
 			ID:     id,
 			Ledger: ledger,
 			Amount: amount,
 			Date:   time.Unix(date, 0),
 			Label:  label,
-		}
-		txs = append(txs, tx)
+		})
 	}
 	return txs, nil
 }

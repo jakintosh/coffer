@@ -4,15 +4,15 @@ import (
 	"testing"
 
 	"git.sr.ht/~jakintosh/coffer/internal/service"
-	"git.sr.ht/~jakintosh/coffer/internal/util"
+	"git.sr.ht/~jakintosh/coffer/internal/testutil"
 )
 
 func TestCreatePaymentDefault(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
 
-	ts := util.MakeDateUnix(2025, 1, 1)
+	ts := testutil.MakeDateUnix(2025, 1, 1)
 	if err := svc.CreatePayment(
 		"pi_def",
 		ts,
@@ -38,7 +38,7 @@ func TestCreatePaymentDefault(t *testing.T) {
 
 func TestCreatePaymentAllocated(t *testing.T) {
 
-	env := util.SetupTestEnv(t)
+	env := testutil.SetupTestEnv(t)
 	svc := env.Service
 
 	rules := []service.AllocationRule{
@@ -58,7 +58,7 @@ func TestCreatePaymentAllocated(t *testing.T) {
 	}
 
 	amount := int64(777)
-	ts := util.MakeDateUnix(2025, 1, 1)
+	ts := testutil.MakeDateUnix(2025, 1, 1)
 	if err := svc.CreatePayment(
 		"pi_alloc",
 		ts,

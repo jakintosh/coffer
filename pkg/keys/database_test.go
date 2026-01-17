@@ -34,7 +34,7 @@ func testServiceWithStore(t *testing.T) (*keys.Service, *keys.SQLStore) {
 	if err != nil {
 		t.Fatalf("NewSQL failed: %v", err)
 	}
-	svc, err := keys.New(store, "")
+	svc, err := keys.New(keys.Options{Store: store})
 	if err != nil {
 		t.Fatalf("New failed: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestNewSQL_BootstrapTokenEmptyStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQL failed: %v", err)
 	}
-	svc, err := keys.New(store, bootstrapToken)
+	svc, err := keys.New(keys.Options{Store: store, BootstrapToken: bootstrapToken})
 	if err != nil {
 		t.Fatalf("New failed: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestNewSQL_BootstrapTokenNonEmptyStore(t *testing.T) {
 		t.Fatalf("insert failed: %v", err)
 	}
 
-	svc, err := keys.New(store, bootstrapToken)
+	svc, err := keys.New(keys.Options{Store: store, BootstrapToken: bootstrapToken})
 	if err != nil {
 		t.Fatalf("New failed: %v", err)
 	}

@@ -4,24 +4,37 @@ import (
 	"database/sql"
 	"fmt"
 
+	"git.sr.ht/~jakintosh/coffer/internal/service"
+	"git.sr.ht/~jakintosh/coffer/pkg/cors"
 	"git.sr.ht/~jakintosh/coffer/pkg/keys"
 	_ "modernc.org/sqlite"
 )
 
 type Options struct {
-	WAL bool
+	Path string
+	WAL  bool
 }
 
 type DB struct {
 	Conn      *sql.DB
 	KeysStore *keys.SQLStore
+	CORSStore *cors.SQLStore
 }
 
+// validate interface implementation
+var _ service.Store = (*DB)(nil)
+
 func Open(
-	path string,
 	opts Options,
-) (*DB, error) {
-	conn, err := sql.Open("sqlite", path)
+) (
+	*DB,
+	error,
+) {
+	if opts.Path == "" {
+		return nil, fmt.Errorf("database path required")
+	}
+
+	conn, err := sql.Open("sqlite", opts.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -54,7 +67,18 @@ func Open(
 		return nil, fmt.Errorf("failed to create keys store: %w", err)
 	}
 
-	db := &DB{Conn: conn, KeysStore: keysStore}
+	corsStore, err := cors.NewSQL(conn)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to create cors store: %w", err)
+	}
+
+	db := &DB{
+		Conn:      conn,
+		KeysStore: keysStore,
+		CORSStore: corsStore,
+	}
+
 	if err := ensureDefaultAllocations(conn); err != nil {
 		conn.Close()
 		return nil, err
