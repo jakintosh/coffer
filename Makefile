@@ -15,25 +15,25 @@ help:
 	@echo "  lint             Run fmt and vet"
 
 build: generate
-	go build -o ./bin/coffer ./cmd/coffer
+	@go build -o ./bin/coffer ./cmd/coffer
 
 generate:
-	go generate ./...
+	@go generate ./...
 
 install: build
 	sudo cp ./bin/coffer /usr/local/bin/coffer
 
-test:
-	go test ./...
+test: generate
+	@go test ./...
 
-test-integration:
-	go test -tags=integration ./...
+test-integration: generate
+	@go test -tags=integration ./...
 
 test-all: test-integration
 
 coverage:
-	go test -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out
+	@go test -coverprofile=coverage.out ./...
+	@go tool cover -func=coverage.out
 
 clean:
 	rm -rf ./bin coverage.out
